@@ -1,0 +1,17 @@
+id: CHG-2026-006
+title: 开发前数据库契约收口
+type: contract
+status: ready
+created_at: 2026-07-21
+affected_modules:
+  - job-matching
+  - candidate-profile
+  - application-management
+  - job-management
+  - database-infrastructure
+risk_level: high
+dependencies:
+  - CHG-2026-002
+  - CHG-2026-004
+  - CHG-2026-007
+supersedes: []

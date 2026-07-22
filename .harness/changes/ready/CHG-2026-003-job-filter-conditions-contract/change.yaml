@@ -1,0 +1,12 @@
+id: CHG-2026-003
+title: 求职过滤条件契约修订
+type: contract
+status: ready
+created_at: 2026-07-21
+affected_modules:
+  - job-goal-management
+  - job-matching
+  - communication
+risk_level: medium
+dependencies: []
+supersedes: []
