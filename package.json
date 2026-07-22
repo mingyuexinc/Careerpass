@@ -1,0 +1,14 @@
+{
+  "name": "careerpass",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Careerpass repository development tooling",
+  "scripts": {
+    "lint:commit": "commitlint --edit",
+    "prepare": "git config core.hooksPath .githooks"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0"
+  }
+}
