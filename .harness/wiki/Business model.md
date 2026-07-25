@@ -5,10 +5,28 @@
 ### User（用户）
 
 |  Field |  Type  |  Description  |
-|- - - - |- - - - -| - - - - - -  - - -| 
+|- - - - |- - - - -| - - - - - -  - - -|
 |  user_id  | UUID | 用户ID | 
 |  password_hash | String | 密码哈希 | 
 |  created_at | DateTime | 创建时间 | 
+
+### Authentication Session（认证会话）
+
+|  Field |  Type  |  Description  |
+|- - - - |- - - - -| - - - - - -  - - -|
+| session_id | UUID | 认证会话唯一标识 |
+| user_id | UUID | 所属用户账号；一个用户可拥有多个设备或客户端会话 |
+| token_hash | String | Refresh Token 的 HMAC-SHA-256 摘要；仅保存摘要，不保存 Token 明文 |
+| token_family_id | UUID | 同一次登录及后续轮换产生的 Token 家族标识，用于重放检测后的整链撤销 |
+| parent_session_id | UUID | 上一次轮换产生本会话的认证会话；首次登录时为空 |
+| issued_at | DateTime | Refresh Token 签发时间 |
+| expires_at | DateTime | Refresh Token 到期时间 |
+| revoked_at | DateTime | 会话撤销时间；为空表示尚未撤销 |
+| revoked_reason | String | 撤销原因，如 `logout`、`rotated`、`replay_detected`、`password_changed` |
+| last_used_at | DateTime | 最近一次使用 Refresh Token 刷新 Access Token 的时间 |
+| created_at | DateTime | 记录创建时间 |
+
+认证会话是用户的一对多从属实体，不关联 Candidate。Access Token 为短期无状态凭证，不作为业务实体持久化；Refresh Token 仅通过认证会话进行轮换、撤销和审计。
 
 ### Candidate（求职者）
 

@@ -13,7 +13,7 @@ Production:TBD
 |  Header |  Required  |  Description  |
 |- - - - |- - - - -| - - - - - -  - - -| 
 |  content-Type | Yes | application/json | 
-|  Authorization| Yes | Bearer{token} | 
+|  Authorization| 除认证公开接口外均必填 | Bearer {access_token}；`/api/v1/auth/register`、`/api/v1/auth/login`、`/api/v1/auth/refresh` 无需此请求头 |
 |  X-Request-ID | No | 请求追踪ID | 
 
 
@@ -22,7 +22,7 @@ Production:TBD
 |  Field |  Type  |  Description  |
 |- - - - |- - - - -| - - - - - -  - - -| 
 |  code | Integer | 业务状态码 | 
-|  message| String | 状态描述 | 
+|  msg | String | 状态描述 |
 |  data | T | 业务数据 | 
 
 - 示例：
@@ -30,7 +30,7 @@ Production:TBD
 json
 {
 	"code":200,
-	"message":"success",
+	"msg":"success",
 	"data"：{}
 }
 ```
@@ -42,7 +42,7 @@ json
 json
 {
 	"code":200,
-	"message":"success",
+	"msg":"success",
 	"data"：{
 		"list":[].
 		"total":100,
@@ -64,9 +64,199 @@ json
 |  409 | 业务冲突 |
 |  500 | 服务端错误 |
 
+### 版本适用范围
+
+| 标记 | 含义 |
+| --- | --- |
+| `MVP` | 当前 MVP 必须实现、测试并纳入验收的接口能力。 |
+| `Deferred` | 已完成设计但不属于当前 MVP 实现范围的后续能力；不得作为 MVP 开发依赖或验收条件。 |
+
+未单独标记的既有接口，适用范围以所属模块或其所在章节的标记为准。范围裁决以 `.harness/wiki/MVP scope and development boundaries.md` 为最高依据。
+
 ## 模块API
 
-### 求职目标管理模块
+### 认证与会话管理模块（`MVP` 与 `Deferred`）
+
+#### 注册账号
+
+- 版本：`MVP`
+
+- 接口：POST /api/v1/auth/register
+
+- Authorization：不需要
+
+- Request Body：
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| username | String | Yes | 用户名，唯一，长度与字符规则由服务端校验 |
+| password | String | Yes | 明文密码，仅用于本次传输；服务端不得保存或返回明文 |
+| name | String | No | 候选人姓名；未提供时创建姓名为空的候选人 |
+
+```json
+{
+    "username":"alice",
+    "password":"ExamplePassword123!",
+    "name":"Alice"
+}
+```
+
+- 处理规则：用户名唯一校验通过后，在同一事务中创建 `users` 账户和唯一关联的 `candidates` 记录；成功后签发令牌。
+
+- Response：
+
+```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "access_token":"<access_token>",
+        "refresh_token":"<refresh_token>",
+        "token_type":"Bearer",
+        "expires_in":1800,
+        "user":{
+            "user_id":"user_001",
+            "candidate_id":"candidate_001",
+            "profile_status":"incomplete"
+        }
+    }
+}
+```
+
+#### 登录
+
+- 版本：`MVP`
+
+- 接口：POST /api/v1/auth/login
+
+- Authorization：不需要
+
+- Request Body：
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| username | String | Yes | 用户名 |
+| password | String | Yes | 明文密码，仅用于本次传输 |
+
+```json
+{
+    "username":"alice",
+    "password":"ExamplePassword123!"
+}
+```
+
+- Response：
+
+```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "access_token":"<access_token>",
+        "refresh_token":"<refresh_token>",
+        "token_type":"Bearer",
+        "expires_in":1800,
+        "user":{
+            "user_id":"user_001",
+            "candidate_id":"candidate_001",
+            "profile_status":"ready"
+        }
+    }
+}
+```
+
+#### 刷新访问令牌
+
+- 版本：`Deferred`
+
+- 接口：POST /api/v1/auth/refresh
+
+- Authorization：不需要
+
+- Request Body：
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| refresh_token | String | Yes | 登录或上一次刷新签发的 Refresh Token |
+
+```json
+{
+    "refresh_token":"<refresh_token>"
+}
+```
+
+- 处理规则：校验 Refresh Token 的有效期、撤销状态和所属用户；成功后轮换 Refresh Token，旧 Token 立即失效。本接口不创建用户或候选人，不校验用户名和密码。
+
+- Response：
+
+```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "access_token":"<new_access_token>",
+        "refresh_token":"<new_refresh_token>",
+        "token_type":"Bearer",
+        "expires_in":1800
+    }
+}
+```
+
+#### 退出登录
+
+- 版本：`Deferred`
+
+- 接口：POST /api/v1/auth/logout
+
+- Request Body：
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| refresh_token | String | Yes | 要撤销的当前会话 Refresh Token |
+
+```json
+{
+    "refresh_token":"<refresh_token>"
+}
+```
+
+- 处理规则：仅允许撤销当前已认证用户所属的 Refresh Token；撤销后该 Token 不可用于刷新 Access Token。
+
+- Response：
+
+```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{}
+}
+```
+
+#### 获取当前登录用户
+
+- 版本：`MVP`
+
+- 接口：GET /api/v1/auth/me
+
+- Query Parameters：无
+
+- Response：
+
+```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "user_id":"user_001",
+        "username":"alice",
+        "candidate_id":"candidate_001",
+        "name":"Alice",
+        "profile_status":"ready"
+    }
+}
+```
+
+### 求职目标管理模块（`MVP`）
 
 #### 获取当前求职目标
 
@@ -80,7 +270,7 @@ json
 ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "goal_id":"goal_001",
         "target_offer_count":3,
@@ -123,14 +313,14 @@ json
 ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "goal_id":"goal_001",
         "status":"active"
     }
 }
 ```
-### 简历管理模块
+### 简历管理模块（`MVP`）
 
 #### 上传简历
 
@@ -148,7 +338,7 @@ json
 ```json
 {
     "code":200,
-    "message":"upload success",
+    "msg":"upload success",
     "data":{
         "resume_id":"resume_001",
         "parse_status":"processing"
@@ -172,7 +362,7 @@ json
 ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "list":[
             {
@@ -188,9 +378,11 @@ json
 }
 ```
 
-### 求职者资料管理模块
+### 求职者资料管理模块（`MVP` 与 `Deferred`）
 
 #### 上传求职者资料
+
+- 版本：`Deferred`
 
 - 接口：POST /api/v1/candidate_documents/upload
 - Request Body：
@@ -206,7 +398,7 @@ json
 ```json
 {
     "code":200,
-    "message":"upload success",
+    "msg":"upload success",
     "data":{
         "candidate_document_id":"doc_001",
         "parse_status":"processing"
@@ -215,6 +407,8 @@ json
 ```
 
 #### 获取求职者资料列表
+
+- 版本：`Deferred`
 
 - 接口：GET /api/v1/candidate_documents
 
@@ -230,7 +424,7 @@ json
 ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "list":[
             {
@@ -248,13 +442,15 @@ json
 
 #### 获取候选人画像
 
+- 版本：`MVP`
+
 - 接口：GET /api/v1/profile
 - Response：
 
 ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "profile_id":"profile_001",
         "target_job_titles":"AI Agent Engineer",
@@ -268,7 +464,7 @@ json
 }
 ```
 
-### 岗位管理模块
+### 岗位管理模块（`MVP`）
 
 #### 创建岗位JD
 
@@ -285,7 +481,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "job_id":"job_001",
         "parse_status":"succeeded"
@@ -305,7 +501,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "list":[
             {
@@ -320,7 +516,7 @@ json
 }
  ```
 
-### 岗位匹配模块
+### 岗位匹配模块（`MVP`）
 
 #### 查询可投递岗位
 
@@ -338,7 +534,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "list":[
             {
@@ -378,7 +574,7 @@ json
  ```json
 {
     "code":200,
-    "message":"matching started",
+    "msg":"matching started",
     "data":{
         "task_id":"task_001",
         "status":"running"
@@ -401,7 +597,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "list":[
             {
@@ -420,7 +616,7 @@ json
 }
  ```
 
-### 投递管理模块
+### 投递管理模块（`MVP`）
 
 #### 创建岗位申请
 
@@ -443,7 +639,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "application_id":"app_001",
         "status":"created"
@@ -465,7 +661,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "list":[
             {
@@ -498,7 +694,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "conversation_id":"conv_001"
     }
@@ -522,7 +718,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "message_id":"msg_001",
         "reply":
@@ -541,7 +737,7 @@ json
   |- - - - |- - - - -| - - - - - -  - - -| 
   |  page | Integer | No | 页面 |
 
-### 求职进度管理模块
+### 求职进度管理模块（`MVP`）
 
 #### 查询求职进度
 
@@ -550,7 +746,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "events":[
             {
@@ -579,7 +775,7 @@ json
  ```json
 {
     "code":200,
-    "message":"success",
+    "msg":"success",
     "data":{
         "event_id":"event_001",
         "to_stage":"interview_2",

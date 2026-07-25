@@ -1,0 +1,14 @@
+id: CHG-2026-014
+title: 接口与数据模型版本适用范围标记
+type: contract
+status: proposed
+created_at: 2026-07-25
+affected_modules:
+  - api-contract
+  - data-model
+  - authentication
+  - candidate-management
+risk_level: medium
+dependencies:
+  - CHG-2026-013
+supersedes: []

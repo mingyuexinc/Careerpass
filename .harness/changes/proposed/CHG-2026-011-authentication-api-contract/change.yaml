@@ -1,0 +1,14 @@
+id: CHG-2026-011
+title: 认证与会话管理 API 契约
+type: contract
+status: proposed
+created_at: 2026-07-25
+affected_modules:
+  - authentication
+  - api-contract
+  - candidate-management
+risk_level: high
+dependencies:
+  - CHG-2026-006
+  - CHG-2026-013
+supersedes: []

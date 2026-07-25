@@ -25,7 +25,16 @@
 
 ## 表结构定义
 
-### 用户表（`users`）
+### 版本适用范围
+
+| 标记 | 含义 |
+| --- | --- |
+| `MVP` | 当前 MVP 必须迁移并由实现使用的数据库对象。 |
+| `Deferred` | 已完成设计但不属于当前 MVP 迁移或实现范围的后续数据库对象。 |
+
+范围裁决以 `.harness/wiki/MVP scope and development boundaries.md` 为最高依据。`Deferred` 对象可保留在数据模型中供后续阶段使用，但不得作为 MVP 的迁移前置条件。
+
+### 用户表（`users`，`MVP`）
 
 1. 表结构
 
@@ -49,7 +58,51 @@
 | PRIMARY | id      | PRIMARY |
 | uq_user_username | username | UNIQUE |
 
-### 求职者表（`candidates`）
+### 认证会话表（`auth_sessions`，`Deferred`）
+
+1. 表结构
+
+| Column            | Type         | Nullable | Default           | Description |
+| ----------------- | ------------ | -------- | ----------------- | ----------- |
+| id                | UUID         | NO       | gen_random_uuid() | 主键 |
+| user_id           | UUID         | NO       | 无                | 所属用户 ID |
+| token_hash        | CHAR(64)     | NO       | 无                | Refresh Token 的 HMAC-SHA-256 十六进制摘要；禁止保存 Token 明文 |
+| token_family_id   | UUID         | NO       | 无                | 登录会话及其 Token 轮换链路标识 |
+| parent_session_id | UUID         | YES      | NULL              | 上一次轮换产生本会话的认证会话 ID；首次登录为空 |
+| issued_at         | TIMESTAMPTZ  | NO       | CURRENT_TIMESTAMP | Refresh Token 签发时间 |
+| expires_at        | TIMESTAMPTZ  | NO       | 无                | Refresh Token 到期时间 |
+| revoked_at        | TIMESTAMPTZ  | YES      | NULL              | 会话撤销时间 |
+| revoked_reason    | VARCHAR(32)  | YES      | NULL              | 撤销原因：`logout`、`rotated`、`replay_detected`、`password_changed` 等 |
+| last_used_at      | TIMESTAMPTZ  | YES      | NULL              | 最近一次成功刷新时间 |
+| created_at        | TIMESTAMPTZ  | NO       | CURRENT_TIMESTAMP | 记录创建时间 |
+
+2. 外键约束
+
+| Constraint Name             | Local Column      | Referenced Table | Referenced Column | On Delete | Description |
+| --------------------------- | ----------------- | ---------------- | ----------------- | --------- | ----------- |
+| fk_auth_session_user        | user_id           | 用户表           | id                | CASCADE   | 认证会话所属用户；删除用户时清理其会话 |
+| fk_auth_session_parent      | parent_session_id | 认证会话表       | id                | RESTRICT  | 保留 Token 轮换链路，禁止删除仍被后继会话引用的会话 |
+
+3. 检查约束
+
+| Constraint Name | Rule | Description |
+| --------------- | ---- | ----------- |
+| ck_auth_session_expiry | `expires_at > issued_at` | 会话到期时间必须晚于签发时间 |
+| ck_auth_session_revocation | `revoked_at IS NULL OR revoked_at >= issued_at` | 撤销时间不得早于签发时间 |
+
+4. 索引
+
+| Name | Columns | Type |
+| ---- | ------- | ---- |
+| PRIMARY | id | PRIMARY |
+| uq_auth_session_token_hash | token_hash | UNIQUE |
+| idx_auth_session_user_active | user_id, expires_at | PARTIAL INDEX (`revoked_at IS NULL`) |
+| idx_auth_session_family | token_family_id | INDEX |
+| idx_auth_session_parent | parent_session_id | INDEX |
+
+`auth_sessions` 仅保存 Refresh Token 的 HMAC 摘要。Refresh Token 刷新时，旧会话必须标记为已撤销且 `revoked_reason = rotated`，然后创建继承相同 `token_family_id` 的新会话；检测到已轮换 Token 被重放时，必须撤销该 `token_family_id` 下全部未撤销会话。
+
+### 求职者表（`candidates`，`MVP`）
 
 1. 表结构
 
@@ -72,8 +125,11 @@
 | Name    | Columns | Type    |
 | ------- | ------- | ------- |
 | PRIMARY | id      | PRIMARY |
+| uq_candidate_user_id | user_id | UNIQUE |
 
-### 简历表（`resumes`）
+`uq_candidate_user_id` 约束 `users` 与 `candidates` 为一对一关系：每个用户仅能关联一个候选人；注册流程必须在同一事务中创建该候选人记录。
+
+### 简历表（`resumes`，`MVP`）
 
 1. 表结构
 
@@ -101,7 +157,7 @@
 | PRIMARY       | id           | PRIMARY |
 | idx_resume_candidate | candidate_id | INDEX   |
 
-### 求职者画像表（`candidate_profiles`）
+### 求职者画像表（`candidate_profiles`，`MVP`）
 
 1. 表结构
 
@@ -133,7 +189,7 @@
 | PRIMARY       | id           | PRIMARY |
 | idx_candidate_profile_resume | resume_id | INDEX   |
 
-### 求职者资料表（`candidate_documents`）
+### 求职者资料表（`candidate_documents`，`Deferred`）
 
 1. 表结构
 
@@ -163,7 +219,7 @@
 | PRIMARY       | id           | PRIMARY |
 | idx_candidate_document_candidate | candidate_id | INDEX   |
 
-### 求职目标表（`job_goals`）
+### 求职目标表（`job_goals`，`MVP`）
 
 1. 表结构
 
@@ -194,7 +250,7 @@
 | PRIMARY       | id           | PRIMARY |
 | idx_job_goal_candidate | candidate_id | INDEX   |
 
-### 岗位表（`jobs`）
+### 岗位表（`jobs`，`MVP`）
 
 1. 表结构
 
@@ -216,7 +272,7 @@
 | ------- | ------- | ------- |
 | PRIMARY | id      | PRIMARY |
 
-### 岗位JD表（`job_descriptions`）
+### 岗位JD表（`job_descriptions`，`MVP`）
 
 1. 表结构
 
@@ -244,7 +300,7 @@
 | PRIMARY | id      | PRIMARY |
 | idx_job_jd_job | job_id | INDEX   |
 
-### 岗位轮次匹配表（`match_runs`）
+### 岗位轮次匹配表（`match_runs`，`MVP`）
 
 1. 表结构
 
@@ -271,7 +327,7 @@
 | PRIMARY       | id           | PRIMARY |
 | idx_match_run_job_goal | job_goal_id | INDEX   |
 
-### 匹配结果表（`match_results`）
+### 匹配结果表（`match_results`，`MVP`）
 
 1. 表结构
 
@@ -309,7 +365,7 @@
 
 匹配结果仅在评分和解释均生成完成后写入。`algorithm_version` 必须标识实际使用的算法、规则及提示词版本组合；同一 `match_run` 内的结果必须使用相同版本。任务失败时仅更新匹配批次状态和失败原因，不得写入不完整的匹配结果。
 
-### 岗位申请表（`applications`）
+### 岗位申请表（`applications`，`MVP`）
 
 1. 表结构
 
@@ -341,7 +397,7 @@
 | idx_application_job | job_id | INDEX   |
 | idx_application_goal | goal_id | INDEX   |
 
-### 沟通会话表（`conversations`）
+### 沟通会话表（`conversations`，`MVP`）
 
 1. 表结构
 
@@ -370,7 +426,7 @@ Service 和 Agent 不得手动设置该字段。
 | PRIMARY         | id             | PRIMARY |
 | idx_conversation_application | application_id | INDEX   |
 
-### 消息表（`messages`）
+### 消息表（`messages`，`MVP`）
 
 1. 表结构
 
@@ -396,7 +452,7 @@ Service 和 Agent 不得手动设置该字段。
 | PRIMARY          | id              | PRIMARY |
 | idx_message_conversation | conversation_id | INDEX   |
 
-### 消息附件表（`message_attachments`）
+### 消息附件表（`message_attachments`，`Deferred`）
 
 1. 表结构
 
@@ -426,7 +482,7 @@ Service 和 Agent 不得手动设置该字段。
 | PRIMARY     | id         | PRIMARY |
 | idx_attachment_message | message_id | INDEX   |
 
-### 求职进度事件表（`progress_events`）
+### 求职进度事件表（`progress_events`，`MVP`）
 
 1. 表结构
 

@@ -1,0 +1,17 @@
+id: CHG-2026-013
+title: MVP 范围与开发边界
+type: contract
+status: proposed
+created_at: 2026-07-25
+affected_modules:
+  - authentication
+  - candidate-profile-preparation
+  - document-processing
+  - job-goal
+  - job-management
+  - matching
+  - application-tracking
+  - ai-communication
+risk_level: high
+dependencies: []
+supersedes: []
