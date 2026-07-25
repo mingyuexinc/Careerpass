@@ -104,6 +104,10 @@ def main() -> int:
             continue
         for package in sorted(path for path in status_dir.iterdir() if path.is_dir()):
             validate_package(status_dir.name, package, seen_ids, errors)
+    allowed_root_directories = STATUSES | {"_templates", "tools", "__pycache__"}
+    for path in ROOT.iterdir():
+        if path.is_dir() and path.name not in allowed_root_directories:
+            errors.append(f"unexpected directory at changes root: {path.relative_to(ROOT)}")
     if errors:
         print("Change package validation failed:")
         print("\n".join(f"- {error}" for error in errors))

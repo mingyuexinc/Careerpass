@@ -33,6 +33,9 @@
 |   `.harness/skills/coding-skill/SKILL.md`   | 编码实现技能     |
 |   `.harness/skills/expert-reviewer/SKILL.md`   | 专家评审技能     |
 |   `.harness/wiki/Business model.md`   | 业务模型与实体关系    |
+|   `.harness/wiki/Business rules and state machines.md`   | 模块业务规则、状态机、合法迁移与操作前置条件    |
+|   `.harness/wiki/MVP scope and development boundaries.md`   | MVP 开发范围、延期能力与不可降级约束；每次需求开发前的范围裁决基准    |
 |   `.harness/wiki/Interface protocol.md`   | API接口协议定义    |
 |   `.harness/wiki/Data model.md`   | 数据库Schema与表定义   |
+|   `.harness/wiki/Development environment.md`   | 本地开发、Docker Compose 依赖服务、环境变量与真实集成测试说明   |
 |   `.harness/changes/`   | 变更追踪目录   |
