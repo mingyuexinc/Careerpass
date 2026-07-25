@@ -1,0 +1,47 @@
+name: Backend quality
+
+on:
+  pull_request:
+    paths:
+      - "careerpass-backend/**"
+      - ".harness/**"
+      - ".github/workflows/backend-quality.yml"
+  push:
+    branches: [main]
+    paths:
+      - "careerpass-backend/**"
+      - ".harness/**"
+      - ".github/workflows/backend-quality.yml"
+
+jobs:
+  unit-and-static:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: careerpass-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.28"
+      - run: uv sync --frozen --all-groups
+      - run: uv run ruff check .
+      - run: uv run pytest
+
+  integration:
+    needs: unit-and-static
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: careerpass-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.28"
+      - run: uv sync --frozen --all-groups
+      - run: docker compose -f docker-compose.integration.yml up --build -d
+      - run: curl --fail --retry 15 --retry-delay 2 http://localhost:8080/health/ready
+      - run: RUN_INTEGRATION_TESTS=true TEST_DATABASE_URL=postgresql+asyncpg://careerpass:careerpass_test_only@localhost:54329/careerpass TEST_REDIS_URL=redis://localhost:63790/0 uv run pytest -m integration
+      - if: always()
+        run: docker compose -f docker-compose.integration.yml down --volumes --remove-orphans

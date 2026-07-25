@@ -1,0 +1,43 @@
+[project]
+name = "careerpass-backend"
+version = "0.1.0"
+description = "Careerpass FastAPI backend"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "alembic>=1.16,<2",
+    "asyncpg>=0.30,<1",
+    "celery>=5.6,<5.7",
+    "fastapi>=0.139.2",
+    "pydantic-settings>=2.14.2",
+    "PyJWT>=2.10,<3",
+    "redis>=7.4,<8",
+    "sqlalchemy>=2.0,<2.1",
+    "uvicorn>=0.51.0",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=6,<7",
+    "ruff>=0.12,<0.13",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --cov=app --cov-report=term-missing --cov-fail-under=80"
+markers = [
+    "integration: requires PostgreSQL and Redis supplied by the integration compose stack",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

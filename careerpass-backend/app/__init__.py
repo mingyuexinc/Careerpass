@@ -1,0 +1,1 @@
+"""CareerPass backend application package."""
