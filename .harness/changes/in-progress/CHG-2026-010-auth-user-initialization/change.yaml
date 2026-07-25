@@ -1,0 +1,15 @@
+id: CHG-2026-010
+title: 认证与用户初始化
+type: feature
+status: in-progress
+created_at: 2026-07-25
+affected_modules:
+  - authentication
+  - user-management
+  - candidate-management
+  - database-infrastructure
+  - api-contract
+risk_level: high
+dependencies:
+  - CHG-2026-009
+supersedes: []

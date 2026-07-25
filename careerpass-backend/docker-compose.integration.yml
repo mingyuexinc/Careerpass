@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "54329:5432"
+    environment:
+      POSTGRES_USER: careerpass
+      POSTGRES_PASSWORD: careerpass_test_only
+      POSTGRES_DB: careerpass
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careerpass -d careerpass"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "63790:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: .
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
+      REDIS_URL: redis://redis:6379/0
+      READINESS_TIMEOUT_SECONDS: "2"
+      CELERY_TASK_TIME_LIMIT_SECONDS: "30"
+      JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  worker:
+    build: .
+    command: ["celery", "-A", "app.infrastructure.tasks.worker:celery_app", "worker", "--loglevel=INFO"]
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
+      REDIS_URL: redis://redis:6379/0
+      CELERY_TASK_TIME_LIMIT_SECONDS: "30"
+      JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
