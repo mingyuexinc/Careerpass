@@ -3,7 +3,7 @@
 from enum import StrEnum
 from functools import lru_cache
 
-from pydantic import Field, PostgresDsn, RedisDsn, SecretStr, model_validator
+from pydantic import AliasChoices, Field, PostgresDsn, RedisDsn, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +25,11 @@ class LogLevel(StrEnum):
     CRITICAL = "CRITICAL"
 
 
+class MineruMcpTransport(StrEnum):
+    STREAMABLE_HTTP = "streamable-http"
+    STDIO = "stdio"
+
+
 class Settings(BaseSettings):
     """Settings available in L1; external-service settings belong to later layers."""
 
@@ -43,6 +48,33 @@ class Settings(BaseSettings):
     redis_url: RedisDsn
     readiness_timeout_seconds: float = Field(default=2, gt=0, le=10)
     celery_task_time_limit_seconds: int = Field(default=30, ge=1, le=300)
+    celery_task_soft_time_limit_seconds: int = Field(default=25, ge=1, le=299)
+    celery_task_max_retries: int = Field(default=2, ge=0, le=5)
+    celery_retry_backoff_max_seconds: int = Field(default=60, ge=1, le=300)
+    celery_execution_lease_seconds: int = Field(default=90, ge=31, le=300)
+    celery_dispatch_lease_seconds: int = Field(default=30, ge=5, le=300)
+    celery_dispatcher_poll_seconds: int = Field(default=60, ge=5, le=300)
+    celery_dispatcher_batch_size: int = Field(default=20, ge=1, le=100)
+    object_storage_root: str = Field(default=".careerpass-objects", min_length=1)
+    mineru_api_token: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MINERU_API_KEY", "MINERU_API_TOKEN"),
+        repr=False,
+    )
+    mineru_mcp_url: str | None = Field(default=None, min_length=1)
+    mineru_mcp_transport: MineruMcpTransport = MineruMcpTransport.STDIO
+    mineru_mcp_command: str = Field(default="uvx", min_length=1, max_length=128)
+    mineru_mcp_command_args: tuple[str, ...] = ("mineru-open-mcp",)
+    qwen_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DASHSCOPE_API_KEY", "QWEN_API_KEY"),
+        repr=False,
+    )
+    qwen_base_url: str = Field(
+        default="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        min_length=1,
+    )
+    qwen_model: str = Field(default="qwen-plus", min_length=1, max_length=128)
     auth_rate_limit_enabled: bool = True
     auth_rate_limit_requests: int = Field(default=10, ge=1, le=1000)
     auth_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
@@ -58,7 +90,27 @@ class Settings(BaseSettings):
             raise ValueError("DEBUG must be false when APP_ENV is production")
         if self.app_env is AppEnvironment.PRODUCTION and not self.auth_rate_limit_enabled:
             raise ValueError("AUTH_RATE_LIMIT_ENABLED must be true when APP_ENV is production")
+        if self.celery_task_soft_time_limit_seconds >= self.celery_task_time_limit_seconds:
+            raise ValueError("CELERY_TASK_SOFT_TIME_LIMIT_SECONDS must be below the hard limit")
         return self
+
+    def require_resume_parsing_credentials(self) -> None:
+        """Fail closed when a parsing worker is started without all external credentials."""
+        if (
+            self.mineru_api_token is None
+            or self.qwen_api_key is None
+            or not self.mineru_api_token.get_secret_value()
+            or not self.qwen_api_key.get_secret_value()
+        ):
+            raise ValueError("resume parsing credentials are not configured")
+
+    def require_mineru_credentials(self) -> None:
+        """Fail closed before starting the MinerU parsing adapter."""
+        if self.mineru_api_token is None or not self.mineru_api_token.get_secret_value():
+            raise ValueError("MinerU MCP credentials are not configured")
+        if self.mineru_mcp_transport is MineruMcpTransport.STREAMABLE_HTTP:
+            if self.mineru_mcp_url is None or not self.mineru_mcp_url.startswith(("https://", "http://127.0.0.1/", "http://localhost/")):
+                raise ValueError("MinerU MCP endpoint is not configured")
 
 
 @lru_cache

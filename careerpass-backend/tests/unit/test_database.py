@@ -24,8 +24,16 @@ def test_database_close_is_idempotent() -> None:
     assert database._closed is True
 
 
-def test_base_metadata_contains_only_t02_identity_models() -> None:
-    assert set(Base.metadata.tables) == {"users", "candidates"}
+def test_base_metadata_contains_candidate_preparation_models() -> None:
+    assert set(Base.metadata.tables) == {
+        "async_task_runs",
+        "candidate_documents",
+        "candidate_profiles",
+        "candidates",
+        "resumes",
+        "stored_file_objects",
+        "users",
+    }
     assert User.__table__.c.username.type.length == 64
     assert Candidate.__table__.c.name.type.length == 64
     assert Candidate.__table__.c.user_id.unique is True

@@ -44,7 +44,9 @@ def _request(redis_client: object) -> SimpleNamespace:
     return SimpleNamespace(
         client=SimpleNamespace(host="127.0.0.1"),
         url=SimpleNamespace(path="/api/v1/auth/login"),
-        app=SimpleNamespace(state=SimpleNamespace(redis_client=SimpleNamespace(client=redis_client))),
+        app=SimpleNamespace(
+            state=SimpleNamespace(redis_client=SimpleNamespace(client=redis_client))
+        ),
     )
 
 

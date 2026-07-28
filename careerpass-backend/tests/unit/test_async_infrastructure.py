@@ -28,6 +28,11 @@ def test_celery_probe_task_uses_safe_configuration_and_tracks_state() -> None:
     result = probe_task.apply(args=({"idempotency_key": "probe-1"},))
 
     assert check_celery_configuration(celery_app) is True
+    assert celery_app.conf.result_backend is None
+    assert celery_app.conf.task_acks_late is True
+    assert celery_app.conf.task_reject_on_worker_lost is True
+    assert celery_app.conf.worker_prefetch_multiplier == 1
+    assert celery_app.conf.broker_transport_options["visibility_timeout"] == 300
     assert probe_task.autoretry_for == (ConnectionError, TimeoutError)
     assert result.state == "SUCCESS"
     assert result.result == {"status": "succeeded", "idempotency_key": "probe-1"}
@@ -101,3 +106,4 @@ def test_worker_entrypoint_uses_the_constrained_celery_configuration() -> None:
 
     assert check_celery_configuration(celery_app) is True
     assert "careerpass.runtime_probe" in celery_app.tasks
+    assert "careerpass.resume_parse" in celery_app.tasks

@@ -6,12 +6,12 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 
-def test_alembic_revision_graph_has_the_t02_identity_head() -> None:
+def test_alembic_revision_graph_has_the_candidate_preparation_head() -> None:
     project_root = Path(__file__).parents[2]
     config = Config(str(project_root / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
 
-    assert script.get_current_head() == "20260725_0002"
+    assert script.get_current_head() == "20260727_0004"
 
 
 def test_empty_baseline_contains_no_schema_operations() -> None:

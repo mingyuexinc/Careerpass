@@ -12,6 +12,14 @@ def test_success_response_uses_required_contract() -> None:
     }
 
 
+def test_success_response_accepts_contract_specific_success_code() -> None:
+    assert success_response({"resume_id": "resume-1"}, msg="accepted", code=201) == {
+        "code": 201,
+        "msg": "accepted",
+        "data": {"resume_id": "resume-1"},
+    }
+
+
 def test_error_response_has_null_data() -> None:
     assert error_response(code=ErrorCode.NOT_FOUND, msg="not found") == {
         "code": 404,

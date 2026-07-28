@@ -1,0 +1,18 @@
+id: CHG-2026-021
+title: 文档解析模块 MVP
+type: business-module
+status: proposed
+created_at: 2026-07-28
+affected_modules:
+  - document-parsing
+  - async-task-enablement
+  - job-management
+  - candidate-preparation
+risk_level: high
+dependencies:
+  - CHG-2026-013
+  - CHG-2026-015
+  - CHG-2026-016
+  - CHG-2026-018
+  - CHG-2026-020
+supersedes: []

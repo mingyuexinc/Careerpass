@@ -30,6 +30,7 @@ services:
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
+      OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
       READINESS_TIMEOUT_SECONDS: "2"
       CELERY_TASK_TIME_LIMIT_SECONDS: "30"
       JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
@@ -40,6 +41,8 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    volumes:
+      - integration-objects:/var/lib/careerpass/objects
 
   worker:
     build: .
@@ -49,6 +52,9 @@ services:
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
+      OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
+      MINERU_API_KEY: ${MINERU_API_KEY:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       CELERY_TASK_TIME_LIMIT_SECONDS: "30"
       JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
     depends_on:
@@ -56,3 +62,25 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - integration-objects:/var/lib/careerpass/objects
+
+  dispatcher:
+    build: .
+    command: ["python", "-m", "app.infrastructure.tasks.dispatcher"]
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
+      REDIS_URL: redis://redis:6379/0
+      CELERY_TASK_TIME_LIMIT_SECONDS: "30"
+      CELERY_DISPATCHER_POLL_SECONDS: "60"
+      JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  integration-objects:

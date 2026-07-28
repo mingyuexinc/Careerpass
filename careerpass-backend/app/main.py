@@ -1,5 +1,6 @@
 """FastAPI application factory for CareerPass."""
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,6 +13,12 @@ from app.core.middleware import request_context_middleware
 from app.infrastructure.cache import create_redis_client
 from app.infrastructure.database import create_database
 from app.infrastructure.runtime import check_celery_configuration, check_database, check_redis
+from app.infrastructure.storage import LocalObjectStorage
+from app.infrastructure.storage.cleanup import (
+    run_cleanup_schedule,
+    run_hourly_object_cleanup,
+    stop_cleanup_schedule,
+)
 from app.infrastructure.tasks import create_celery_app
 from app.services.runtime_health_service import RuntimeHealthService
 
@@ -31,10 +38,19 @@ def create_app() -> FastAPI:
         celery_app = create_celery_app(
             str(settings.redis_url),
             task_time_limit_seconds=settings.celery_task_time_limit_seconds,
+            task_soft_time_limit_seconds=settings.celery_task_soft_time_limit_seconds,
+            task_max_retries=settings.celery_task_max_retries,
+            retry_backoff_max_seconds=settings.celery_retry_backoff_max_seconds,
         )
         app.state.database = database
         app.state.redis_client = redis_client
         app.state.celery_app = celery_app
+        app.state.object_storage = LocalObjectStorage(settings.object_storage_root)
+        cleanup_task = asyncio.create_task(
+            run_cleanup_schedule(
+                lambda: run_hourly_object_cleanup(database, app.state.object_storage)
+            )
+        )
         app.state.runtime_health_service = RuntimeHealthService(
             database_probe=lambda: check_database(
                 database.engine,
@@ -49,6 +65,7 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            await stop_cleanup_schedule(cleanup_task)
             await redis_client.close()
             await database.close()
 

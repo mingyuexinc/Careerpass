@@ -1,0 +1,16 @@
+id: CHG-2026-020
+title: 候选人资料准备 MVP
+type: business-module
+status: proposed
+created_at: 2026-07-27
+affected_modules:
+  - candidate-preparation
+  - document-parsing
+  - object-storage
+risk_level: high
+dependencies:
+  - CHG-2026-010
+  - CHG-2026-017
+  - CHG-2026-018
+  - CHG-2026-019
+supersedes: []

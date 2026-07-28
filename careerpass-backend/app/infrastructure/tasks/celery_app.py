@@ -14,19 +14,26 @@ def create_celery_app(
     redis_url: str,
     *,
     task_time_limit_seconds: int,
+    task_soft_time_limit_seconds: int = 25,
+    task_max_retries: int = 2,
+    retry_backoff_max_seconds: int = 60,
     always_eager: bool = False,
 ) -> Celery:
     """Create a Celery app with explicit serialization, timeout and state settings."""
     celery_app = Celery("careerpass")
     celery_app.conf.update(
         broker_url=redis_url,
-        result_backend=redis_url,
+        result_backend=None,
         accept_content=["json"],
         task_serializer="json",
         result_serializer="json",
         task_track_started=True,
         task_time_limit=task_time_limit_seconds,
+        task_soft_time_limit=task_soft_time_limit_seconds,
         task_acks_late=True,
+        task_reject_on_worker_lost=True,
+        worker_prefetch_multiplier=1,
+        broker_transport_options={"visibility_timeout": 300},
         task_always_eager=always_eager,
         task_store_eager_result=False,
     )
@@ -37,7 +44,7 @@ def create_celery_app(
         autoretry_for=(ConnectionError, TimeoutError),
         retry_backoff=True,
         retry_jitter=True,
-        retry_kwargs={"max_retries": 3},
+        retry_kwargs={"max_retries": task_max_retries, "max_interval": retry_backoff_max_seconds},
     )
     def runtime_probe(_: object, payload: dict[str, object]) -> dict[str, str]:
         """Validate routing/state behavior without external or business side effects."""
