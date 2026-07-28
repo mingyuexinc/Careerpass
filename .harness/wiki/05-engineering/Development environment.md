@@ -7,9 +7,10 @@
 | 服务 | Compose 服务名 | 镜像/运行时 | 用途 |
 | --- | --- | --- | --- |
 | PostgreSQL | `postgres` | `postgres:16-alpine` | 业务数据、Alembic 迁移与 Repository 集成验证 |
-| Redis | `redis` | `redis:7.4-alpine` | 缓存与 Celery Broker/Backend 的依赖连通性验证 |
+| Redis | `redis` | `redis:7.4-alpine` | 认证限流与 Celery Broker 的依赖连通性验证；不作为 Celery Result Backend |
 | Backend | `backend` | 本项目 Dockerfile | FastAPI API 联调 |
 | Worker | `worker` | 本项目 Dockerfile | Celery 异步任务运行时 |
+| Dispatcher | `dispatcher` | 本项目 Dockerfile | 独立单实例的可靠入队扫描与 Celery 投递；不由 Celery Beat 驱动 |
 
 集成环境编排文件为 `careerpass-backend/docker-compose.integration.yml`。服务间使用 Compose 的默认网络互联，因此容器内部应使用服务名 `postgres`、`redis`，而不是 `localhost`。
 
@@ -43,6 +44,9 @@ redis:
 | `APP_ENV` | 运行环境 | `test` / `production` | 真实集成测试使用 `test` |
 | `DATABASE_URL` | 应用连接 PostgreSQL | `postgresql+asyncpg://careerpass:***@postgres:5432/careerpass` | 容器内使用服务名；不得写入生产密码 |
 | `REDIS_URL` | 应用连接 Redis | `redis://redis:6379/0` | 容器内使用服务名 |
+| `CELERY_BROKER_URL` | Celery 连接 Redis Broker | `redis://redis:6379/1` | 与认证限流使用独立 Redis DB；不配置 Celery Result Backend |
+| `MINERU_API_KEY` | MinerU MCP 正式解析服务凭证 | 本地 `.env` 中的安全占位值 | 简历 PDF 解析必需；不得提交、记录或返回该值 |
+| `DASHSCOPE_API_KEY` | 阿里百炼 Qwen 模型凭证 | 本地 `.env` 中的安全占位值 | 画像结构化必需；不得提交、记录或返回该值 |
 | `JWT_SECRET_KEY` | JWT 签发与验签 | 至少 32 字符的本地随机值 | 不提交真实值，不写入日志或响应 |
 | `AUTH_RATE_LIMIT_ENABLED` | 认证路由 Redis 限流开关 | `true` | 生产环境必须为 `true` |
 | `AUTH_RATE_LIMIT_REQUESTS` | 单窗口允许认证请求数 | `10` | 按客户端 IP 与认证路径计数 |
@@ -50,6 +54,12 @@ redis:
 | `AUTH_RATE_LIMIT_TIMEOUT_SECONDS` | Redis 限流调用超时 | `0.2` | 超时或 Redis 不可用时安全返回 `503` |
 | `READINESS_TIMEOUT_SECONDS` | 就绪检查超时 | `2` | 必须为有限值 |
 | `CELERY_TASK_TIME_LIMIT_SECONDS` | Celery 任务时间限制 | `30` | 必须为有限值 |
+| `CELERY_TASK_SOFT_TIME_LIMIT_SECONDS` | Celery 任务软超时 | `25` | 必须小于硬超时 |
+| `CELERY_TASK_MAX_RETRIES` | 临时故障最大重试次数 | `2` | 仅适用于技术方案列明的可重试故障 |
+| `CELERY_RETRY_BACKOFF_MAX_SECONDS` | 指数退避的单次最大等待 | `60` | 启用抖动；不得无限等待 |
+| `CELERY_REDIS_VISIBILITY_TIMEOUT_SECONDS` | Redis Broker 未确认消息可见性超时 | `300` | 必须大于硬超时和最长退避；超时后 Broker 可重投递 |
+| `CELERY_EXECUTION_LEASE_SECONDS` | 数据库执行租约时长 | `90` | 必须大于 30 秒硬超时；领取时生成新的执行令牌 |
+| `CELERY_STALLED_TASK_THRESHOLD_SECONDS` | `running` 任务卡死兜底阈值 | `600` | Dispatcher 每 60 秒扫描；仅处理租约已过期的任务 |
 
 ### 3.2 宿主机真实集成测试变量
 
@@ -101,6 +111,24 @@ uv run pytest -m integration
 ```
 
 只有该命令实际通过，才能将第 7 阶段“集成测试”标记为通过；仅通过使用替身的单元/API 测试，或仅启动容器，均不能替代真实依赖验证。
+
+### 5.1 候选人资料准备的分层真实验证
+
+候选人资料准备首次交付除本节既有认证联调外，还必须完成以下分层验证。验证环境必须是隔离的本地 Compose 环境；不得连接个人、共享或生产数据库、Redis、对象目录或外部凭证环境。
+
+| 验证层级 | 真实依赖 | 验证方式 | 通过标准 |
+| --- | --- | --- | --- |
+| 数据持久化层 | PostgreSQL | 执行 Alembic，并经 Repository 创建、读取候选人、简历、画像与 `async_task_runs` 记录 | 迁移可重复执行；事务、归属查询和状态写入正确 |
+| 消息与执行层 | Redis、Dispatcher、Celery Worker | Redis Broker 实际可用；Worker 可响应执行检查；Dispatcher 可运行并处理待投递任务记录 | Redis 可连接；Worker 与 Dispatcher 均处于可用状态；任务生命周期不以 Redis Result Backend 作为权威来源 |
+| 文件存储层 | 本地对象存储适配器 | 通过上传适配器写入、校验、原子移动和受控读取测试文件 | 对象仅在 `ready` 后可读；不经静态 URL 暴露；读取须由绑定资源和 Repository 授权 |
+| 完整简历链路 | PostgreSQL、Redis、Dispatcher、Worker、对象存储、MinerU MCP、Qwen Plus | 上传受控脱敏 PDF，执行“入队 → 提取 → 结构化校验 → 画像原子写入”完整流程 | 简历从 `processing` 进入 `succeeded`；对应画像已原子写入；指定简历画像查询返回完整 Schema |
+
+验证分为两个层次：
+
+1. **本地 `integration`**：验证 PostgreSQL、Redis、Backend、Worker、Dispatcher 与对象存储的真实连通性和受控读写边界；不以外部 MinerU/Qwen 调用通过作为该层的前提。
+2. **外部 `external-integration`**：在本地 `integration` 通过后，验证完整简历链路实际调用 MinerU MCP 与 Qwen Plus，并确认解析成功、画像原子写入和画像查询结果。
+
+完整简历链路的外部 `external-integration` 通过，才构成候选人资料准备模块对 MinerU/Qwen 依赖的真实连通性验收证据。外部测试的显式开关、环境变量、受控测试样本和证据记录格式在后续裁决中定义；在此之前不得以普通单元测试或伪造模型响应替代该验收。
 
 ## 6. 常见问题与排查
 

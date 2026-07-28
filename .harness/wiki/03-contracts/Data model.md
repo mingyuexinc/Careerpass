@@ -32,7 +32,7 @@
 | `MVP` | 当前 MVP 必须迁移并由实现使用的数据库对象。 |
 | `Deferred` | 已完成设计但不属于当前 MVP 迁移或实现范围的后续数据库对象。 |
 
-范围裁决以 `.harness/wiki/MVP scope and development boundaries.md` 为最高依据。`Deferred` 对象可保留在数据模型中供后续阶段使用，但不得作为 MVP 的迁移前置条件。
+范围裁决以 `.harness/wiki/01-governance/MVP scope and development boundaries.md` 为最高依据。`Deferred` 对象可保留在数据模型中供后续阶段使用，但不得作为 MVP 的迁移前置条件。
 
 ### 用户表（`users`，`MVP`）
 
@@ -129,6 +129,23 @@
 
 `uq_candidate_user_id` 约束 `users` 与 `candidates` 为一对一关系：每个用户仅能关联一个候选人；注册流程必须在同一事务中创建该候选人记录。
 
+### 内部文件对象表（`stored_file_objects`，`MVP`）
+
+内部文件对象目录；`resumes` 与 `candidate_documents` 通过外键引用该表。对象存储的去重、受控读取和清理机制以 [对象存储技术方案](../04-technical-solutions/Object%20storage%20technical%20design.md) 为准。
+
+| Column | Type | Nullable | Default | Description |
+| --- | --- | --- | --- | --- |
+| id | UUID | NO | gen_random_uuid() | 内部对象主键 |
+| storage_key | VARCHAR(512) | NO | 无 | 随机生成的不透明对象定位键；不得返回客户端 |
+| content_sha256 | CHAR(64) | NO | 无 | 服务端计算的内容摘要；底层对象去重键 |
+| detected_mime_type | VARCHAR(255) | NO | 无 | 服务端检测到的 MIME 类型 |
+| file_size_bytes | BIGINT | NO | 无 | 服务端校验后的文件字节数，最大 10,000,000 |
+| status | stored_file_object_status_enum | NO | writing | 内部写入/就绪/删除中状态，不是业务资源状态 |
+| created_at | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP | 最近状态更新时间 |
+
+约束与索引：`storage_key`、`content_sha256` 均唯一；`file_size_bytes > 0 AND file_size_bytes <= 10000000`。
+
 ### 简历表（`resumes`，`MVP`）
 
 1. 表结构
@@ -137,11 +154,11 @@
 | ------------ | ----------------- | -------- | ----------------- | ------------ |
 | id           | UUID              | NO       | gen_random_uuid() | 主键         |
 | candidate_id | UUID              | NO       | 无                | 求职者ID     |
+| upload_idempotency_key | UUID       | YES      | NULL              | 客户端上传幂等键；仅用于同一候选人的上传重试，不向 API 返回 |
 | file_name    | VARCHAR(255)      | NO       | 无                | 文件名称     |
-| file_url     | VARCHAR(512)      | NO       | 无                | 文件地址     |
+| stored_file_object_id | UUID      | NO       | 无                | 内部文件对象引用 |
 | file_type    | VARCHAR           | NO       | 无                | 文件类型 |
 | parse_status | parse_status_enum | NO       | processing        | 解析状态     |
-| parse_error  | TEXT              | YES      | NULL              | 解析错误信息 |
 | created_at   | TIMESTAMPTZ       | NO       | CURRENT_TIMESTAMP | 创建时间     |
 
 2. 外键约束
@@ -149,6 +166,7 @@
 | Constraint Name      | Local Column | Referenced Table | Referenced Column | On Delete | Description          |
 | -------------------- | ------------ | ---------------- | ----------------- | --------- | -------------------- |
 | fk_resume_candidate | candidate_id | 求职者表         | id                | CASCADE   | 简历所属的求职者     |
+| fk_resume_stored_file_object | stored_file_object_id | 内部文件对象表 | id | RESTRICT | 简历引用的底层对象 |
 
 3. 索引Indexes
 
@@ -156,6 +174,10 @@
 | ------------- | ------------ | ------- |
 | PRIMARY       | id           | PRIMARY |
 | idx_resume_candidate | candidate_id | INDEX   |
+| uq_resume_candidate_upload_idempotency_key | candidate_id, upload_idempotency_key | UNIQUE（`upload_idempotency_key IS NOT NULL`） |
+| idx_resume_stored_file_object | stored_file_object_id | INDEX |
+
+`resumes` 保存原始文件引用、归属与解析生命周期，不保存 `parse_data` 等重复结构化结果；可用的简历结构化事实只写入同一简历对应的 `candidate_profiles`。
 
 ### 求职者画像表（`candidate_profiles`，`MVP`）
 
@@ -165,7 +187,7 @@
 | -------------------------- | ------------ | -------- | ----------------- | ------------ |
 | id                         | UUID         | NO       | gen_random_uuid() | 主键         |
 | resume_id                  | UUID         | NO       | 无                | 来源简历     |
-| target_job_titles          | VARCHAR(128) | YES      | NULL              | 目标岗位名称 |
+| target_job_titles          | VARCHAR(128)[] | NO     | 无                | 从成功解析简历提取的目标岗位名称列表；至少一个非空元素，不是推荐结果 |
 | skills                     | JSONB        | YES      | NULL              | 技能列表     |
 | work_experience_summary    | JSONB        | YES      | NULL              | 工作经历摘要 |
 | project_experience_summary | JSONB        | YES      | NULL              | 项目经历摘要 |
@@ -173,7 +195,6 @@
 | education                  | VARCHAR(64)  | YES      | NULL              | 学历         |
 | expected_location          | VARCHAR(128) | YES      | NULL              | 期望地点     |
 | expected_salary            | VARCHAR(64)  | YES      | NULL              | 期望薪资     |
-| embedding_id               | VARCHAR(128) | YES      | NULL              | 向量索引ID   |
 | created_at                 | TIMESTAMPTZ  | NO       | CURRENT_TIMESTAMP | 创建时间     |
 
 2. 外键约束
@@ -187,9 +208,50 @@
 | Name          | Columns      | Type    |
 | ------------- | ------------ | ------- |
 | PRIMARY       | id           | PRIMARY |
-| idx_candidate_profile_resume | resume_id | INDEX   |
+| uq_candidate_profile_resume | resume_id | UNIQUE |
+| ck_candidate_profile_target_job_titles_nonempty | `cardinality(target_job_titles) >= 1` | CHECK |
 
-### 求职者资料表（`candidate_documents`，`Deferred`）
+### 异步任务运行表（`async_task_runs`，`MVP`）
+
+1. 表结构
+
+| Column | Type | Nullable | Default | Description |
+| --- | --- | --- | --- | --- |
+| id | UUID | NO | gen_random_uuid() | 主键 |
+| task_type | async_task_type_enum | NO | 无 | 业务任务类型 |
+| resource_type | async_task_resource_type_enum | NO | 无 | 被处理资源类型 |
+| resource_id | UUID | NO | 无 | 被处理资源 ID；归属由对应资源链推导 |
+| celery_task_id | VARCHAR(255) | YES | NULL | Celery 已接受投递后的任务标识；`queued` 且为空表示待可靠投递 |
+| idempotency_key | VARCHAR(255) | NO | 无 | 固定为 `{task_type}:{resource_id}:{task_version}` 的确定性幂等标识；不含文件名、文件内容或随机值 |
+| status | async_task_run_status_enum | NO | queued | 业务任务运行状态 |
+| task_version | VARCHAR(128) | NO | 无 | MVP 固定为内部常量 `v1`，用于既有幂等键；不提供版本管理能力 |
+| failure_code | parse_failure_code_enum | YES | NULL | 解析任务终态失败的脱敏分类；是解析资源失败原因的唯一权威来源；成功时为空 |
+| created_at | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP | 任务运行记录创建时间 |
+| started_at | TIMESTAMPTZ | YES | NULL | 当前一次实际执行取得数据库租约的时间；排队和终态时为空 |
+| execution_token | UUID | YES | NULL | 当前执行租约的不可预测围栏令牌；排队和终态时为空，不向 API 返回 |
+| execution_lease_expires_at | TIMESTAMPTZ | YES | NULL | 当前执行租约的到期时间；用于异常重领与卡死兜底，不向 API 返回 |
+| finished_at | TIMESTAMPTZ | YES | NULL | 终态完成时间；未终态时为空 |
+
+2. 外键约束
+
+`async_task_runs` 使用 `resource_type + resource_id` 关联多种异步资源，不能设置单一数据库外键。具体的可靠入队、Dispatcher、Worker、重试和超时机制以 [异步任务技术方案](../04-technical-solutions/Async%20task%20technical%20design.md) 为准。
+
+3. 索引
+
+| Name | Columns | Type |
+| --- | --- | --- |
+| PRIMARY | id | PRIMARY |
+| uq_async_task_run_celery_task | celery_task_id | UNIQUE |
+| uq_async_task_run_idempotency | resource_type, resource_id, task_type, task_version, idempotency_key | UNIQUE |
+| idx_async_task_run_stalled_scan | status, started_at | INDEX |
+| ck_async_task_run_celery_id_before_execution | `status = 'queued' OR celery_task_id IS NOT NULL` | CHECK |
+| idx_async_task_run_resource | resource_type, resource_id | INDEX |
+| idx_async_task_run_status | status | INDEX |
+| idx_async_task_run_pending_dispatch | created_at | PARTIAL INDEX (`status = 'queued' AND celery_task_id IS NULL`) |
+
+`candidate_profiles` 仅保存已成功解析简历的确定性派生结果，也是 MVP 下游读取简历结构化事实的唯一表。`target_job_titles` 必须由简历结构化解析提供，并以 `VARCHAR(128)[]` 非空数组存储；单个职位也存为单元素数组。画像不作为独立异步任务运行；`candidate_documents` 不创建 `AsyncTaskRun`，也不保存解析状态或解析结果。简历解析的 MinerU MCP 调用、内存 Schema 与失败映射以[简历解析技术方案](../04-technical-solutions/Resume%20parsing%20technical%20design.md)为准。
+
+### 求职者资料表（`candidate_documents`，`MVP`）
 
 1. 表结构
 
@@ -197,13 +259,11 @@
 | ------------- | ------------ | -------- | ----------------- | ----------- |
 | id            | UUID         | NO       | gen_random_uuid() | 主键        |
 | candidate_id  | UUID         | NO       | 无                | 求职者ID    |
+| upload_idempotency_key | UUID | YES | NULL | 客户端上传幂等键；仅用于同一候选人的上传重试，不向 API 返回 |
 | document_type | document_type_enum | NO    | 无                | 文档类型    |
 | document_name | VARCHAR(255) | NO       | 无                | 文档名称    |
-| parse_data       | JSONB       | YES      | NULL              | 求职资料解析结构 |
-| parse_error  | TEXT              | YES      | NULL              | 解析错误信息 |
-| parse_status | parse_status_enum | NO       | processing | 解析状态    |
 | file_type    | VARCHAR           | NO       | 无                | 文件类型 |
-| file_url      | VARCHAR(512) | NO       | 无                | 文件地址    |
+| stored_file_object_id | UUID | NO | 无 | 内部文件对象引用 |
 | created_at    | TIMESTAMPTZ  | NO       | CURRENT_TIMESTAMP | 创建时间    |
 
 2. 外键约束
@@ -211,6 +271,7 @@
 | Constraint Name        | Local Column | Referenced Table | Referenced Column | On Delete | Description          |
 | ---------------------- | ------------ | ---------------- | ----------------- | --------- | -------------------- |
 | fk_candidate_document | candidate_id | 求职者表         | id                | CASCADE   | 资料所属的求职者     |
+| fk_candidate_document_stored_file_object | stored_file_object_id | 内部文件对象表 | id | RESTRICT | 资料引用的底层对象 |
 
 3. 索引
 
@@ -218,6 +279,8 @@
 | ------------- | ------------ | ------- |
 | PRIMARY       | id           | PRIMARY |
 | idx_candidate_document_candidate | candidate_id | INDEX   |
+| uq_candidate_document_candidate_upload_idempotency_key | candidate_id, upload_idempotency_key | UNIQUE（`upload_idempotency_key IS NOT NULL`） |
+| idx_candidate_document_stored_file_object | stored_file_object_id | INDEX |
 
 ### 求职目标表（`job_goals`，`MVP`）
 
@@ -452,7 +515,7 @@ Service 和 Agent 不得手动设置该字段。
 | PRIMARY          | id              | PRIMARY |
 | idx_message_conversation | conversation_id | INDEX   |
 
-### 消息附件表（`message_attachments`，`Deferred`）
+### 消息附件表（`message_attachments`，`MVP`）
 
 1. 表结构
 
@@ -460,20 +523,15 @@ Service 和 Agent 不得手动设置该字段。
 | ------------- | ------------------ | -------- | ----------------- | ------------------------ |
 | id            | UUID               | NO       | gen_random_uuid() | 主键                     |
 | message_id    | UUID               | NO       | 无                | 所属消息；附件归属锚点   |
-| document_type | document_type_enum | NO       | 无                | 附件资料类型             |
-| document_name | VARCHAR(255)       | NO       | 无                | 附件名称                 |
-| file_url      | VARCHAR(512)       | NO       | 无                | 文件地址                 |
-| file_type     | VARCHAR            | NO       | 无                | 文件类型                 |
-| parse_data    | JSONB              | YES      | NULL              | 附件解析结构             |
-| parse_error   | TEXT               | YES      | NULL              | 附件解析错误信息         |
-| parse_status  | parse_status_enum  | NO       | processing        | 附件解析状态             |
-| created_at    | TIMESTAMPTZ        | NO       | CURRENT_TIMESTAMP | 创建时间                 |
+| candidate_document_id | UUID        | NO       | 无                | 被消息引用的候选人附加资料 |
+| created_at    | TIMESTAMPTZ        | NO       | CURRENT_TIMESTAMP | 引用创建时间             |
 
 2. 外键约束
 
 | Constraint Name       | Local Column | Referenced Table | Referenced Column | On Delete | Description  |
 | --------------------- | ------------ | ---------------- | ----------------- | --------- | ------------ |
 | fk_attachment_message | message_id   | 消息表           | id                | CASCADE   | 附件所属消息 |
+| fk_attachment_candidate_document | candidate_document_id | 求职者资料表 | id | RESTRICT | 附件引用候选人资料 |
 
 3. 索引
 
@@ -481,6 +539,10 @@ Service 和 Agent 不得手动设置该字段。
 | ----------- | ---------- | ------- |
 | PRIMARY     | id         | PRIMARY |
 | idx_attachment_message | message_id | INDEX   |
+| idx_attachment_candidate_document | candidate_document_id | INDEX |
+| uq_attachment_message_document | message_id, candidate_document_id | UNIQUE |
+
+消息附件只表示候选人附加资料在某条消息中的引用。Repository 必须经 `message → conversation → application → goal → candidate` 与 `candidate_document.candidate_id` 原子校验二者归属一致，并校验资料对象存在；不得复制、重新解析附件文件或将其正文提供给 Agent/LLM。
 
 ### 求职进度事件表（`progress_events`，`MVP`）
 
@@ -515,8 +577,8 @@ Service 和 Agent 不得手动设置该字段。
 | 值         | 含义     |
 | ---------- | -------- |
 | processing | 解析中   |
-| succeeded  | 解析成功 |
-| failed     | 解析失败 |
+| succeeded  | 解析成功；对正式简历表示对应候选人画像已在同一事务中原子写入 |
+| failed     | 解析失败；对正式简历包含画像生成、校验或原子写入失败 |
 
 ### document_type_enum
 
@@ -525,6 +587,50 @@ Service 和 Agent 不得手动设置该字段。
 | job_strategy | 求职策略文档 |
 | certificate  | 证书材料     |
 | other        | 其它资料     |
+
+### async_task_type_enum
+
+| 值 | 含义 |
+| --- | --- |
+| resume_parse | 简历解析 |
+| job_description_parse | 岗位 JD 解析 |
+| job_matching | 岗位匹配 |
+
+### stored_file_object_status_enum
+
+| 值 | 含义 |
+| --- | --- |
+| writing | 对象目录记录已建立，正式文件写入或资源建档尚未完成；不得被业务资源引用 |
+| ready | 正式文件存在且可受控读取 |
+| deleting | 已被清理任务锁定并等待或正在删除；不得创建新引用 |
+
+### async_task_resource_type_enum
+
+| 值 | 含义 |
+| --- | --- |
+| resume | 简历资源 |
+| job_description | 岗位 JD 资源 |
+| match_run | 岗位匹配批次资源 |
+
+### async_task_run_status_enum
+
+| 值 | 含义 |
+| --- | --- |
+| queued | 已提交但尚待 Dispatcher 投递，或已由 Celery 接受但正在等待执行/重试 |
+| running | Worker 已取得有效执行权 |
+| succeeded | 已完成完整业务结果持久化 |
+| failed | 已重试耗尽或发生确定性失败 |
+
+### parse_failure_code_enum
+
+| 值 | 含义 |
+| --- | --- |
+| unsupported_file | 不支持的文件格式 |
+| file_unreadable | 文件损坏或无法读取 |
+| storage_unavailable | 对象存储不可用且重试耗尽 |
+| parser_timeout | 解析服务超时且重试耗尽 |
+| schema_validation_failed | 解析或模型输出未通过结构化校验 |
+| internal_error | 未分类内部错误 |
 
 
 ### job_goal_status_enum

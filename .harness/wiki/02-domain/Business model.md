@@ -41,10 +41,22 @@
 |- - - - |- - - - -| - - - - - -  - - -| 
 |  resume_id  | UUID | 简历ID | 
 |   candidate_id | UUID | 所属求职者 | 
-|   file_url | String  | 文件存储地址 | 
+|   stored_file_object_id | UUID | 内部文件对象引用 |
 |   file_type | String | 文件类型 | 
 |   parse_status | Enum  |  文件解析状态  | 
-|   parse_error | Text  | 文件解析失败原因 | 
+
+### Stored File Object（内部文件对象）
+
+| Field | Type | Description |
+| --- | --- | --- |
+| object_id | UUID | 内部对象唯一标识 |
+| storage_key | String | 随机生成的不透明定位键，不对客户端暴露 |
+| content_sha256 | String | 服务端内容摘要；全局唯一去重键 |
+| detected_mime_type | String | 服务端检测 MIME 类型 |
+| file_size_bytes | Integer | 服务端校验字节数，最大 10,000,000 |
+| status | Enum | `writing`、`ready`、`deleting`；仅对象存储内部使用 |
+
+内部对象目录不是通用文件中心。简历和候选人附加资料只引用 `object_id`；清理任务必须在事务内确认无任何资源引用后才可删除底层文件。
 
 ### Candidate Profile（求职者画像）
 
@@ -52,11 +64,57 @@
 |- - - - |- - - - -| - - - - - -  - - -| 
 |  profile_id  | UUID | 求职者画像唯一标识 | 
 |  resume_id| UUID | 画像来源的简历唯一标识 | 
-|  target_job_titles| String |目标岗位名称 | 
+|  target_job_titles| List[String] |从简历提取的目标岗位名称列表（至少一个） |
 |  skills| JSON/List | 技术技能及熟练程度 | 
 |  work_experience_summary |JSON| 工作经历摘要 | 
 |  project_experience_summary |JSON| 项目经历摘要 | 
 |  years_of_experience |INT| 工作年限 | 
+
+候选人画像是已成功解析简历的确定性派生结果：简历结构化结果与画像在同一解析工作流中校验并原子持久化。`resumes.parse_status = succeeded` 的必要条件包括对应画像已成功写入，因此“画像成功”不是独立终态；画像生成、校验或写入失败均使简历以 `parse_status = failed` 终态失败。`candidate_profiles` 是 MVP 下游模块读取简历结构化事实的唯一来源，字段必须覆盖岗位匹配、投递和 AI 沟通在 MVP 中实际需要的简历信息；`resumes` 不保存重复的 `parse_data`。`target_job_titles` 是从简历提取的目标职位事实，按“至少一个非空字符串”的列表持久化；即使只有一个目标职位，也使用单元素列表，不使用标量字符串。它不是系统基于技能、经历或市场信息生成的推荐结果。每份简历最多对应一份有效画像，不设置独立的画像处理中或失败状态。后续下游确需新增简历字段时，须先扩展画像 Schema，并使用已保存的原始简历文件按新的解析任务版本重新解析和原子更新画像；不得以临时 JSON 或未校验的历史解析输出绕过该流程。
+
+### Async Task Run（异步任务运行）
+
+异步任务运行用于持久化任务与业务资源的关联、幂等与脱敏审计事实。Celery 负责重试次数、退避/延迟、下次执行时间、超时和 Worker 运行时元数据；本实体不重复保存这些执行策略。
+
+| Field | Type | Description |
+|- - - - |- - - - -|
+| task_run_id | UUID | 异步任务运行唯一标识 |
+| task_type | Enum | 任务类型；MVP 首批包括 `resume_parse` 和 `job_description_parse`，岗位匹配任务后续复用该模型 |
+| resource_type | Enum/String | 被处理资源类型，例如 `resume`、`job_description`；用于定位业务资源和其归属链 |
+| resource_id | UUID | 被处理资源的唯一标识 |
+| celery_task_id | String | Celery 已接受投递后的任务标识；`queued` 且为空表示仍待可靠投递；不作为资源归属或幂等判断依据 |
+| idempotency_key | String | 确定性幂等标识，固定格式为 `{task_type}:{resource_id}:{task_version}`；不得使用文件名、文件内容或随机值 |
+| status | Enum | 当前运行状态：`queued`、`running`、`succeeded`、`failed` |
+| task_version | String | MVP 固定为内部常量 `v1`，仅用于既有幂等键；不提供版本管理能力 |
+| failure_code | parse_failure_code Enum | 解析任务终态失败的脱敏分类；成功时为空；是解析资源失败原因的唯一权威来源 |
+| created_at | DateTime | 任务运行记录创建时间 |
+| finished_at | DateTime | 终态完成时间；未终态时为空 |
+
+**实体关系与约束：**
+
+- 每个异步资源在固定的 `task_type + task_version(v1)` 下只允许关联一条 `Async Task Run`；用户重新上传会创建新资源，每次运行仅处理一个确定的资源。MVP 不处理解析器升级或新版本重跑。
+- `Async Task Run` 的候选人归属不冗余保存，必须由 `resource_type + resource_id` 指向的资源归属链推导并在 Repository 中校验。非资源所有者不得通过 `task_run_id` 查询、重试或消费任务。
+- 同一 `resource_type`、`resource_id`、`task_type`、`task_version` 和确定性 `idempotency_key` 全量唯一；Celery 重试、重复回调或重复投递必须复用同一任务运行，不能新建记录或重复产生业务结果。
+- 对简历和岗位 JD 的异步解析，`AsyncTaskRun.failure_code` 是失败原因的唯一权威来源，并共用 `parse_failure_code` 枚举；资源表只保存 `parse_status`，不保存自由文本 `parse_error`。查询失败资源时，Repository 必须按资源类型、资源 ID 与解析任务类型定位其终态任务运行并返回允许暴露的脱敏分类。不得保存简历原文、文件地址、联系方式、模型原始响应、Token 或堆栈。
+- `max_retries`、退避/延迟、下次重试时间、超时和每次执行的运行时详情由 Celery 任务定义、Worker 与 Result Backend 管理；它们不是 MVP 业务模型字段。需要排查时，以 `celery_task_id` 关联运行时信息。
+
+**可靠入队约定：**
+
+1. 上传服务在同一数据库事务内创建资源（`parse_status = processing`）和 `AsyncTaskRun`（`status = queued`、`celery_task_id = NULL`）；提交前不得直接发送 Celery 消息。
+2. Dispatcher 为独立、单实例的内部常驻进程，不由 Celery Beat 驱动；它仅通过 Repository 以数据库行锁领取有限批次的 `status = queued AND celery_task_id IS NULL` 记录，以任务运行 ID 作为确定性的 Celery 任务 ID 投递已注册任务。Broker 接受后回填 `celery_task_id`。Broker 调用失败时保持该记录可再次领取，不能删除资源或将其误标为 `failed`。
+3. 若 Broker 已接受消息但 Dispatcher 在回填前中断，后续投递可重复发送同一任务运行 ID；Worker 必须原子取得 `queued → running` 的唯一执行权，重复消息安全确认但不得重复写入业务结果。该机制提供至少一次投递与业务结果幂等，不承诺恰好一次消息投递。
+
+**资源状态与任务状态的区别：**
+
+```text
+Resume.parse_status / JobDescription.parse_status
+  = 资源的最终解析结果是否可供下游业务使用
+
+AsyncTaskRun.status
+  = 某一次后台执行是否排队、运行、成功或终态失败
+```
+
+例如解析任务遇到可重试超时时，Celery 依据任务配置重新调度执行，`AsyncTaskRun` 保持或回到 `queued`，而简历的 `parse_status` 继续保持 `processing`。只有任务成功完成结构化校验并原子写入结果后，资源才变为 `succeeded`；Celery 重试耗尽或发生确定性失败后，资源才变为 `failed`。
 
 ### Candidate Document（求职者附加资料）
 
@@ -66,8 +124,10 @@
 |  candidate_id| UUID | 所属求职者 | 
 |  document_type| Enum | 资料类型 | 
 |  document_name | String | 资料名称 | 
-|  file_url | String | 资料存储地址 | 
+|  stored_file_object_id | UUID | 内部文件对象引用 |
 |  file_type | String  | 文件类型 | 
+
+候选人附加资料是原始文件附件，不参与解析、画像或匹配输入；其文件格式只影响上传校验，不改变该业务边界。候选人明确选择后，它可作为系统内沟通消息的附件引用；MVP 中 Agent 仅可使用最小附件元数据，资料正文不自动进入 Agent/LLM 输入。
 
 ### Job Goal（求职目标）
 
@@ -201,12 +261,9 @@
 |- - - - |- - - - -| - - - - - -  - - -| 
 |  attachment_id | UUID | 附件唯一标识 | 
 |  message_id | UUID | 所属消息；附件的归属锚点 | 
-|  document_type | Enum | 附件资料类型 | 
-|  document_name | String | 附件名称 | 
-|  file_url | String | 文件存储地址 | 
-|  file_type | String | 文件类型 | 
-|  parse_status | Enum | 文件解析状态 | 
-|  parse_error | Text | 文件解析失败原因 | 
+|  candidate_document_id | UUID | 被消息引用的候选人附加资料 |
+
+消息附件是候选人附加资料被发送到某条会话消息中的引用记录，不复制文件或资料正文。同一份由候选人明确授权的资料可被多个消息引用；消息所属候选人与资料所属候选人必须一致。
 
 ### Progress Event（进度事件）
 
@@ -223,7 +280,7 @@
 （1）简历与求职者资料的边界：
 	`Resume` 与 `Candidate Document` 是两个独立资源，不存在包含关系。
  	简历只存放正式求职简历，承担解析、画像生成、岗位匹配和投递依据等职责。
- 	求职者资料仅存放 `document_type` 定义的非简历附加材料，用于补充信息和 Agent 上下文。
+ 	求职者资料仅存放 `document_type` 定义的非简历附加材料；候选人明确选择后可作为系统内沟通消息的附件引用，不作为默认 Agent 上下文。
  	不允许通过 `Candidate Document` 创建或替代 `Resume`。
 ``````
 
@@ -243,15 +300,16 @@
 
 ### 资料处理流程
 
-```读取文件 → 文档解析 → 信息抽取 → 数据结构化 → Embedding生成 → 索引建立 → 更新处理状态```
+```创建任务运行记录 → 读取文件 → 文档解析 → 信息抽取 → 数据结构化与校验 → 原子更新资源状态 → 触发允许的下游任务```
 
-1. 系统根据资料记录读取对应文件
-2. 系统进行文档解析
-3. 系统进行信息抽取
-4. 系统生成结构化业务数据
-5. 系统生成Embedding向量
-6. 系统建立向量索引
-7. 更新资料处理状态
+1. 系统在同一事务内为资料资源创建带幂等键的 `Async Task Run`，并将任务置于 `queued`、`celery_task_id = NULL`。
+2. Dispatcher 在事务提交后可靠投递已注册 Celery 任务，并在 Broker 接受后回填 `celery_task_id`。
+3. Worker 原子取得唯一有效执行权后读取被授权文件，并将任务置于 `running`。
+4. 系统进行文档解析、信息抽取和结构化校验。
+5. 校验成功时，系统原子持久化完整业务结果，将任务和资源分别更新为 `succeeded`。
+6. 发生临时故障时，Celery 按任务配置的有限重试策略重新排队；资源保持 `processing`。
+7. 重试耗尽或发生确定性错误时，系统将任务和资源更新为 `failed`，仅记录脱敏失败分类。
+7. 简历解析成功时，确定性画像已与解析结果原子写入；Embedding 或索引等后续动作仅在匹配模块实际启用相应能力时由显式任务触发，不是资料处理的固定步骤。
 
 ### 求职目标创建流程
 
