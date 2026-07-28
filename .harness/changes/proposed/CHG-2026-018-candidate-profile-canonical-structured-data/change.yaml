@@ -1,0 +1,17 @@
+id: CHG-2026-018
+title: 候选人画像唯一结构化事实来源
+type: contract
+status: proposed
+created_at: 2026-07-26
+affected_modules:
+  - candidate-profile-preparation
+  - document-processing
+  - job-matching
+  - application-management
+  - ai-communication
+  - data-model
+risk_level: medium
+dependencies:
+  - CHG-2026-013
+  - CHG-2026-016
+supersedes: []
