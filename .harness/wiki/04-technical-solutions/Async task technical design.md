@@ -2,13 +2,13 @@
 
 ## 1. 定位与适用范围
 
-本方案是异步任务运行机制的唯一技术权威来源。它适用于简历解析、岗位 JD 解析及已由 [Agent 工作流编排技术方案](Agent%20workflow%20orchestration%20technical%20design.md) 决定调度的后台执行；`candidate_documents` 是原始附件资源，不创建异步任务。
+本方案是异步任务运行机制的唯一技术权威来源。它适用于简历解析及已由 [Agent 工作流编排技术方案](Agent%20workflow%20orchestration%20technical%20design.md) 决定调度的后台执行；岗位 JD 的受控启动导入不创建异步任务；`candidate_documents` 是原始附件资源，不创建异步任务。
 
 `async_task_runs` 的表结构、约束、枚举和索引以 [数据模型](../03-contracts/Data%20model.md) 为准；资源的业务状态、下游准入和用户可见行为以 [业务规则与状态机](../02-domain/Business%20rules%20and%20state%20machines.md) 为准。
 
 ## 2. 依赖与职责
 
-Redis、Celery Worker 和独立 Dispatcher 是简历与岗位 JD 异步解析的 MVP 正式运行依赖。首次交付必须完成 Redis Broker、Worker 和 Dispatcher 的真实连通性验证。
+Redis、Celery Worker 和独立 Dispatcher 是简历异步解析的 MVP 正式运行依赖。首次交付必须完成 Redis Broker、Worker 和 Dispatcher 的真实连通性验证。
 
 | 组件 | 职责 |
 | --- | --- |
@@ -19,7 +19,7 @@ Redis、Celery Worker 和独立 Dispatcher 是简历与岗位 JD 异步解析的
 
 ## 3. 可靠入队与执行流程
 
-1. 简历或岗位 JD 资源创建时，在同一数据库事务创建 `async_task_runs(status=queued, celery_task_id=NULL)`；任务幂等键为 `{task_type}:{resource_id}:{task_version}`。
+1. 简历资源创建时，在同一数据库事务创建 `async_task_runs(status=queued, celery_task_id=NULL)`；任务幂等键为 `{task_type}:{resource_id}:{task_version}`。
 2. Dispatcher 通过 Repository 和数据库行锁领取 `queued + celery_task_id IS NULL` 的有限批次记录，向 Broker 投递。
 3. Broker 接受后回填确定性的 `celery_task_id`。投递与回填之间中断时，可重新投递同一任务运行 ID；Worker 必须以原子领取和幂等写入避免重复业务结果。
 4. Worker 仅在资源仍有效、对象可读取且归属链有效时执行。成功时先完成结构化与业务校验，再原子写入结果和资源终态；失败时只写入允许暴露的脱敏 `failure_code`。

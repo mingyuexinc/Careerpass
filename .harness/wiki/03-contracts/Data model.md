@@ -251,6 +251,8 @@
 
 `candidate_profiles` 仅保存已成功解析简历的确定性派生结果，也是 MVP 下游读取简历结构化事实的唯一表。`target_job_titles` 必须由简历结构化解析提供，并以 `VARCHAR(128)[]` 非空数组存储；单个职位也存为单元素数组。画像不作为独立异步任务运行；`candidate_documents` 不创建 `AsyncTaskRun`，也不保存解析状态或解析结果。简历解析的 MinerU MCP 调用、内存 Schema 与失败映射以[简历解析技术方案](../04-technical-solutions/Resume%20parsing%20technical%20design.md)为准。
 
+岗位 JD 的受控启动导入不创建 `AsyncTaskRun`；仅在第 5 步裁定的结构化校验通过后，才在同一事务中创建 `jobs` 与 `job_descriptions`，因此不存在候选人可见的 JD `processing` 或 `failed` 记录。
+
 ### 求职者资料表（`candidate_documents`，`MVP`）
 
 1. 表结构
@@ -347,7 +349,7 @@
 | responsibilities | JSONB             | YES      | NULL              | 工作职责    |
 | requirements     | JSONB             | YES      | NULL              | 任职要求    |
 | parse_data       | JSONB             | YES      | NULL              | JD解析结构  |
-| parse_status     | parse_status_enum | NO       | processing        | 解析状态    |
+| parse_status     | parse_status_enum | NO       | succeeded         | 仅允许持久化已完成导入的 JD 快照 |
 | created_at       | TIMESTAMPTZ       | NO       | CURRENT_TIMESTAMP | 创建时间    |
 
 2. 外键约束
@@ -577,8 +579,8 @@ Service 和 Agent 不得手动设置该字段。
 | 值         | 含义     |
 | ---------- | -------- |
 | processing | 解析中   |
-| succeeded  | 解析成功；对正式简历表示对应候选人画像已在同一事务中原子写入 |
-| failed     | 解析失败；对正式简历包含画像生成、校验或原子写入失败 |
+| succeeded  | 解析成功；对正式简历表示对应候选人画像已在同一事务中原子写入；对岗位 JD 表示启动导入已完成全部校验 |
+| failed     | 解析失败；仅适用于已创建的简历资源，包含画像生成、校验或原子写入失败 |
 
 ### document_type_enum
 
@@ -593,7 +595,6 @@ Service 和 Agent 不得手动设置该字段。
 | 值 | 含义 |
 | --- | --- |
 | resume_parse | 简历解析 |
-| job_description_parse | 岗位 JD 解析 |
 | job_matching | 岗位匹配 |
 
 ### stored_file_object_status_enum
@@ -609,7 +610,6 @@ Service 和 Agent 不得手动设置该字段。
 | 值 | 含义 |
 | --- | --- |
 | resume | 简历资源 |
-| job_description | 岗位 JD 资源 |
 | match_run | 岗位匹配批次资源 |
 
 ### async_task_run_status_enum

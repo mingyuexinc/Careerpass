@@ -537,28 +537,7 @@ Production:TBD
 
 ### 岗位管理模块（`MVP`）
 
-#### 创建岗位JD
-
-- 接口：POST /api/v1/jobs
-- Request Body
- ```json
-{
-    "title":"AI Agent Engineer",
-    "company":"xxx",
-    "jd_content":"xxx"
-}
- ```
-- Response：
- ```json
-{
-    "code":200,
-    "msg":"success",
-    "data":{
-        "job_id":"job_001",
-        "parse_status":"succeeded"
-    }
-}
- ```
+岗位由受控启动导入命令写入，不提供候选人可调用的创建、更新或删除接口。该命令不是 `/api/v1` HTTP API，不接受候选人身份、外部路径或模型指令；导入细节、文件名和内部路径均不对候选人暴露。
 
 #### 查询岗位列表
 - 接口：GET /api/v1/jobs
@@ -567,7 +546,7 @@ Production:TBD
   |  Param |  Type  |  Required  |  Description  |
   |- - - - |- - - - -| - - - - - -  - - -| 
   |  page | Integer | No | 页面 |
-  |  keyword | IString | No | 岗位关键词 |
+  |  keyword | String | No | 岗位标题或企业名称关键词 |
  - Response：
  ```json
 {
@@ -576,16 +555,24 @@ Production:TBD
     "data":{
         "list":[
             {
-                "job_id":"job_001",
+                "job_id":"018f4ab2-3ca9-7d85-8c50-f1e95a4d0001",
                 "title":"AI Engineer",
-                "company":"ABC",
-                "location":"Guangzhou",
+                "company_name":"ABC",
+                "location":"Guangzhou"
             }
         ],
         "total":20
     }
 }
  ```
+
+候选人只能查询 `parse_status = succeeded` 的共享岗位快照；无论导入失败、处理中或内部归档文件均不出现在此接口。接口固定按 `created_at DESC, job_id DESC` 排序；分页参数非法返回 `ErrorCode.INVALID_REQUEST (400)`，超出页码返回空列表和实际总数。不得返回原始文件名、内部路径、导入诊断或未校验的中间结构化结果。
+
+#### 查询岗位详情
+
+- 接口：GET /api/v1/jobs/{job_id}
+- 路径参数 `job_id` 必须为 UUID。
+- 仅返回已解析成功的共享岗位及其 JD 快照；不存在或未发布的岗位统一返回安全 `404`。
 
 ### 岗位匹配模块（`MVP`）
 

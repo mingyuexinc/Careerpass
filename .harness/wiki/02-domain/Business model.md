@@ -79,8 +79,8 @@
 | Field | Type | Description |
 |- - - - |- - - - -|
 | task_run_id | UUID | 异步任务运行唯一标识 |
-| task_type | Enum | 任务类型；MVP 首批包括 `resume_parse` 和 `job_description_parse`，岗位匹配任务后续复用该模型 |
-| resource_type | Enum/String | 被处理资源类型，例如 `resume`、`job_description`；用于定位业务资源和其归属链 |
+| task_type | Enum | 任务类型；MVP 首批包括 `resume_parse`，岗位匹配任务后续复用该模型 |
+| resource_type | Enum/String | 被处理资源类型，例如 `resume`；用于定位业务资源和其归属链 |
 | resource_id | UUID | 被处理资源的唯一标识 |
 | celery_task_id | String | Celery 已接受投递后的任务标识；`queued` 且为空表示仍待可靠投递；不作为资源归属或幂等判断依据 |
 | idempotency_key | String | 确定性幂等标识，固定格式为 `{task_type}:{resource_id}:{task_version}`；不得使用文件名、文件内容或随机值 |
@@ -95,7 +95,7 @@
 - 每个异步资源在固定的 `task_type + task_version(v1)` 下只允许关联一条 `Async Task Run`；用户重新上传会创建新资源，每次运行仅处理一个确定的资源。MVP 不处理解析器升级或新版本重跑。
 - `Async Task Run` 的候选人归属不冗余保存，必须由 `resource_type + resource_id` 指向的资源归属链推导并在 Repository 中校验。非资源所有者不得通过 `task_run_id` 查询、重试或消费任务。
 - 同一 `resource_type`、`resource_id`、`task_type`、`task_version` 和确定性 `idempotency_key` 全量唯一；Celery 重试、重复回调或重复投递必须复用同一任务运行，不能新建记录或重复产生业务结果。
-- 对简历和岗位 JD 的异步解析，`AsyncTaskRun.failure_code` 是失败原因的唯一权威来源，并共用 `parse_failure_code` 枚举；资源表只保存 `parse_status`，不保存自由文本 `parse_error`。查询失败资源时，Repository 必须按资源类型、资源 ID 与解析任务类型定位其终态任务运行并返回允许暴露的脱敏分类。不得保存简历原文、文件地址、联系方式、模型原始响应、Token 或堆栈。
+- 对简历异步解析，`AsyncTaskRun.failure_code` 是失败原因的唯一权威来源，并共用 `parse_failure_code` 枚举；资源表只保存 `parse_status`，不保存自由文本 `parse_error`。查询失败资源时，Repository 必须按资源类型、资源 ID 与解析任务类型定位其终态任务运行并返回允许暴露的脱敏分类。不得保存简历原文、文件地址、联系方式、模型原始响应、Token 或堆栈。
 - `max_retries`、退避/延迟、下次重试时间、超时和每次执行的运行时详情由 Celery 任务定义、Worker 与 Result Backend 管理；它们不是 MVP 业务模型字段。需要排查时，以 `celery_task_id` 关联运行时信息。
 
 **可靠入队约定：**
@@ -107,7 +107,7 @@
 **资源状态与任务状态的区别：**
 
 ```text
-Resume.parse_status / JobDescription.parse_status
+Resume.parse_status
   = 资源的最终解析结果是否可供下游业务使用
 
 AsyncTaskRun.status
@@ -192,6 +192,10 @@ AsyncTaskRun.status
 |  job_requirements | List[Object] | 任职要求 | 
 |  parse_data | JSON  |  完整结构化解析结果  | 
 |  parse_status | Enum  |  解析状态  | 
+
+岗位与 JD 是系统受控启动导入的共享资源，不归属于候选人，也不提供候选人侧创建、更新或删除。导入命令只读取固定专属目录中的 Markdown 文件，单文件上限为 1 MB；文件名仅用于受控归档，不承载岗位业务含义。岗位元数据、JD 正文及其结构化结果均由文件正文提供，并通过第 5 步裁定的校验后写入。
+
+MVP 不更新既有 JD；新文件只会新增岗位资源。第 4 步只建立输入与归档边界；第 5 步解析失败时不持久化 `Job` 或 `JobDescription`，原文件移入受控失败归档区；候选人只能查询第 5 步成功写入且 `parse_status = succeeded` 的岗位/JD 快照。原始导入文件在成功后移入受控成功归档区，业务表持久化 `raw_content`，但 API 不返回内部路径或文件名。
 
 ### Match Run（岗位匹配批次）
 
@@ -298,14 +302,14 @@ AsyncTaskRun.status
 4. 系统创建资料记录（文件元数据）
 5. 系统触发异步处理任务
 
-### 资料处理流程
+### 简历处理流程
 
-```创建任务运行记录 → 读取文件 → 文档解析 → 信息抽取 → 数据结构化与校验 → 原子更新资源状态 → 触发允许的下游任务```
+```创建任务运行记录 → 读取简历 → 简历解析 → 信息抽取 → 数据结构化与校验 → 原子更新资源状态 → 触发允许的下游任务```
 
 1. 系统在同一事务内为资料资源创建带幂等键的 `Async Task Run`，并将任务置于 `queued`、`celery_task_id = NULL`。
 2. Dispatcher 在事务提交后可靠投递已注册 Celery 任务，并在 Broker 接受后回填 `celery_task_id`。
 3. Worker 原子取得唯一有效执行权后读取被授权文件，并将任务置于 `running`。
-4. 系统进行文档解析、信息抽取和结构化校验。
+4. 系统进行简历解析、信息抽取和结构化校验。
 5. 校验成功时，系统原子持久化完整业务结果，将任务和资源分别更新为 `succeeded`。
 6. 发生临时故障时，Celery 按任务配置的有限重试策略重新排队；资源保持 `processing`。
 7. 重试耗尽或发生确定性错误时，系统将任务和资源更新为 `failed`，仅记录脱敏失败分类。
