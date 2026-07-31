@@ -15,8 +15,8 @@
 | 原子初始化与约束 | 通过 | `create_with_candidate()` 使用单事务；`users.username` 与 `candidates.user_id` 均有唯一约束，迁移及重复升级已验证。 |
 | 身份与归属 | 通过 | `get_current_identity` 校验 JWT 后经 Repository 重新取得 User 与 Candidate，关联异常统一返回 `401`。 |
 | 密码与 Token 安全 | 通过 | scrypt 加盐哈希、JWT 最小声明、响应和日志不包含密码哈希；Token 仅出现在注册/登录的必要响应中。 |
-| 认证抗暴力破解 | 已修复后通过 | Redis 原子固定窗口限流覆盖全部 `/auth` 路由；生产配置禁止关闭；Redis 故障或超时返回 `503`。 |
-| API 契约 | 通过 | 正常及错误路径均使用 `{code, msg, data}`；新增 `429` 与 HTTP 状态一致。 |
+| 认证范围裁决 | 已更新 | Redis 认证限流已于 2026-07-31 从受控 Demo 认证模块移除；认证路由不再依赖 Redis。 |
+| API 契约 | 通过 | 正常及错误路径均使用 `{code, msg, data}`。 |
 | MVP 范围 | 通过 | Refresh Token/会话持久化明确为 Deferred，已在业务规则中加 MVP Lite 适用性裁决。 |
 | 敏感信息 | 通过 | 请求日志仅记录方法、路径、状态和耗时；预发验证记录不保留 Token、完整连接串或凭据。 |
 
@@ -24,7 +24,7 @@
 
 - `uv run ruff check app tests alembic`：通过。
 - `uv run pytest`：`83 passed, 1 skipped`，总覆盖率 `99.09%`。
-- `uv run pytest -m integration`（真实 PostgreSQL/Redis，限流开启）：`1 passed, 83 deselected`，覆盖率 `83.99%`。
+- `uv run pytest -m integration` 的历史运行曾同时使用 PostgreSQL/Redis；当前认证模块仅将其中 PostgreSQL 证据归档至 `02-prevalidation/postgresql-prevalidation.md`，Redis 限流结论已失效。
 
 ## 非阻断项
 

@@ -3,20 +3,19 @@
 ## 发布前置条件
 
 - 人工发布审批已获得，且目标环境使用独立于本地 Compose 的密钥与数据库凭据。
-- `JWT_SECRET_KEY` 长度不少于 32 字符；`APP_ENV=production`、`DEBUG=false`、`AUTH_RATE_LIMIT_ENABLED=true`。
-- PostgreSQL、Redis 和 Celery 的连接信息已在受控配置中设置；不将密钥、Token 或完整连接串写入发布记录。
+- `JWT_SECRET_KEY` 长度不少于 32 字符；`APP_ENV=production`、`DEBUG=false`。
+- PostgreSQL 连接信息已在受控配置中设置；不将密钥、Token 或完整连接串写入发布记录。Redis 与 Celery 如被其他模块启用，应由其所属变更包单独验证。
 - `uv run ruff check app tests alembic`、`uv run pytest` 和真实依赖集成测试均已通过。
 - Alembic 正向迁移、回滚脚本与恢复负责人已确认；未审批前不得执行破坏性回滚。
 
 ## 发布步骤
 
-1. 构建并部署锁定 `uv.lock` 的 Backend 和 Worker 候选镜像。
+1. 构建并部署锁定 `uv.lock` 的 Backend 候选镜像。
 2. 在目标数据库执行 `alembic upgrade head`；确认目标 revision 与预期一致。
-3. 启动 Backend 与 Worker，确认进程未输出密码、JWT 或连接字符串。
+3. 启动 Backend，确认进程未输出密码、JWT 或连接字符串。
 4. 调用 `/health/live`、`/health/ready`；就绪检查必须返回 `200`。
 5. 使用隔离测试账号验证注册、登录和 `/api/v1/auth/me`；不在发布记录保存 Access Token。
-6. 验证认证限流：受限次数失败登录后返回统一 `429`；断开 Redis 或触发超时时返回安全 `503`。
-7. 在观察窗口内查看 5xx、401、429、Redis 连接与就绪检查失败率；不得记录用户凭据或 Token。
+6. 在观察窗口内查看 5xx、401 与就绪检查失败率；不得记录用户凭据或 Token。
 
 ## 回滚步骤
 

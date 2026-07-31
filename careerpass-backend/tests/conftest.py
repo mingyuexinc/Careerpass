@@ -16,15 +16,6 @@ from app.core.config import get_settings
 from app.main import create_app
 
 
-@pytest.fixture(autouse=True)
-def disable_auth_rate_limit_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep unit/API tests isolated unless a test explicitly enables Redis limiting."""
-    monkeypatch.setenv("AUTH_RATE_LIMIT_ENABLED", "false")
-    get_settings.cache_clear()
-    yield
-    get_settings.cache_clear()
-
-
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Create an application client with a clean settings cache."""

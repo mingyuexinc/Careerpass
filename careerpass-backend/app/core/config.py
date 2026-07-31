@@ -75,10 +75,6 @@ class Settings(BaseSettings):
         min_length=1,
     )
     qwen_model: str = Field(default="qwen-plus", min_length=1, max_length=128)
-    auth_rate_limit_enabled: bool = True
-    auth_rate_limit_requests: int = Field(default=10, ge=1, le=1000)
-    auth_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
-    auth_rate_limit_timeout_seconds: float = Field(default=0.2, gt=0, le=5)
     jwt_secret_key: SecretStr = Field(min_length=32)
     jwt_issuer: str = Field(default="careerpass-api", min_length=1, max_length=128)
     jwt_audience: str = Field(default="careerpass-client", min_length=1, max_length=128)
@@ -88,8 +84,6 @@ class Settings(BaseSettings):
     def reject_production_debug(self) -> "Settings":
         if self.app_env is AppEnvironment.PRODUCTION and self.debug:
             raise ValueError("DEBUG must be false when APP_ENV is production")
-        if self.app_env is AppEnvironment.PRODUCTION and not self.auth_rate_limit_enabled:
-            raise ValueError("AUTH_RATE_LIMIT_ENABLED must be true when APP_ENV is production")
         if self.celery_task_soft_time_limit_seconds >= self.celery_task_time_limit_seconds:
             raise ValueError("CELERY_TASK_SOFT_TIME_LIMIT_SECONDS must be below the hard limit")
         return self

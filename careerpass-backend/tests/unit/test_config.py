@@ -22,21 +22,10 @@ def test_settings_accept_production_without_debug() -> None:
     settings = Settings(
         app_env=AppEnvironment.PRODUCTION,
         debug=False,
-        auth_rate_limit_enabled=True,
         _env_file=None,
     )
 
     assert settings.app_env is AppEnvironment.PRODUCTION
-
-
-def test_settings_reject_disabled_auth_rate_limit_in_production() -> None:
-    with pytest.raises(ValidationError, match="AUTH_RATE_LIMIT_ENABLED"):
-        Settings(
-            app_env=AppEnvironment.PRODUCTION,
-            auth_rate_limit_enabled=False,
-            _env_file=None,
-        )
-
 
 def test_settings_reject_invalid_environment() -> None:
     with pytest.raises(ValidationError):

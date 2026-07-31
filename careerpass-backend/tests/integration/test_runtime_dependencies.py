@@ -54,7 +54,6 @@ def test_migrations_are_repeatable_and_readiness_is_healthy(
     monkeypatch.setenv("DATABASE_URL", database_url)
     monkeypatch.setenv("REDIS_URL", redis_url)
     monkeypatch.setenv("APP_ENV", "test")
-    monkeypatch.setenv("AUTH_RATE_LIMIT_ENABLED", "true")
     get_settings.cache_clear()
     try:
         config = Config("alembic.ini")

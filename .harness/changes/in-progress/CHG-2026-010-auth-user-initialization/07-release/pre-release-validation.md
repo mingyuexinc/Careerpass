@@ -12,10 +12,8 @@
 | 项目 | 结果 |
 | --- | --- |
 | PostgreSQL 16 | healthy，`54329 -> 5432` 宿主机映射可用 |
-| Redis 7.4 | healthy，`63790 -> 6379` 宿主机映射可用 |
 | Alembic | 在 Backend 容器中执行 `alembic upgrade head` 成功，可安全重复执行 |
 | Backend | Compose 构建并启动，`8080 -> 8080` 映射可用 |
-| Celery Worker | Compose 构建并启动，依赖 PostgreSQL/Redis 健康后运行 |
 
 ## HTTP 冒烟结果
 
@@ -26,6 +24,7 @@
 | 注册隔离测试账号 | `200`，返回必要 Access Token |
 | 登录隔离测试账号 | `200` |
 | 使用登录 Token 调用 `/api/v1/auth/me` | `200`，返回用户名与注册账号一致 |
-| Redis 限流 | 前九次失败登录返回 `401`，第十次返回 `429` |
+
+> 历史 Compose 环境含 Redis 与 Celery，但二者不再是认证模块范围；Redis 限流结果已于 2026-07-31 失效，不得作为认证发布门禁或验收证据。
 
 测试过程未在记录中保存 Token、密码、完整连接串或用户标识。测试数据只存在于隔离 Compose 数据库。

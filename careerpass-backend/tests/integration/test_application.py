@@ -137,12 +137,12 @@ def test_register_and_login_routes_use_the_uniform_response_contract() -> None:
 
     app.dependency_overrides[get_registration_service] = registration_override
     app.dependency_overrides[get_login_service] = login_override
-    request_body = {"username": "alice", "password": "StrongPassword123!", "name": "Alice"}
+    request_body = {"username": "alice", "password": "weak", "name": "Alice"}
     with TestClient(app, raise_server_exceptions=False) as client:
         register_response = client.post("/api/v1/auth/register", json=request_body)
         login_response = client.post(
             "/api/v1/auth/login",
-            json={"username": "alice", "password": "StrongPassword123!"},
+            json={"username": "alice", "password": "weak"},
         )
 
     expected_data = authentication_response.model_dump(mode="json")

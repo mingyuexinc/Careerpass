@@ -14,12 +14,12 @@ from app.schemas.auth import (
 
 
 def test_register_request_accepts_valid_credentials() -> None:
-    request = RegisterRequest(username="alice.test", password="StrongPassword123!", name=" Alice ")
+    request = RegisterRequest(username="alice.test", password="weak", name=" Alice ")
 
     assert request.username == "alice.test"
-    assert request.password.get_secret_value() == "StrongPassword123!"
+    assert request.password.get_secret_value() == "weak"
     assert request.name == "Alice"
-    assert "StrongPassword123!" not in repr(request)
+    assert "weak" not in repr(request)
 
 
 @pytest.mark.parametrize(
@@ -27,15 +27,20 @@ def test_register_request_accepts_valid_credentials() -> None:
     [
         ("ab", "StrongPassword123!"),
         ("alice name", "StrongPassword123!"),
-        ("alice", "nouppercase123!"),
-        ("alice", "NOLOWERCASE123!"),
-        ("alice", "NoDigitsPassword!"),
-        ("alice", "NoSpecialPassword123"),
+        ("alice", ""),
+        ("alice", "x" * 129),
     ],
 )
 def test_credentials_reject_invalid_values(username: str, password: str) -> None:
     with pytest.raises(ValidationError):
         LoginRequest(username=username, password=password)
+
+
+@pytest.mark.parametrize("password", ["letters", "123456", "!!!"])
+def test_credentials_accept_nonempty_password_without_complexity_rules(password: str) -> None:
+    request = LoginRequest(username="alice", password=password)
+
+    assert request.password.get_secret_value() == password
 
 
 def test_authentication_response_excludes_refresh_token() -> None:

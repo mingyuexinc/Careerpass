@@ -5,7 +5,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies.auth import get_current_identity
-from app.api.dependencies.rate_limit import enforce_auth_rate_limit
 from app.api.dependencies.services import get_login_service, get_registration_service
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
@@ -20,11 +19,7 @@ from app.schemas.response import success_response
 from app.services.login_service import InvalidCredentialsError, LoginService
 from app.services.registration_service import RegistrationService, UsernameAlreadyExistsError
 
-auth_router = APIRouter(
-    prefix="/auth",
-    tags=["auth"],
-    dependencies=[Depends(enforce_auth_rate_limit)],
-)
+auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @auth_router.post("/register")
