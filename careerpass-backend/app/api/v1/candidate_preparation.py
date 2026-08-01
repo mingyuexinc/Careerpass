@@ -48,8 +48,8 @@ async def upload_resume(
         ) from None
     return success_response(
         value.model_dump(mode="json"),
-        msg="上传已受理，正在解析简历",
-        code=ErrorCode.UPLOAD_ACCEPTED,
+        msg="上传成功",
+        code=ErrorCode.UPLOAD_SUCCEEDED,
     )
 
 

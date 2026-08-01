@@ -1,5 +1,13 @@
 # 实现说明
 
+## 当前边界修订（权威记录）
+
+- `CandidatePreparationRepository` 仅持久化候选人上传对象和资料元数据，不再导入或提交 `ResumeParseRequestV1`。
+- 候选人资料 API 的依赖装配不再把 `DocumentParsingRepository` 注入候选人资料 Service；文档解析继续由独立模块负责。
+- 简历创建与列表响应删除 `parse_status`、`failure_code`，上传成功消息不再包含“正在解析”。
+- 保留数据库中的解析字段、`candidate_profiles` 和 `async_task_runs`，不执行破坏性迁移；这些结构由文档解析模块使用。
+- 针对性边界测试和全量回归通过；全量覆盖率为 81.16%。
+
 - `careerpass-backend/alembic/versions/20260727_0003_candidate_preparation.py` 创建资料、画像、对象和异步任务数据结构。
 - `app/infrastructure/storage/` 提供不透明键本地受控读写；候选人资料准备和文档解析分别通过各自 Repository 管理其业务边界。
 - `app/api/v1/candidate_preparation.py` 提供简历和附加资料接口；画像查询由文档解析路由负责，所有操作通过当前候选人身份校验。

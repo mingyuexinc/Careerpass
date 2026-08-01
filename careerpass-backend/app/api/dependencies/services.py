@@ -43,12 +43,8 @@ async def get_candidate_preparation_service(
 ) -> AsyncIterator[CandidatePreparationService]:
     """Build the candidate preparation service with request-scoped persistence."""
     async with request.app.state.database.session_factory() as session:
-        document_parsing_repository = DocumentParsingRepository(session)
         yield CandidatePreparationService(
-            repository=CandidatePreparationRepository(
-                session,
-                submit_resume_parse_request=document_parsing_repository.submit_resume_parse_request,
-            ),
+            repository=CandidatePreparationRepository(session),
             storage=request.app.state.object_storage,
         )
 

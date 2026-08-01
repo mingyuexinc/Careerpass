@@ -8,22 +8,18 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-ParseStatus = Literal["processing", "succeeded", "failed"]
 DocumentType = Literal["certificate", "strategy", "other"]
 
 
 class ResumeCreated(BaseModel):
     resume_id: UUID
-    parse_status: Literal["processing"] = "processing"
 
 
 class ResumeListItem(BaseModel):
     resume_id: UUID
     name: str
     type: Literal["resume"] = "resume"
-    parse_status: ParseStatus
     created_at: datetime
-    failure_code: str | None = None
 
 
 class ResumeListResponse(BaseModel):
@@ -49,4 +45,3 @@ class CandidateDocumentListResponse(BaseModel):
     total: int
     page: int
     page_size: int
-

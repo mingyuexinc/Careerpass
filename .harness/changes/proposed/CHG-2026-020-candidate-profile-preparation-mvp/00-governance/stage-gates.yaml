@@ -1,0 +1,87 @@
+module: 候选人资料准备
+current_stage: 6
+developer_confirmation: "阶段 1 需求分析已于 2026-08-01 确认通过；范围仅包含资料上传闭环。"
+stages:
+  1:
+    status: passed
+    evidence:
+      - 01-analysis/requirements.md
+      - 01-analysis/impact-analysis.md
+    approved_by: developer
+    approved_at: 2026-08-01
+    notes: >-
+      开发者已确认最新需求范围；本阶段门禁闭环完成。
+  2:
+    status: passed
+    evidence:
+      - 02-validation/prevalidation.md
+      - 06-verification/test-report.md
+    approved_by: developer
+    approved_at: 2026-08-01
+    notes: >-
+      开发者裁决 PostgreSQL/Repository 为本模块唯一需要登记的技术能力；既有隔离 PostgreSQL
+      与 Repository 测试证据通过。其余解析相关能力不属于本模块阶段 2。
+  3:
+    status: passed
+    evidence:
+      - 02-design/design.md
+    approved_by: developer
+    approved_at: 2026-08-01
+    notes: >-
+      开发者已阅读并确认方案评审通过。方案边界、数据流、接口、状态机、权限、失败处理与回滚边界
+      均以最新需求为准；本阶段门禁闭环完成。阶段 4 尚未启动。
+  4:
+    status: passed
+    evidence:
+      - 03-plan/task-breakdown.md
+    approved_by: developer
+    approved_at: 2026-08-01
+    notes: >-
+      已批准边界修订任务 R1-R3；任务均不超过 4 小时，且不包含未裁定技术选型。
+  5:
+    status: passed
+    evidence:
+      - 05-implementation/implementation-notes.md
+    approved_by: developer
+    approved_at: 2026-08-01
+    notes: >-
+      边界修订编码已完成；候选人资料实现不再提交解析请求或读取解析状态，数据库结构未做破坏性变更。
+  6:
+    status: in_progress
+    evidence:
+      - 05-implementation/implementation-notes.md
+      - 06-verification/test-report.md
+    approved_by: null
+    approved_at: null
+    notes: >-
+      全量 pytest 通过，覆盖率 81.16%；等待开发者确认阶段 6 测试报告后闭环。
+  7:
+    status: not_started
+    evidence: []
+    approved_by: null
+    approved_at: null
+    notes: ""
+  8:
+    status: not_started
+    evidence: []
+    approved_by: null
+    approved_at: null
+    notes: ""
+  9:
+    status: not_started
+    evidence: []
+    approved_by: null
+    approved_at: null
+    notes: ""
+  10:
+    status: not_started
+    evidence: []
+    approved_by: null
+    approved_at: null
+    notes: ""
+  11:
+    status: not_started
+    evidence: []
+    approved_by: null
+    approved_at: null
+    notes: ""

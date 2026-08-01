@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -14,7 +13,6 @@ from app.infrastructure.database.models import (
     StoredFileObject,
 )
 from app.infrastructure.storage.local import StoredUpload
-from app.schemas.document_parsing import ResumeParseRequestV1
 
 
 class IdempotencyConflictError(Exception):
@@ -22,16 +20,10 @@ class IdempotencyConflictError(Exception):
 
 
 class CandidatePreparationRepository:
-    """Own candidate documents and submit only versioned parsing requests."""
+    """Persist candidate-owned uploads and their metadata only."""
 
-    def __init__(
-        self,
-        session: AsyncSession,
-        *,
-        submit_resume_parse_request: Callable[[ResumeParseRequestV1], Awaitable[None]],
-    ) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
-        self._submit_resume_parse_request = submit_resume_parse_request
 
     async def create_resume(
         self, *, candidate_id: UUID, name: str, upload: StoredUpload, idempotency_key: UUID | None
@@ -52,13 +44,9 @@ class CandidatePreparationRepository:
                 file_name=name,
                 stored_file_object_id=file_object.id,
                 file_type="pdf",
-                parse_status="processing",
             )
             self._session.add(resume)
             await self._session.flush()
-            await self._submit_resume_parse_request(
-                ResumeParseRequestV1(candidate_id=candidate_id, resume_id=resume.id)
-            )
         return resume, False, created_file_object
 
     async def create_document(

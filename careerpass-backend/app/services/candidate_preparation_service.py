@@ -119,9 +119,7 @@ class CandidatePreparationService:
                 ResumeListItem(
                     resume_id=value.id,
                     name=value.file_name,
-                    parse_status=value.parse_status,
                     created_at=value.created_at,
-                    failure_code=value.failure_code if value.parse_status == "failed" else None,
                 )
                 for value in values
             ],

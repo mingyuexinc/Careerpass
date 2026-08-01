@@ -122,7 +122,7 @@ class StoredFileObject(Base):
 
 
 class Resume(Base):
-    """A candidate-owned formal resume and its parsing lifecycle."""
+    """Candidate-owned resume; parsing fields are owned by document parsing."""
 
     __tablename__ = "resumes"
 

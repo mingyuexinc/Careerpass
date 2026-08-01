@@ -4,10 +4,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
 
 from app.infrastructure.storage.local import LocalObjectStorage
-from app.schemas.document_parsing import ResumeProfileExtractionV1, WorkExperience
 from app.services.candidate_preparation_service import (
     CandidatePreparationService,
     InvalidUploadError,
@@ -49,16 +47,6 @@ def test_resume_upload_validation_accepts_pdf() -> None:
 
     assert value.file_type == "pdf"
     assert value.mime_type == "application/pdf"
-
-
-def test_profile_requires_explicit_nonempty_target_title() -> None:
-    with pytest.raises(ValidationError):
-        ResumeProfileExtractionV1(target_job_titles=["  "])
-
-
-def test_profile_rejects_invalid_work_experience_month() -> None:
-    with pytest.raises(ValidationError):
-        WorkExperience(start_date="2026-13")
 
 
 def test_resume_upload_removes_transient_file_when_content_object_is_reused(

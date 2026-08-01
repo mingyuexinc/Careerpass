@@ -344,8 +344,8 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
 
         assert created_resume.status_code == replayed_resume.status_code == 201
         assert created_resume.json()["code"] == 201
-        assert created_resume.json()["msg"] == "上传已受理，正在解析简历"
-        assert created_resume.json()["data"]["parse_status"] == "processing"
+        assert created_resume.json()["msg"] == "上传成功"
+        assert "parse_status" not in created_resume.json()["data"]
         assert created_resume.json()["data"]["resume_id"] == replayed_resume.json()["data"]["resume_id"]
         assert conflicting_resume.status_code == 409
         assert conflicting_resume.json()["code"] == 409
@@ -356,6 +356,7 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
         assert own_resumes.status_code == 200
         assert own_resumes.json()["data"]["total"] == 1
         assert own_resumes.json()["data"]["list"][0]["name"] == "candidate-a-resume.pdf"
+        assert "parse_status" not in own_resumes.json()["data"]["list"][0]
         assert other_resumes.status_code == 200
         assert other_resumes.json()["data"]["list"] == []
 

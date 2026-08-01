@@ -175,3 +175,11 @@ This subtask supplies dispatch and lease infrastructure only. It does not run Mi
 ## Boundary
 
 - The Worker implementation is ready for isolated Broker/Worker integration verification, but this task does not claim the real MinerU → Qwen end-to-end acceptance reserved for subtask 10.
+# 边界修订验证记录（当前）
+
+- 执行命令：`uv run pytest -q`
+- 结果：`129 passed, 9 skipped`（以本次运行输出为准）
+- 覆盖率：`81.16%`，达到规范要求的 80%。
+- 边界专项：候选人资料上传 Repository、Schema、API 和依赖装配测试通过。
+- 解析相关测试仍保留在独立解析链路中，未作为候选人资料上传验收条件。
+- 静态检索确认候选人资料 Repository/Service/Schema/API 未再引用解析请求提交、解析状态或解析失败字段。
