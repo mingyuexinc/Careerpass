@@ -1,6 +1,26 @@
 module: 候选人资料准备
 current_stage: 6
-developer_confirmation: "阶段 1 需求分析已于 2026-08-01 确认通过；范围仅包含资料上传闭环。"
+developer_confirmation: "开发者已确认 CHG-020 阶段 1 跨模块契约交接边界；阶段 2 外部技术能力预验证按正确流水线边界完成。"
+dependencies: []
+contracts:
+  - id: ResumeParseRequestV1
+    version: v1
+    registry: .harness/contracts/resume-parse-request-v1.yaml
+    joint_review_record: .harness/contracts/JCG-2026-020-021-RESUME-PARSE-V1-joint-review.md
+    role: producer
+    status: locked
+    joint_contract_gate_id: JCG-2026-020-021-RESUME-PARSE-V1
+    required_participants:
+      - .harness/changes/proposed/CHG-2026-020-candidate-profile-preparation-mvp
+      - .harness/changes/proposed/CHG-2026-021-document-parsing-mvp
+    approvals:
+      - package: .harness/changes/proposed/CHG-2026-020-candidate-profile-preparation-mvp
+        approved_by: CHG-020 developer
+        approved_at: 2026-08-01
+      - package: .harness/changes/proposed/CHG-2026-021-document-parsing-mvp
+        approved_by: CHG-021 developer
+        approved_at: 2026-08-01
+    contract_hash: 9AB937AE08E4A69C3D1D87C1968B8C17D7B6371984E236B1481C984F49EC9B18
 stages:
   1:
     status: passed
@@ -10,7 +30,7 @@ stages:
     approved_by: developer
     approved_at: 2026-08-01
     notes: >-
-      开发者已确认最新需求范围；本阶段门禁闭环完成。
+      开发者已确认 ResumeParseRequestV1 跨模块契约交接边界；该交接不调用 G3 Service、Dispatcher 或 Worker。
   2:
     status: passed
     evidence:
@@ -19,42 +39,44 @@ stages:
     approved_by: developer
     approved_at: 2026-08-01
     notes: >-
-      开发者裁决 PostgreSQL/Repository 为本模块唯一需要登记的技术能力；既有隔离 PostgreSQL
-      与 Repository 测试证据通过。其余解析相关能力不属于本模块阶段 2。
+      PostgreSQL/Repository、认证归属链和本地对象存储抽象已有可复用真实证据；本次没有新增需要供应商级首次验证的外部技术能力。
+      ResumeParseRequestV1 的业务交接行为不作为阶段 2 通过条件，留待阶段 3–6 按串行门禁处理。
   3:
     status: passed
     evidence:
       - 02-design/design.md
+      - 02-design/change-record.md
+      - .harness/contracts/resume-parse-request-v1.yaml
+      - .harness/contracts/JCG-2026-020-021-RESUME-PARSE-V1-joint-review.md
     approved_by: developer
-    approved_at: 2026-08-01
+    approved_at: 2026-08-02
     notes: >-
-      开发者已阅读并确认方案评审通过。方案边界、数据流、接口、状态机、权限、失败处理与回滚边界
-      均以最新需求为准；本阶段门禁闭环完成。阶段 4 尚未启动。
+      已依据修订后的需求分析和阶段 2 预验证形成 G2 producer 方案：G2 在同一外层 PostgreSQL 事务中协调 StoredFileObject、Resume、上传幂等关系和 queued AsyncTaskRun；Service/Repository 边界、对象 ready 校验、任务幂等、201 processing 受理语义和失败清理已固化。ResumeParseRequestV1@v1 已联合锁定并由双方开发者批准，contract_hash 已登记。开发者已完成人工方案复核，CHG-020 阶段 3 通过；后续阶段 4 已按独立门禁收口。
   4:
     status: passed
     evidence:
       - 03-plan/task-breakdown.md
     approved_by: developer
-    approved_at: 2026-08-01
+    approved_at: 2026-08-02
     notes: >-
-      已批准边界修订任务 R1-R3；任务均不超过 4 小时，且不包含未裁定技术选型。
+      已按锁定的 ResumeParseRequestV1@v1 和阶段 3 方案完成 G2 新边界的增量任务拆分；模块边界、能力地图、跨包依赖图、执行顺序及 T4-G2-01 至 T4-G2-07 任务粒度和验收条件均已确认。CHG-020/CHG-021 阶段 3 均已通过，契约版本与 contract_hash 一致。开发者已完成人工阶段 4 门禁复核，CHG-020 阶段 4 通过；随后进入阶段 5 实现。
   5:
     status: passed
     evidence:
       - 05-implementation/implementation-notes.md
     approved_by: developer
-    approved_at: 2026-08-01
+    approved_at: 2026-08-02
     notes: >-
-      边界修订编码已完成；候选人资料实现不再提交解析请求或读取解析状态，数据库结构未做破坏性变更。
+      开发者已完成阶段 5 门禁复核并批准通过。阶段 4 已批准的 T4-G2-01 至 T4-G2-07 增量任务均已实现：G2 由 Service 统一协调 StoredFileObject、Resume、上传幂等关系和 queued AsyncTaskRun 的同一 PostgreSQL 事务；AsyncTaskRepository 已具备候选人归属、对象 ready、任务幂等和并发安全的创建/复用能力；上传接口已返回 201 / UPLOAD_ACCEPTED、resume_id 和 parse_status=processing。复核确认本实现未新增未裁定的契约、范围、数据字段、状态机或跨模块责任，且符合 Repository、权限归属、统一响应、敏感信息脱敏和事务边界红线。阶段 6 测试及阶段 7–8 后续门禁仍按串行流程执行，不作为本阶段通过前置条件。
   6:
-    status: in_progress
+    status: passed
     evidence:
       - 05-implementation/implementation-notes.md
       - 06-verification/test-report.md
-    approved_by: null
-    approved_at: null
+    approved_by: developer
+    approved_at: 2026-08-02
     notes: >-
-      全量 pytest 通过，覆盖率 81.16%；等待开发者确认阶段 6 测试报告后闭环。
+      阶段 6 闭环完成，开发者已完成门禁复核并批准通过。新增 G2 边界测试覆盖任务创建失败清理、对象复用清理、资料列表安全字段、非法文件内容、显示名边界、固定 ResumeParseRequestV1@v1、未知字段拒绝、候选人归属隔离、queued 任务交接和 G2/G3 模块边界；必要全量回归通过，真实依赖环境下整体覆盖率 89.51%，Ruff 检查通过。隔离 Docker Compose PostgreSQL 16/Redis 7.4 已启动，6 项真实集成测试全部通过。首次运行发现全新数据库迁移测试初始化顺序问题，已修复为先 upgrade head 再执行 downgrade/upgrade 重复性验证。该证据不包含 MinerU/Qwen 外部全链路，阶段 7 代码评审及后续阶段仍未启动。
   7:
     status: not_started
     evidence: []

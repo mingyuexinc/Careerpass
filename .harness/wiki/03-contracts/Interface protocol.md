@@ -93,7 +93,7 @@ Production:TBD
 
 ## 模块API
 
-### 认证与会话管理模块（`MVP` 与 `Deferred`）
+### G1 认证与用户初始化模块（`MVP`；会话管理接口 `Deferred`）
 
 #### 注册账号
 
@@ -129,7 +129,6 @@ Production:TBD
     "msg":"success",
     "data":{
         "access_token":"<access_token>",
-        "refresh_token":"<refresh_token>",
         "token_type":"Bearer",
         "expires_in":1800,
         "user":{
@@ -170,7 +169,6 @@ Production:TBD
     "msg":"success",
     "data":{
         "access_token":"<access_token>",
-        "refresh_token":"<refresh_token>",
         "token_type":"Bearer",
         "expires_in":1800,
         "user":{
@@ -271,71 +269,7 @@ Production:TBD
 }
 ```
 
-### 求职目标管理模块（`MVP`）
-
-#### 获取当前求职目标
-
-- 接口：GET /api/v1/job-goals/current
-
-- Query Parameters：无
-
-
-- Response：
-
-```json
-{
-    "code":200,
-    "msg":"success",
-    "data":{
-        "goal_id":"goal_001",
-        "target_offer_count":3,
-        "current_offer_count":1,
-        "status":"active",
-        "created_at":"2026-07-18T10:00:00"
-    }
-}
-```
-
-#### 创建求职目标
-
-- 接口：POST /api/v1/job-goals
-
-- Request Body：
-
-| Param | Type | Required | Description |
-| --- | --- | --- | --- |
-| target_offer_count | Integer | No | 目标 Offer 数量，默认值为 1 |
-| filter_conditions | JSON | Yes | 岗位过滤条件对象；可传入 `{}`，其内部 `include`、`exclude` 及全部子字段均可省略 |
-
-```json
-{
-    "target_offer_count": 3,
-    "filter_conditions": {
-        "include": {
-            "job_nature": ["fulltime"]
-        },
-        "exclude": {
-            "locations": ["北京"],
-            "employment_type": ["outsource"],
-            "interview_mode": ["offline"]
-        }
-    }
-}
-```
-
-- Response：
-
-```json
-{
-    "code":200,
-    "msg":"success",
-    "data":{
-        "goal_id":"goal_001",
-        "status":"active"
-    }
-}
-```
-### 简历管理模块（`MVP`）
+### G2 候选人资料准备模块—简历管理（`MVP`）
 
 #### 上传简历
 
@@ -410,7 +344,7 @@ Production:TBD
 
 该列表是 MVP 唯一的简历解析状态查看入口；客户端或开发者需要查看状态时可主动刷新列表。MVP 不提供单简历状态查询接口，也不提供轮询频率承诺、回调、Webhook、SSE、WebSocket 或广播通知。
 
-### 求职者资料管理模块（`MVP`）
+### G2 候选人资料准备模块—附加资料管理（`MVP`）
 
 #### 上传求职者资料
 
@@ -424,10 +358,10 @@ Production:TBD
 |  Param |  Type  |  Required  |  Description  |
 |- - - - |- - - - -| - - - - - -  - - -| 
 |  file | File | Yes | 上传文件；仅允许 PDF、Markdown、JPG/JPEG |
-|  candidate_document_type| String | Yes | 求职资料类型（证书/求职策略文档/其它，不包含简历）；仅可在候选人明确选择和授权后，由 Agent 发送的系统内消息作为附件引用 |
+|  candidate_document_type| String | Yes | 求职资料类型（证书/求职策略文档/其它，不包含简历）；仅可在候选人明确选择和授权后，由 G8 AI 求职沟通模块在受控 Agent 流程中发送的系统内消息作为附件引用 |
 |  name | String | No | 仅用于列表展示的文件名；服务端去除首尾空白后长度必须为 `1–255`。未提供或去除空白后为空时，服务端按 `document-{candidate_document_id}.{extension}` 生成受控显示名 |
 
-服务端必须校验扩展名、声明 MIME 类型和文件特征一致，并在写入正式对象前校验文件不超过 10 MB（10,000,000 bytes）。MVP 仅接受上传前已脱敏的候选人资料，不提供脱敏确认、自动识别、自动脱敏或修复能力。候选人资料无论文件格式均不进入异步解析，上传成功后仅可在候选人明确选择和授权后，由 Agent 发送的系统内消息作为附件引用。
+服务端必须校验扩展名、声明 MIME 类型和文件特征一致，并在写入正式对象前校验文件不超过 10 MB（10,000,000 bytes）。MVP 仅接受上传前已脱敏的候选人资料，不提供脱敏确认、自动识别、自动脱敏或修复能力。候选人资料无论文件格式均不进入异步解析，上传成功后仅可在候选人明确选择和授权后，由 G8 AI 求职沟通模块在受控 Agent 流程中发送的系统内消息作为附件引用。
 
 - Response：
 
@@ -477,6 +411,8 @@ Production:TBD
 ```
 
 候选人资料列表固定按 `created_at DESC, candidate_document_id DESC` 排序；`created_at` 必须为 UTC RFC 3339 时间戳。`page` 或 `page_size` 不合法时返回 `ErrorCode.INVALID_REQUEST (400)`；`page` 超出总页数时返回 `200 / success`、空 `list` 以及实际的 `total`、请求的 `page` 和 `page_size`，不得返回 `404`。候选人资料为上传前已脱敏的原始附件，不包含 `parse_status`、`failure_code` 或解析结果。接口不得返回文件地址、文件正文或任何内部存储细节。
+
+### G3 简历解析模块（`MVP`）
 
 #### 获取指定简历的候选人画像
 
@@ -535,7 +471,7 @@ Production:TBD
 }
 ```
 
-### 岗位管理模块（`MVP`）
+### G4 岗位 JD 解析与入库闭环（`MVP`；候选人侧只读查询）
 
 岗位由受控启动导入命令写入，不提供候选人可调用的创建、更新或删除接口。该命令不是 `/api/v1` HTTP API，不接受候选人身份、外部路径或模型指令；导入细节、文件名和内部路径均不对候选人暴露。
 
@@ -574,7 +510,72 @@ Production:TBD
 - 路径参数 `job_id` 必须为 UUID。
 - 仅返回已解析成功的共享岗位及其 JD 快照；不存在或未发布的岗位统一返回安全 `404`。
 
-### 岗位匹配模块（`MVP`）
+### G5 求职目标模块（`MVP`）
+
+#### 获取当前求职目标
+
+- 接口：GET /api/v1/job-goals/current
+
+- Query Parameters：无
+
+
+- Response：
+
+```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "goal_id":"goal_001",
+        "target_offer_count":3,
+        "current_offer_count":1,
+        "status":"active",
+        "created_at":"2026-07-18T10:00:00"
+    }
+}
+```
+
+#### 创建求职目标
+
+- 接口：POST /api/v1/job-goals
+
+- Request Body：
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| target_offer_count | Integer | No | 目标 Offer 数量，默认值为 1 |
+| filter_conditions | JSON | Yes | 岗位过滤条件对象；可传入 `{}`，其内部 `include`、`exclude` 及全部子字段均可省略 |
+
+```json
+{
+    "target_offer_count": 3,
+    "filter_conditions": {
+        "include": {
+            "job_nature": ["fulltime"]
+        },
+        "exclude": {
+            "locations": ["北京"],
+            "employment_type": ["outsource"],
+            "interview_mode": ["offline"]
+        }
+    }
+}
+```
+
+- Response：
+
+```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "goal_id":"goal_001",
+        "status":"active"
+    }
+}
+```
+
+### G6 岗位匹配模块（`MVP`）
 
 #### 查询可投递岗位
 
@@ -663,9 +664,6 @@ Production:TBD
                 "title":"AI Engineer",
                 "match_score":92,
                 "skill_score":95,
-                "gap":[
-                    "Kubernetes"
-                ],
                 "recommend_reason":
                 "技能高度匹配"
             }
@@ -674,7 +672,7 @@ Production:TBD
 }
  ```
 
-### 投递管理模块（`MVP`）
+### G7 投递与进度模块—投递管理（`MVP`）
 
 #### 创建岗位申请
 
@@ -734,72 +732,7 @@ Production:TBD
 }
  ```
 
-  ### AI求职沟通模块
-
-#### 创建会话
-
-- 接口：POST /api/v1/conversations
-
-- Request Body
- ```json
-{
-    "application_id":"app_001"
-}
- ```
-
-
-- Response：
- ```json
-{
-    "code":200,
-    "msg":"success",
-    "data":{
-        "conversation_id":"conv_001"
-    }
-}
- ```
-
-#### 发送消息
-
-- 接口：POST /api/v1/conversations/{conversation_id}/messages
-- Request Body
-
- ```json
-{
-    "content":"这是一条测试文本",
-    "candidate_document_ids":["doc_001"]
-}
- ```
-
-`candidate_document_ids` 为可选数组。每一项必须属于当前候选人、资料对象存在，且候选人与该会话所属投递记录一致；候选人必须在本次发送中明确选择并授权资料。Agent 可据此创建系统内候选人消息和附件引用，但不得自行上传、选择或读取资料正文；系统不向真实 HR 或外部平台发送。MVP 中，Agent 仅可使用完成授权所需的最小附件元数据，资料正文不自动进入 Agent/LLM 输入。
-
-- Response：
-
- ```json
-{
-    "code":200,
-    "msg":"success",
-    "data":{
-        "message_id":"msg_001",
-        "reply":"这是一条测试文本",
-        "attachment_ids":["attachment_001"]
-    }
-}
- ```
-
-#### 获取聊天记录
-
-- 接口：GET /api/v1/conversations/{conversation_id}/messages
-
-- Query Parameters：
-
-  |  Param |  Type  |  Required  |  Description  |
-  |- - - - |- - - - -| - - - - - -  - - -| 
-  |  page | Integer | No | 页面 |
-
-- Response 中每条消息应返回其附件引用的最小信息：`attachment_id`、`candidate_document_id`、`name`、`file_type`；不得返回文件地址、文件正文或内部存储细节。
-
-### 求职进度管理模块（`MVP`）
+### G7 投递与进度模块—进度管理（`MVP`）
 
 #### 查询求职进度
 
@@ -844,3 +777,68 @@ Production:TBD
     }
 }
  ```
+
+### G8 AI 求职沟通模块（`MVP`）
+
+#### 创建会话
+
+- 接口：POST /api/v1/conversations
+
+- Request Body
+ ```json
+{
+    "application_id":"app_001"
+}
+ ```
+
+
+- Response：
+ ```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "conversation_id":"conv_001"
+    }
+}
+ ```
+
+#### 发送消息
+
+- 接口：POST /api/v1/conversations/{conversation_id}/messages
+- Request Body
+
+ ```json
+{
+    "content":"这是一条测试文本",
+    "candidate_document_ids":["doc_001"]
+}
+ ```
+
+`candidate_document_ids` 为可选数组。每一项必须属于当前候选人、资料对象存在，且候选人与该会话所属投递记录一致；候选人必须在本次发送中明确选择并授权资料。G8 AI 求职沟通模块可在受控 Agent 流程中据此创建系统内候选人消息和附件引用，但不得自行上传、选择或读取资料正文；系统不向真实 HR 或外部平台发送。MVP 中，Agent 仅可使用完成授权所需的最小附件元数据，资料正文不自动进入 Agent/LLM 输入。
+
+- Response：
+
+ ```json
+{
+    "code":200,
+    "msg":"success",
+    "data":{
+        "message_id":"msg_001",
+        "reply":"这是一条测试文本",
+        "attachment_ids":["attachment_001"]
+    }
+}
+ ```
+
+#### 获取聊天记录
+
+- 接口：GET /api/v1/conversations/{conversation_id}/messages
+
+- Query Parameters：
+
+  |  Param |  Type  |  Required  |  Description  |
+  |- - - - |- - - - -| - - - - - -  - - -| 
+  |  page | Integer | No | 页面 |
+
+- Response 中每条消息应返回其附件引用的最小信息：`attachment_id`、`candidate_document_id`、`name`、`file_type`；不得返回文件地址、文件正文或内部存储细节。

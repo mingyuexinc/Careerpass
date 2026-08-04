@@ -1,12 +1,38 @@
-# 实现说明
+# 实现说明（阶段 5：G2 跨模块交接增量实现）
+
+> 当前实现依据已通过的 CHG-020 阶段 1–4 门禁和锁定的 `ResumeParseRequestV1@v1`。本次只实现 G2 新边界，G3 解析执行链路不在本次代码修改范围内。
+
+## 当前阶段 5 实现范围
+
+- `CandidatePreparationService` 通过 Repository 暴露的事务上下文，协调正式简历、对象元数据、上传幂等关系和 queued `AsyncTaskRun` 在同一 PostgreSQL 事务中提交。
+- `CandidatePreparationRepository.create_resume()` 不再自行开启或提交事务；事务由 G2 Service 统一协调，附加资料上传继续沿用原有独立事务。
+- `AsyncTaskRepository.create_or_get_queued_resume_task()` 固定 `resume_parse`、`resume`、`task_version=v1` 和 `resume_parse:{resume_id}:v1` 幂等键；在同一事务中校验候选人归属、对象 `ready` 和简历 `processing` 状态，并使用 PostgreSQL 冲突忽略保证并发复用。
+- `POST /api/v1/resumes` 在资源与 queued 任务可靠提交后返回 `201 / UPLOAD_ACCEPTED`、`resume_id` 和 `parse_status=processing`；不表示 MinerU、Qwen 或画像解析成功。
+- G2 不调用 G3 Service、Dispatcher、Worker、MinerU 或 Qwen；对象失败、事务失败和未引用临时对象仍通过脱敏错误和清理边界处理。
+
+## 当前验证记录
+
+- `uv run pytest tests/unit -q --no-cov`：全部单元测试通过。
+- `uv run ruff check`：本次修改文件全部通过。
+- 阶段 6 已在隔离 Docker Compose PostgreSQL/Redis 环境中完成 6 项真实集成测试；详细结果见 `06-verification/test-report.md`。
+- 阶段 5 实现证据已记录，开发者已完成阶段 5 门禁确认并批准通过。阶段 6 单元测试、阶段 7 代码评审和阶段 8 跨模块真实联调属于后续门禁，不是阶段 5 的通过前置条件。
+
+## 阶段 5 门禁复核结果
+
+按《开发流程规范》，阶段 5 的通过条件是：阶段 4 已批准的任务均已实现，并且实现未违反红线和架构边界。当前文档已记录 G2 事务协调、任务创建/复用、上传受理响应和边界隔离的实现证据。复核确认本阶段不缺少 MinerU、Qwen 或真实 PostgreSQL/Redis 联调前置条件，开发者已完成以下收口确认：
+
+1. 阶段 4 任务清单中的实现项已逐项完成，没有新增未裁定的范围、契约、数据字段、状态机或跨模块责任。
+2. Repository、权限归属、统一响应、敏感信息脱敏和事务边界等红线均符合要求，阶段 5 的 `approved_by`、`approved_at` 和批准说明已写入 `00-governance/stage-gates.yaml`。
+
+上述确认已完成，阶段 5 已标记为 `passed`；阶段 6 及以后再分别补充测试、评审和真实联调证据。
 
 ## 当前边界修订（权威记录）
 
-- `CandidatePreparationRepository` 仅持久化候选人上传对象和资料元数据，不再导入或提交 `ResumeParseRequestV1`。
+- `CandidatePreparationRepository` 仅持久化候选人上传对象和资料元数据；G2 Service 通过独立的 `AsyncTaskRepository` 提交固定 `ResumeParseRequestV1@v1` 对应的 queued 任务。
 - 候选人资料 API 的依赖装配不再把 `DocumentParsingRepository` 注入候选人资料 Service；文档解析继续由独立模块负责。
-- 简历创建与列表响应删除 `parse_status`、`failure_code`，上传成功消息不再包含“正在解析”。
+- 正式简历上传响应恢复为锁定方案要求的 `parse_status=processing` 和“上传已受理，正在解析简历”；附加资料不创建解析任务，仍返回“上传成功”。
 - 保留数据库中的解析字段、`candidate_profiles` 和 `async_task_runs`，不执行破坏性迁移；这些结构由文档解析模块使用。
-- 针对性边界测试和全量回归通过；全量覆盖率为 81.16%。
+- 历史边界测试和覆盖率记录保留为迁移前证据；本次阶段 5 当前验证以本文件“当前验证记录”和后续阶段 6 报告为准。
 
 - `careerpass-backend/alembic/versions/20260727_0003_candidate_preparation.py` 创建资料、画像、对象和异步任务数据结构。
 - `app/infrastructure/storage/` 提供不透明键本地受控读写；候选人资料准备和文档解析分别通过各自 Repository 管理其业务边界。
@@ -15,50 +41,50 @@
 - 上传去重修复：Repository 现在显式返回底层对象是否新建；同一幂等键重放或不同资源复用既有内容摘要时，Service 删除本次暂存的未引用物理对象。幂等重放同时校验显示名与内容摘要，避免同一键覆盖不同文件。
 - 对象生命周期：`ObjectStorageRepository` 使用行锁和引用复核领取超过 1 小时的 `writing/ready` 无引用对象，状态转换为 `deleting` 后删除物理文件和目录记录；物理删除失败恢复为原状态。应用生命周期注册独立的每小时清理循环，关闭时安全取消。
 - 子任务 3（简历/附加资料 API 真实集成验证）：上传成功响应现在显式使用协议定义的 `201` 业务码；正式简历返回“上传已受理，正在解析简历”，附加资料返回“上传成功”。列表和画像查询仍维持通用 `200 / success`，避免将上传语义误用于读取接口。
-# Subtask 4: durable dispatch and execution leases
+# 子任务 4：可靠投递与执行租约
 
-- `TaskDispatcher` is a standalone process, not a FastAPI lifecycle task and not Celery Beat. It locks queued rows, assigns one durable Celery task ID and a short publication lease, then confirms only after broker publication succeeds.
-- Publication interruption leaves the lease to expire and be republished with the same task ID. PostgreSQL remains the authority; Redis is broker-only.
-- `AsyncTaskExecutionService` acquires a fresh unpredictable execution token through `AsyncTaskRepository`. A future parsing worker must use that token to guard retry, result, and terminal writes.
-- Celery uses no result backend, late acknowledgements, reject-on-worker-lost, prefetch one, and a 300-second Redis visibility timeout. MinerU/Qwen parsing remains outside this subtask.
-# Subtask 5: MinerU MCP adapter
+- `TaskDispatcher` 是独立进程，不是 FastAPI 生命周期任务，也不是 Celery Beat。它锁定 queued 任务记录，分配一个持久化 Celery 任务 ID 和短时发布租约，只有确认消息成功发布到代理后才标记发布完成。
+- 发布中断时保留租约，租约到期后使用同一个任务 ID 重新发布。PostgreSQL 是权威数据源，Redis 仅作为消息代理。
+- `AsyncTaskExecutionService` 通过 `AsyncTaskRepository` 获取新的不可预测执行令牌。后续解析 Worker 必须使用该令牌保护重试、结果和终态写入。
+- Celery 不使用结果后端，启用延迟确认、Worker 丢失时拒绝消息、预取数量为 1，Redis 可见性超时为 300 秒。MinerU/Qwen 解析不属于本子任务。
+# 子任务 5：MinerU MCP 适配器
 
-- `MineruMcpAdapter` accepts only PDF bytes supplied by a future leased Worker. It writes a random temporary `.pdf`, calls only MCP tool `parse_documents`, normalizes Markdown into memory, and removes the temporary directory on every path.
-- `MineruStdioClient` is the MVP client. It launches the official same-machine `uvx mineru-open-mcp` Bridge, maps `MINERU_API_KEY` to `MINERU_API_TOKEN` only in the child process, suppresses Bridge stderr, and calls the verified `file_sources=[local_pdf_path]` contract with `enable_ocr=false`.
-- The adapter does not accept candidate paths, client/Agent/model-provided URLs, model-composed parameters, or output locations. It never persists or logs raw MCP responses, file paths, temporary access URLs, or credentials.
-- Safe failure classes map timeout to `parser_timeout` (retryable), connectivity/429/5xx to `internal_error` (retryable), and malformed, unreadable, or empty results to `file_unreadable` (terminal).
-- `MineruStreamableHttpClient` remains a conditional remote implementation only. The previously attempted remote Bearer session returned HTTP 401 during tool discovery and is not enabled for MVP Worker use.
+- `MineruMcpAdapter` 只接受未来持有租约的 Worker 提供的 PDF 字节。它写入随机临时 `.pdf` 文件，只调用 MCP 工具 `parse_documents`，在内存中规范化 Markdown，并在所有执行路径清理临时目录。
+- `MineruStdioClient` 是 MVP 客户端。它启动同机官方 `uvx mineru-open-mcp` Bridge，仅在子进程中将 `MINERU_API_KEY` 映射为 `MINERU_API_TOKEN`，抑制 Bridge 标准错误输出，并按已验证的 `file_sources=[local_pdf_path]` 契约调用，关闭 OCR（`enable_ocr=false`）。
+- 适配器不接受候选人路径、客户端/Agent/模型提供的 URL、模型拼接的参数或输出位置；不持久化或记录 MCP 原始响应、文件路径、临时访问 URL 或凭证。
+- 安全失败分类为：超时映射为 `parser_timeout`（可重试）；连接失败、429 或 5xx 映射为 `internal_error`（可重试）；结果格式错误、不可读或为空映射为 `file_unreadable`（终态失败）。
+- `MineruStreamableHttpClient` 仅保留为有条件启用的远程实现。此前尝试的远程 Bearer 会话在工具发现时返回 HTTP 401，因此未启用为 MVP Worker 实现。
 
-# Subtask 6: Qwen structured profile adapter
+# 子任务 6：Qwen 结构化画像适配器
 
-- `QwenProfileAdapter` calls the configured DashScope OpenAI-compatible `chat/completions` endpoint using `DASHSCOPE_API_KEY`, explicit `QWEN_BASE_URL`, and `QWEN_MODEL=qwen-plus`.
-- The request uses strict `response_format.type=json_schema`, generated directly from `ResumeProfileExtractionV1`; ordinary JSON mode is insufficient because it cannot prevent extra fields or incorrectly shaped nested values.
-- The adapter receives only in-memory MinerU Markdown and returns only a Pydantic-validated `ResumeProfileExtractionV1`. It retains no prompt, raw provider response, token, or request diagnostic.
-- Timeouts map to `parser_timeout`; transport, 429 and 5xx failures map to `internal_error`; malformed JSON or schema/business validation failures map to `schema_validation_failed`.
+- `QwenProfileAdapter` 使用 `DASHSCOPE_API_KEY`、显式配置的 `QWEN_BASE_URL` 和 `QWEN_MODEL=qwen-plus`，调用配置的 DashScope OpenAI 兼容 `chat/completions` 接口。
+- 请求使用严格的 `response_format.type=json_schema`，Schema 直接由 `ResumeProfileExtractionV1` 生成；普通 JSON 模式无法阻止额外字段或嵌套值结构错误，因此不满足要求。
+- 适配器只接收内存中的 MinerU Markdown，只返回经过 Pydantic 校验的 `ResumeProfileExtractionV1`；不保留 Prompt、提供方原始响应、令牌或请求诊断信息。
+- 超时映射为 `parser_timeout`；传输错误、429 和 5xx 映射为 `internal_error`；JSON 格式错误或 Schema/业务校验失败映射为 `schema_validation_failed`。
 
-# Subtask 7: atomic parse terminal states
+# 子任务 7：解析终态原子写入（历史证据，归属 CHG-021）
 
-- `CandidatePreparationRepository` now owns lease-guarded terminal writes. Its success path atomically locks the matching running `async_task_runs` and `resumes` rows, creates the sole `candidate_profiles` record, and changes both resource and task to `succeeded`.
-- Its failure path uses the identical `task_run_id + resume_id + execution_token` guard, writes only an enum `failure_code`, and changes both resource and task to `failed` without creating a profile.
-- Both paths clear `execution_token` and `execution_lease_expires_at`, and reject duplicate or late workers without any side effect. `ResumeParseFinalizationService` exposes this Repository-only boundary to the later Worker implementation.
+- `CandidatePreparationRepository` 中历史解析终态记录仅作为证据保留；当前 G2 代码不拥有 G3 的租约保护终态写入。
+- 受租约保护的成功/失败路径由 `DocumentParsingRepository` 和 `ResumeParseFinalizationService` 负责，本次 G2 实现不修改这些路径。
+- 当前 G2 变更只创建或复用持久化 queued 任务，不写入 `CandidateProfile`、解析失败码、执行租约或解析终态。
 
-# Subtask 8: module boundary remediation and versioned contract
+# 子任务 8：模块边界修复与版本化契约（历史记录，当前边界已迁移）
 
-- `ResumeParseRequestV1` is the fixed, extra-field-forbidden contract from candidate preparation to document parsing. Candidate preparation creates the candidate-owned resume and submits only this request; the document-parsing Repository validates the candidate/resume relation and persists the fixed `v1` task in the same database transaction.
-- `CandidatePreparationRepository` no longer imports `AsyncTaskRun`, `CandidateProfile`, parsing failure types, or profile extraction schemas. It owns only candidate documents, resumes, upload idempotency, and controlled lists/statuses.
-- `DocumentParsingRepository` now owns parse-request persistence, controlled profile reads, lease-guarded profile/terminal writes, and resource reads for the future Worker. `ResumeParseFinalizationService` depends exclusively on this boundary.
-- The externally stable `GET /api/v1/resumes/{resume_id}/profile` route is registered by the document-parsing router and resolved through `DocumentParsingService`; it retains current-candidate ownership filtering and the safe `404` behavior.
+- `ResumeParseRequestV1` 仍是候选人资料准备到文档解析之间固定且禁止额外字段的契约。当前 G2 Service 通过 `AsyncTaskRepository` 创建或复用固定 queued 任务；G3 消费既有任务，不再创建另一个任务。
+- `CandidatePreparationRepository` 不再导入 `AsyncTaskRun`、`CandidateProfile`、解析失败类型或画像提取 Schema；它只负责候选人资料、简历、上传幂等以及受控列表/状态。
+- `DocumentParsingRepository` 负责受控画像读取、租约保护的画像/终态写入以及未来 Worker 的资源读取；G2 上传代码不调用它。
+- 对外稳定的 `GET /api/v1/resumes/{resume_id}/profile` 路由由文档解析路由注册，并通过 `DocumentParsingService` 处理；继续保留当前候选人归属过滤和安全 `404` 行为。
 
-# Subtask 9: resume parsing Worker orchestration
+# 子任务 9：简历解析 Worker 编排
 
-- `ResumeParseWorkerService` coordinates only typed, Repository-backed ports. It claims an execution lease before the resume is read; missing or late leases are ignored without a side effect.
-- `DocumentParsingRepository.read_resume_for_processing` authorizes only a `processing` resume bound to a `ready` object, then uses the controlled storage reader. It maps missing, invalid or unreadable storage to `storage_unavailable` without leaking a path or object key.
-- The fixed Celery task `careerpass.resume_parse` accepts only `task_run_id`. It constructs the approved stdio MinerU and Qwen adapters from worker configuration, keeps PDF bytes and Markdown in memory, and delegates all terminal writes to `ResumeParseFinalizationService`.
-- `parser_timeout`, `internal_error`, and `storage_unavailable` release the matching execution lease before bounded exponential-backoff/jitter retry. `file_unreadable` and `schema_validation_failed`, or retry exhaustion, call the atomic document-parsing failure boundary. No Celery Result Backend is introduced.
+- `ResumeParseWorkerService` 只协调带类型且由 Repository 支持的端口。读取简历前先领取执行租约；缺少租约或租约已过期时不产生副作用并直接忽略。
+- `DocumentParsingRepository.read_resume_for_processing` 只授权读取绑定到 `ready` 对象且处于 `processing` 状态的简历，然后使用受控存储读取器；缺失、无效或不可读的存储映射为 `storage_unavailable`，不泄露路径或对象键。
+- 固定 Celery 任务 `careerpass.resume_parse` 只接受 `task_run_id`。它根据 Worker 配置构造已批准的 stdio MinerU 和 Qwen 适配器，在内存中处理 PDF 字节和 Markdown，并将所有终态写入委托给 `ResumeParseFinalizationService`。
+- `parser_timeout`、`internal_error` 和 `storage_unavailable` 在有界指数退避/抖动重试前释放匹配的执行租约。`file_unreadable`、`schema_validation_failed` 或重试耗尽时调用文档解析原子失败边界。不引入 Celery 结果后端。
 
-# Subtask 10: candidate-preparation acceptance and closure
+# 子任务 10：候选人资料准备验收与收口
 
-- Candidate preparation remains limited to upload, idempotency, controlled object storage and candidate-scoped resource/status queries. It does not import or own profile persistence, document reads, MinerU/Qwen calls, Worker execution, or downstream admission decisions.
-- A focused repository test proves that creating a formal resume invokes exactly one extra-field-forbidden `ResumeParseRequestV1` while the resume-creation transaction is still active.
-- The isolated-runtime dispatcher test now asserts that the request persisted at upload has the fixed `resume_parse` task type, `resume` resource type, `v1` task version and `queued` initial state before Dispatcher publication.
-- The hand-off is deliberately the module terminal boundary: acceptance does not start or inspect a Worker and does not assert MinerU, Qwen, profile, or parsing terminal outcomes. Those are owned by the document-parsing acceptance in subtask 11.
+- 候选人资料准备仍限于上传、幂等、受控对象存储以及候选人范围内的资源/状态查询；不导入或拥有画像持久化、文档读取、MinerU/Qwen 调用、Worker 执行或下游准入决策。
+- 当前阶段 5 单元测试证明 G2 Service 在上传事务中调用任务 Repository，并返回 `processing`；真实隔离运行时测试仍待阶段 6/8 环境门禁开启后验证。
+- 集成验收必须断言上传提交后存在固定 `resume_parse`、`resume`、`v1`、`queued` 任务，且相同幂等请求只复用同一简历和任务。
+- 该交接仍是 G2 模块边界终点：G2 不启动或检查 Worker，也不断言 MinerU、Qwen、画像或解析终态；这些由 CHG-021 后续阶段负责。

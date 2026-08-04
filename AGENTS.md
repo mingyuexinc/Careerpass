@@ -21,6 +21,7 @@
 1. **敏感原值与安全凭证不得暴露，诊断信息必须脱敏且最小化**：密码、密码哈希、令牌、未经脱敏的简历原文、联系方式、完整内部文件定位、模型原始响应及含敏感内容的异常堆栈，不得进入日志、LangSmith 追踪或非必要接口响应；不得进入 Prompt 的内容也不得超出任务所需的已脱敏数据。日志与 LangSmith 追踪仅记录用于定位问题的最小脱敏诊断信息，例如关联 ID、处理阶段、状态、失败分类、耗时和重试次数。****
 1. **Agent 的工具调用必须有边界**：工具输入须校验，外部调用须设置超时、重试和错误处理；禁止让模型拼接 SQL、Shell 命令或未经校验的外部请求。
 1. **API 响应必须遵循统一格式 ** - `{code、msg、data}`结构
+1. **疑难问题必须先查案例**：遇到环境、依赖、架构、联调或故障排查类疑难问题，先查询 `.harness/wiki/00-governance/Difficult problem summary.md`；已有案例适用时优先复用其诊断路径，问题解决后将可复用结论补充回该文档。
 
 
 
@@ -33,6 +34,7 @@
 |  `.harness/rules/Development process specification.md`   | 开发流水线与流程 |    
 |   `.harness/skills/coding-skill/SKILL.md`   | 编码实现技能     |
 |   `.harness/skills/expert-reviewer/SKILL.md`   | 专家评审技能     |
+|   `.harness/wiki/00-governance/Difficult problem summary.md`   | 疑难问题案例、诊断路径、解决方案与验证边界；遇到疑难问题时必须先查询    |
 |   `.harness/wiki/01-governance/MVP scope and development boundaries.md`   | MVP 开发范围、延期能力与不可降级约束；每次需求开发前的范围裁决基准    |
 |   `.harness/wiki/01-governance/Technical enablement and workflow governance.md`   | 技术能力分层、Agent 工作流治理与 RAG 启用条件；涉及 Agent、Workflow、RAG、异步任务时必读    |
 |   `.harness/wiki/02-domain/Domain term.md`   | 领域术语与统一定义    |

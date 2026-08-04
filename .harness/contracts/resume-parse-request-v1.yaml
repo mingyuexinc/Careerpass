@@ -1,0 +1,59 @@
+id: ResumeParseRequestV1
+version: v1
+status: locked
+purpose: G2 在正式简历资源提交后向 G3 交付固定的解析受理契约
+producer:
+  package: .harness/changes/proposed/CHG-2026-020-candidate-profile-preparation-mvp
+  module: candidate-preparation
+consumer:
+  package: .harness/changes/proposed/CHG-2026-021-document-parsing-mvp
+  module: document-parsing
+schema:
+  model: app.schemas.document_parsing.ResumeParseRequestV1
+  extra: forbid
+  frozen: true
+  fields:
+    - name: candidate_id
+      type: UUID
+      required: true
+      source: CurrentIdentity.candidate_id
+    - name: resume_id
+      type: UUID
+      required: true
+      source: G2-owned Resume resource
+    - name: task_version
+      type: Literal["v1"]
+      required: true
+      default: v1
+semantics:
+  trigger: durable cross-module handoff represented by a queued AsyncTaskRun
+  producer_action: G2 validates ownership and ready object, then creates or reuses the queued task in the same PostgreSQL transaction as Resume and upload idempotency data.
+  consumer_action: G3 consumes the existing queued task, revalidates ownership and object readiness, claims execution, and runs the parsing workflow.
+  forbidden_actions:
+    - G2 calling G3 Service, Dispatcher, Worker, MinerU, or Qwen
+    - G3 calling G2 internal Service or Repository implementation
+    - passing paths, URLs, storage keys, file body, model parameters, MCP parameters, credentials, or free-form instructions
+ownership:
+  resource_owner: candidate identified by candidate_id
+  handoff_owner: G2 creates or reuses the durable queued task record
+  parsing_state_owner: G3 owns processing-to-succeeded/failed transitions
+  profile_owner: G3 owns CandidateProfile persistence and query boundary
+transaction_boundary:
+  g2: StoredFileObject ready metadata, Resume, upload idempotency relation, and AsyncTaskRun queued row commit atomically; unreferenced temporary objects are cleaned after rollback.
+  g3: task execution, validated profile, Resume terminal state, and AsyncTaskRun terminal state commit atomically.
+idempotency:
+  upload: same candidate, endpoint, key, content digest, and name reuses the same Resume and accepted processing result; conflicting payload returns 409.
+  handoff: unique task key is resume_parse:{resume_id}:v1; repeated handoff reuses one queued task and never creates a second valid task.
+state:
+  accepted: Resume.parse_status=processing and AsyncTaskRun.status=queued
+  terminal: G3 transitions processing/queued work to succeeded or failed under its lease and state rules.
+failure_boundary:
+  g2_failure: rollback database transaction and clean unreferenced temporary object; do not expose internal location.
+  g3_failure: preserve committed G2 resources; G3 records retryable or terminal parsing failure.
+security_boundary:
+  authorization: Repository verifies candidate ownership and stored object readiness; authorization is derived from resource state, not passed as a contract field.
+  diagnostics: only correlation IDs, stage, status, failure classification, duration, and retry count may be recorded.
+participants:
+  - .harness/changes/proposed/CHG-2026-020-candidate-profile-preparation-mvp
+  - .harness/changes/proposed/CHG-2026-021-document-parsing-mvp
+joint_contract_gate_id: JCG-2026-020-021-RESUME-PARSE-V1

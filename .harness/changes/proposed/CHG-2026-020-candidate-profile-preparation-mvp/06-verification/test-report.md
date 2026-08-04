@@ -1,4 +1,29 @@
-# 子任务 0：资料上传切片验收报告
+# 子任务 0：资料上传切片验收报告（历史证据；不作为当前阶段 4/5 授权依据）
+
+> 本报告记录旧实现的测试事实。治理迁移后需补充 G2 queued 任务交接、G3 只消费既有任务和未知字段拒绝的阶段 6 证据；本报告不构成契约锁定或阶段 4/5 通过。
+
+## 当前阶段 6：新增边界测试与必要回归
+
+### 结果
+
+- `uv run pytest tests/unit -q --no-cov`：通过。
+- 在真实 PostgreSQL/Redis 集成环境变量已设置的同一会话中执行 `uv run pytest -q`：全量回归通过；覆盖率 `89.51%`，达到整体不低于 80% 的门禁要求。
+- 候选人资料准备 Service 核心逻辑覆盖率为 `100%`。
+- `uv run ruff check .`：通过。
+- 在隔离 Docker Compose PostgreSQL 16 和 Redis 7.4 已启动、并显式设置 `RUN_INTEGRATION_TESTS=true` 及宿主机映射端口连接配置后，`uv run pytest tests/integration/test_runtime_dependencies.py -q --no-cov`：6 项全部通过。
+- 首次真实运行发现全新数据库尚未建立 Alembic head，迁移测试直接执行 downgrade 到 `20260725_0002` 导致失败；已调整测试为先 `upgrade head`，再执行 `downgrade → upgrade → downgrade → upgrade`，修复后 6 项全部通过。
+
+### 新增边界覆盖
+
+- G2 上传事务中任务创建失败时清理暂存对象，不留下可读的无引用物理文件。
+- 附加资料复用既有对象时返回安全资源 ID，并清理本次暂存对象；Repository 失败时同样执行清理。
+- 简历和附加资料列表只映射安全元数据，不返回正文、路径或对象键。
+- 拒绝无效 JPEG、非法 UTF-8 Markdown、空文件以及空/超长显示名。
+- 保留并回归固定 `ResumeParseRequestV1@v1`、未知字段拒绝、候选人归属隔离、queued 任务交接和 G2 不调用 G3 内部实现的边界测试。
+
+### 阶段 6 结论
+
+CHG-020 当前 G2 边界的新增单元测试、必要回归和真实 PostgreSQL/Redis 集成验证均已通过。真实集成测试覆盖迁移重复执行、Repository/API、对象存储、Dispatcher/任务租约、终态原子性和对象清理；本次不宣称 MinerU/Qwen 外部全链路，该能力属于 CHG-021 后续门禁。
 
 ## 结果
 

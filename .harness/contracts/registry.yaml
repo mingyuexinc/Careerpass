@@ -1,0 +1,24 @@
+contracts:
+  - id: ResumeParseRequestV1
+    version: v1
+    file: .harness/contracts/resume-parse-request-v1.yaml
+    status: locked
+    producer:
+      package: .harness/changes/proposed/CHG-2026-020-candidate-profile-preparation-mvp
+      module: candidate-preparation
+    consumer:
+      package: .harness/changes/proposed/CHG-2026-021-document-parsing-mvp
+      module: document-parsing
+    participants:
+      - .harness/changes/proposed/CHG-2026-020-candidate-profile-preparation-mvp
+      - .harness/changes/proposed/CHG-2026-021-document-parsing-mvp
+    joint_contract_gate_id: JCG-2026-020-021-RESUME-PARSE-V1
+    joint_review_record: .harness/contracts/JCG-2026-020-021-RESUME-PARSE-V1-joint-review.md
+    approvals:
+      - package: .harness/changes/proposed/CHG-2026-020-candidate-profile-preparation-mvp
+        approved_by: CHG-020 developer
+        approved_at: 2026-08-01
+      - package: .harness/changes/proposed/CHG-2026-021-document-parsing-mvp
+        approved_by: CHG-021 developer
+        approved_at: 2026-08-01
+    contract_hash: 9AB937AE08E4A69C3D1D87C1968B8C17D7B6371984E236B1481C984F49EC9B18

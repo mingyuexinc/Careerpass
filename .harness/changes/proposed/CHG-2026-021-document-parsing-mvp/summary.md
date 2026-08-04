@@ -4,7 +4,7 @@
 
 将简历解析作为独立技术能力模块推进和验收。模块只接收经授权、版本化的简历解析请求；负责受控读取、结构化提取、Pydantic 与业务规则校验、有限失败分类/重试，以及候选人画像与简历终态的原子持久化和候选人归属查询。
 
-候选人资料准备只负责上传并可靠提交 `ResumeParseRequestV1`；它不读取文档、不执行 Worker，也不拥有候选人画像或解析终态。
+候选人资料准备（CHG-020）在同一 PostgreSQL 事务中创建或复用 `ResumeParseRequestV1` 对应的 queued `AsyncTaskRun`；它不读取文档、不执行 Worker，也不拥有候选人画像或解析终态。简历解析模块（CHG-021）只消费该既有 queued 任务，不创建第二个任务。
 
 ## 当前基线
 
@@ -17,15 +17,16 @@
 
 ## 发布门禁结论
 
-- 简历解析切片已通过本地 MVP 验收，详见 `06-verification/release-gate.md`。
+- `06-verification/release-gate.md` 保留既有本地 MVP 验收证据；因本次跨包契约迁移，不能替代当前阶段 1–3 复核，也不能授权阶段 4/5。
 - 仓库级变更包校验目前被独立的 CHG-019 缺失必需文件阻断；该门禁为 `blocked`。
-- 简历解析切片的发布门禁状态以本变更包和独立发布门禁为准；岗位 JD 解析不再构成本模块完成条件。
+- 当前治理状态以本变更包阶段台账和统一契约注册表为准；岗位 JD 解析不构成本模块完成条件。
 
 ## 影响模块
 
 - 简历解析：简历解析请求、候选人画像、终态及查询。
 - 异步技术使能：Dispatcher、Celery Worker、租约和受控重试。
-- 候选人资料准备：仅作为 `ResumeParseRequestV1` 的上游提交方。
+- 候选人资料准备：作为 `ResumeParseRequestV1@v1` 的生产者，并在资源事务中创建/复用 queued 任务。
+- 跨包契约注册：统一引用 `.harness/contracts/resume-parse-request-v1.yaml`，联合门禁为 `JCG-2026-020-021-RESUME-PARSE-V1`；契约锁定前不得恢复阶段 4。
 
 ## 关键约束
 

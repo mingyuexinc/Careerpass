@@ -1,5 +1,18 @@
 # 测试报告
 
+## 当前执行记录（2026-08-02）
+
+本次按 T1–T7 清单完成阶段 6 验证，使用 Docker Compose 启动真实 PostgreSQL 16、Redis 7.4、Dispatcher 和 Celery Worker，并在配置真实外部凭证的 Worker 中验证 MinerU/Qwen 链路。
+
+- 单元测试、真实运行时集成测试和外部链路测试全部通过。
+- PostgreSQL/Redis/Dispatcher/Worker 运行时集成测试：6 项通过。
+- MinerU 外部适配器、Qwen 外部适配器、真实解析全链路：通过。
+- 全量测试（含真实集成与外部解析开关）：148 项通过；覆盖率 89.64%，高于项目 80% 门槛。
+- Ruff 检查通过。
+- 覆盖成功、对象存储不可用、超时、供应商 429/5xx、不可读 PDF、Schema 失败、重试耗尽、重复/迟到消息、租约接管和越权查询边界；证据仅保留状态、失败分类和关联 ID，未记录凭证、简历原文、Markdown、模型原始响应或完整路径。
+
+复跑期间曾出现 PostgreSQL 长连接类型缓存失效，重启应用侧容器刷新连接后，外部链路和最终覆盖率全量测试均通过；该问题属于测试环境连接生命周期处置，不改变业务实现。
+
 ## 子任务 2.1：隔离运行时验证
 
 2026-07-28 已在本地隔离 Docker Compose 拓扑完成 PostgreSQL、Redis、独立 Dispatcher 与 Celery Worker 的运行时验证。

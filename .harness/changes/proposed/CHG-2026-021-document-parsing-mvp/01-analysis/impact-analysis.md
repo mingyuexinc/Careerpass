@@ -8,16 +8,16 @@
 
 ## 依赖与数据流
 
-`候选人资料准备 → ResumeParseRequestV1 → Dispatcher → resume Worker → MinerU → Qwen → Pydantic/业务校验 → candidate_profiles + resume/task 终态`
+`候选人资料准备（同事务创建/复用 queued AsyncTaskRun） → ResumeParseRequestV1@v1 → Dispatcher → resume Worker → MinerU → Qwen → Pydantic/业务校验 → candidate_profiles + resume/task 终态`
 
-候选人资料准备不得调用简历解析的内部 Service、Repository、存储或任务实现。
+候选人资料准备不得调用简历解析的内部 Service、Dispatcher、Worker、存储或解析任务实现；G3 只消费 G2 已创建/复用的 queued 任务，不创建第二个任务。唯一契约来源为 `.harness/contracts/resume-parse-request-v1.yaml`，联合门禁标识为 `JCG-2026-020-021-RESUME-PARSE-V1`。
 
 ## 风险与门禁
 
 | 风险 | 影响 | 处理 |
 | --- | --- | --- |
-| Redis/Worker/数据库未做真实联通验证 | 简历任务可能无法从发布走到租约领取 | 子任务 2 必须在隔离真实依赖中完成；当前为 blocked |
-| 外部提供方行为与单适配器预验证不同 | 可能无法写入原子画像终态 | 子任务 3 采用受控脱敏 PDF 和真实 Worker 拓扑验证 |
+| Redis/Worker/数据库未做真实联通验证 | 简历任务可能无法从发布走到租约领取 | 阶段 2 已以真实 Compose 证据覆盖；阶段 6/8 仍需验证 G2→G3 业务交接和完整链路 |
+| 外部提供方行为与单适配器预验证不同 | 可能无法写入原子画像终态 | 阶段 2 已补充真实 Worker 成功、超时、重复投递和中断接管证据；阶段 6/8 继续验证本模块原子画像终态 |
 | 重试或旧租约写入 | 重复画像或错误终态 | 子任务 4 覆盖租约、失败映射和原子性 |
 
 ## 已完成能力的适用范围
