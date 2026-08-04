@@ -4,6 +4,7 @@ import asyncio
 import random
 from uuid import UUID
 
+from billiard.exceptions import SoftTimeLimitExceeded
 from celery import Celery
 
 from app.core.config import get_settings
@@ -118,7 +119,14 @@ def _register_resume_parse_task(celery: Celery) -> None:
         except ValueError:
             return
         retry_count = task.request.retries
-        outcome = asyncio.run(run_resume_parse_task(parsed_task_run_id, retry_count))
+        try:
+            outcome = asyncio.run(run_resume_parse_task(parsed_task_run_id, retry_count))
+        except SoftTimeLimitExceeded:
+            # Celery interrupts the asyncio call before the service can finalize.
+            # Close the still-valid lease through the repository boundary so the
+            # task cannot remain indefinitely in running/processing.
+            asyncio.run(_fail_interrupted_task(parsed_task_run_id))
+            return
         if outcome != "retry":
             return
         base_delay = min(2 ** (retry_count + 1), settings.celery_retry_backoff_max_seconds)
@@ -129,3 +137,15 @@ def _register_resume_parse_task(celery: Celery) -> None:
 
 
 _register_resume_parse_task(celery_app)
+
+
+async def _fail_interrupted_task(task_run_id: UUID) -> bool:
+    """Finalize a task interrupted by Celery while its execution lease is valid."""
+    database = create_database(str(settings.database_url), pool_size=settings.database_pool_size)
+    try:
+        async with database.session_factory() as session:
+            return await AsyncTaskRepository(session).fail_execution_after_timeout(
+                task_run_id=task_run_id
+            )
+    finally:
+        await database.close()

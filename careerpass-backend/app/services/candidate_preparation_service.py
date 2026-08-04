@@ -7,6 +7,7 @@ from pathlib import PurePath
 from uuid import UUID
 
 from app.infrastructure.storage.local import LocalObjectStorage
+from app.repositories.async_task_repository import AsyncTaskRepository
 from app.repositories.candidate_preparation_repository import (
     CandidatePreparationRepository,
 )
@@ -37,9 +38,14 @@ class CandidatePreparationService:
     """Coordinates validated uploads, opaque storage, and repository transactions."""
 
     def __init__(
-        self, *, repository: CandidatePreparationRepository, storage: LocalObjectStorage
+        self,
+        *,
+        repository: CandidatePreparationRepository,
+        task_repository: AsyncTaskRepository,
+        storage: LocalObjectStorage,
     ) -> None:
         self._repository = repository
+        self._task_repository = task_repository
         self._storage = storage
 
     async def upload_resume(
@@ -56,18 +62,23 @@ class CandidatePreparationService:
         upload = self._storage.put(validated.content)
         display_name = _display_name(name, filename, "resume", "pdf")
         try:
-            resume, _, used_new_file_object = await self._repository.create_resume(
-                candidate_id=candidate_id,
-                name=display_name,
-                upload=upload,
-                idempotency_key=idempotency_key,
-            )
+            async with self._repository.transaction():
+                resume, _, used_new_file_object = await self._repository.create_resume(
+                    candidate_id=candidate_id,
+                    name=display_name,
+                    upload=upload,
+                    idempotency_key=idempotency_key,
+                )
+                await self._task_repository.create_or_get_queued_resume_task(
+                    candidate_id=candidate_id,
+                    resume_id=resume.id,
+                )
         except Exception:
             self._storage.delete(upload.storage_key)
             raise
         if not used_new_file_object:
             self._storage.delete(upload.storage_key)
-        return ResumeCreated(resume_id=resume.id)
+        return ResumeCreated(resume_id=resume.id, parse_status="processing")
 
     async def upload_document(
         self,
@@ -120,6 +131,8 @@ class CandidatePreparationService:
                     resume_id=value.id,
                     name=value.file_name,
                     created_at=value.created_at,
+                    parse_status=value.parse_status,
+                    failure_code=value.failure_code if value.parse_status == "failed" else None,
                 )
                 for value in values
             ],

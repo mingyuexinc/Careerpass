@@ -10,6 +10,7 @@ from app.api.dependencies.services import get_candidate_preparation_service
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
 from app.core.identity import CurrentIdentity
+from app.repositories.async_task_repository import ResumeTaskPreconditionError
 from app.repositories.candidate_preparation_repository import IdempotencyConflictError
 from app.schemas.candidate_preparation import DocumentType
 from app.schemas.response import success_response
@@ -46,10 +47,16 @@ async def upload_resume(
         raise AppException(
             status_code=409, code=ErrorCode.CONFLICT, message="idempotency key conflict"
         ) from None
+    except ResumeTaskPreconditionError:
+        raise AppException(
+            status_code=409,
+            code=ErrorCode.PRECONDITION_NOT_MET,
+            message="resume is not ready for parsing",
+        ) from None
     return success_response(
         value.model_dump(mode="json"),
-        msg="上传成功",
-        code=ErrorCode.UPLOAD_SUCCEEDED,
+        msg="上传已受理，正在解析简历",
+        code=ErrorCode.UPLOAD_ACCEPTED,
     )
 
 
@@ -65,7 +72,7 @@ async def list_resumes(
             status_code=400, code=ErrorCode.VALIDATION_ERROR, message="invalid pagination"
         )
     value = await service.list_resumes(identity.candidate_id, page, page_size)
-    return success_response(value.model_dump(mode="json"))
+    return success_response(value.model_dump(mode="json", exclude_none=True))
 
 
 @candidate_preparation_router.post("/candidate_documents", status_code=status.HTTP_201_CREATED)

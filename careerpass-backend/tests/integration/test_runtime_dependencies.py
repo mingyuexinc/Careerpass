@@ -57,6 +57,9 @@ def test_migrations_are_repeatable_and_readiness_is_healthy(
     get_settings.cache_clear()
     try:
         config = Config("alembic.ini")
+        # A fresh Compose database starts at the Alembic base revision. Establish
+        # the current head before exercising downgrade/upgrade repeatability.
+        command.upgrade(config, "head")
         command.downgrade(config, "20260725_0002")
         command.upgrade(config, "head")
         command.downgrade(config, "20260725_0002")
@@ -344,8 +347,8 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
 
         assert created_resume.status_code == replayed_resume.status_code == 201
         assert created_resume.json()["code"] == 201
-        assert created_resume.json()["msg"] == "上传成功"
-        assert "parse_status" not in created_resume.json()["data"]
+        assert created_resume.json()["msg"] == "上传已受理，正在解析简历"
+        assert created_resume.json()["data"]["parse_status"] == "processing"
         assert created_resume.json()["data"]["resume_id"] == replayed_resume.json()["data"]["resume_id"]
         assert conflicting_resume.status_code == 409
         assert conflicting_resume.json()["code"] == 409
@@ -356,7 +359,7 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
         assert own_resumes.status_code == 200
         assert own_resumes.json()["data"]["total"] == 1
         assert own_resumes.json()["data"]["list"][0]["name"] == "candidate-a-resume.pdf"
-        assert "parse_status" not in own_resumes.json()["data"]["list"][0]
+        assert own_resumes.json()["data"]["list"][0]["parse_status"] == "processing"
         assert other_resumes.status_code == 200
         assert other_resumes.json()["data"]["list"] == []
 

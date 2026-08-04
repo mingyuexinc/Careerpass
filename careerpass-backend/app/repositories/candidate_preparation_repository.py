@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import AbstractAsyncContextManager
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -25,28 +26,31 @@ class CandidatePreparationRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    def transaction(self) -> AbstractAsyncContextManager[None]:
+        """Expose the caller-owned transaction boundary without exposing the session."""
+        return self._session.begin()
+
     async def create_resume(
         self, *, candidate_id: UUID, name: str, upload: StoredUpload, idempotency_key: UUID | None
     ) -> tuple[Resume, bool, bool]:
-        async with self._session.begin():
-            existing = await self._resume_by_key(candidate_id, idempotency_key)
-            if existing is not None:
-                resume, file_object = existing
-                if resume.file_name != name or file_object.content_sha256 != upload.content_sha256:
-                    raise IdempotencyConflictError
-                return resume, True, False
-            file_object, created_file_object = await self._get_or_create_file_object(
-                upload, "application/pdf"
-            )
-            resume = Resume(
-                candidate_id=candidate_id,
-                upload_idempotency_key=idempotency_key,
-                file_name=name,
-                stored_file_object_id=file_object.id,
-                file_type="pdf",
-            )
-            self._session.add(resume)
-            await self._session.flush()
+        existing = await self._resume_by_key(candidate_id, idempotency_key)
+        if existing is not None:
+            resume, file_object = existing
+            if resume.file_name != name or file_object.content_sha256 != upload.content_sha256:
+                raise IdempotencyConflictError
+            return resume, True, False
+        file_object, created_file_object = await self._get_or_create_file_object(
+            upload, "application/pdf"
+        )
+        resume = Resume(
+            candidate_id=candidate_id,
+            upload_idempotency_key=idempotency_key,
+            file_name=name,
+            stored_file_object_id=file_object.id,
+            file_type="pdf",
+        )
+        self._session.add(resume)
+        await self._session.flush()
         return resume, False, created_file_object
 
     async def create_document(

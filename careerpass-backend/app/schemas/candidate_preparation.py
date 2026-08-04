@@ -9,16 +9,28 @@ from uuid import UUID
 from pydantic import BaseModel
 
 DocumentType = Literal["certificate", "strategy", "other"]
+ParseStatus = Literal["processing", "succeeded", "failed"]
+ParseFailureCode = Literal[
+    "unsupported_file",
+    "file_unreadable",
+    "storage_unavailable",
+    "parser_timeout",
+    "schema_validation_failed",
+    "internal_error",
+]
 
 
 class ResumeCreated(BaseModel):
     resume_id: UUID
+    parse_status: Literal["processing"] = "processing"
 
 
 class ResumeListItem(BaseModel):
     resume_id: UUID
     name: str
     type: Literal["resume"] = "resume"
+    parse_status: ParseStatus
+    failure_code: ParseFailureCode | None = None
     created_at: datetime
 
 

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import and_, or_, select
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import AsyncTaskRun, Resume
+from app.infrastructure.database.models import AsyncTaskRun, Resume, StoredFileObject
 
 
 @dataclass(frozen=True)
@@ -33,11 +35,75 @@ class ExecutionLease:
     execution_token: UUID
 
 
+class ResumeTaskPreconditionError(Exception):
+    """Raised when a resume cannot safely receive a parsing task."""
+
+
 class AsyncTaskRepository:
     """The only persistence boundary for dispatcher and worker task state."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def create_or_get_queued_resume_task(
+        self,
+        *,
+        candidate_id: UUID,
+        resume_id: UUID,
+        task_version: Literal["v1"] = "v1",
+    ) -> tuple[AsyncTaskRun, bool]:
+        """Create or reuse the one durable queued task for a candidate-owned resume."""
+        resource = await self._session.execute(
+            select(Resume, StoredFileObject)
+            .join(StoredFileObject, Resume.stored_file_object_id == StoredFileObject.id)
+            .where(Resume.id == resume_id, Resume.candidate_id == candidate_id)
+            .with_for_update()
+        )
+        resource_row = resource.one_or_none()
+        if resource_row is None:
+            raise ResumeTaskPreconditionError
+        resume, file_object = resource_row
+        idempotency_key = f"resume_parse:{resume_id}:{task_version}"
+
+        existing = await self._session.scalar(
+            select(AsyncTaskRun)
+            .where(AsyncTaskRun.idempotency_key == idempotency_key)
+            .with_for_update()
+        )
+        if existing is not None:
+            if (
+                existing.task_type != "resume_parse"
+                or existing.resource_type != "resume"
+                or existing.resource_id != resume_id
+                or existing.task_version != task_version
+            ):
+                raise ResumeTaskPreconditionError
+            return existing, False
+
+        if file_object.status != "ready" or resume.parse_status != "processing":
+            raise ResumeTaskPreconditionError
+
+        statement = (
+            postgres_insert(AsyncTaskRun)
+            .values(
+                task_type="resume_parse",
+                resource_type="resume",
+                resource_id=resume_id,
+                idempotency_key=idempotency_key,
+                task_version=task_version,
+                status="queued",
+            )
+            .on_conflict_do_nothing(index_elements=[AsyncTaskRun.idempotency_key])
+        )
+        result = await self._session.execute(statement)
+        task = await self._session.scalar(
+            select(AsyncTaskRun)
+            .where(AsyncTaskRun.idempotency_key == idempotency_key)
+            .with_for_update()
+        )
+        if task is None:
+            raise ResumeTaskPreconditionError
+        return task, result.rowcount == 1
 
     async def claim_dispatch_batch(
         self, *, batch_size: int, lease_seconds: int
@@ -142,6 +208,30 @@ class AsyncTaskRepository:
             task.execution_lease_expires_at = None
             task.started_at = None
             task.dispatched_at = None
+        return True
+
+    async def fail_execution_after_timeout(self, *, task_run_id: UUID) -> bool:
+        """Close the current, non-expired lease when Celery interrupts the task."""
+        now = datetime.now(UTC)
+        async with self._session.begin():
+            task = await self._locked_task(task_run_id)
+            if (
+                task is None
+                or task.status != "running"
+                or task.execution_lease_expires_at is None
+                or task.execution_lease_expires_at <= now
+            ):
+                return False
+            task.status = "failed"
+            task.failure_code = "internal_error"
+            task.finished_at = now
+            task.execution_token = None
+            task.execution_lease_expires_at = None
+            if task.resource_type == "resume":
+                resume = await self._session.get(Resume, task.resource_id, with_for_update=True)
+                if resume is not None and resume.parse_status == "processing":
+                    resume.parse_status = "failed"
+                    resume.failure_code = "internal_error"
         return True
 
     async def fail_stalled_tasks(self, *, stalled_after_seconds: int = 600) -> int:
