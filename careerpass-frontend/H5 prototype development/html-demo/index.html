@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Careerpass · 求职 Agent 原型</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --surface: #ffffff;
+        --surface-soft: #fafafa;
+        --line: #eceef2;
+        --text: #17202b;
+        --muted: #8c96a3;
+        --muted-2: #b8bec7;
+        --brand: #ff6a00;
+        --brand-dark: #e85800;
+        --brand-soft: #fff1e7;
+        --success: #2dbb78;
+        --success-soft: #eaf9f1;
+        --info: #588cf4;
+        --info-soft: #edf3ff;
+        --danger: #eb6262;
+        --danger-soft: #fff0f0;
+        --radius-lg: 24px;
+        --radius-md: 16px;
+        --radius-sm: 10px;
+        --shadow: 0 10px 28px rgba(28, 37, 48, 0.06);
+        --shadow-soft: 0 3px 14px rgba(28, 37, 48, 0.05);
+        --sidebar: 256px;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { min-height: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+      }
+      button, input, textarea, select { font: inherit; }
+      button { cursor: pointer; }
+      button:disabled { cursor: not-allowed; opacity: .5; }
+      a { color: inherit; text-decoration: none; }
+
+      .hidden { display: none !important; }
+      .muted { color: var(--muted); }
+      .eyebrow { color: var(--brand); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      .page-title { margin: 4px 0 8px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.04em; }
+      .page-subtitle { margin: 0; color: var(--muted); line-height: 1.7; }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: 12px;
+        font-weight: 700;
+        transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+      }
+      .btn:hover:not(:disabled) { transform: translateY(-1px); }
+      .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 8px 18px rgba(255, 106, 0, .2); }
+      .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+      .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
+      .btn-ghost { min-height: 36px; padding: 0 12px; background: transparent; color: var(--brand); }
+      .btn-danger { background: var(--danger-soft); color: var(--danger); }
+
+      .login-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        background: radial-gradient(circle at 20% 10%, #fff7f0 0, transparent 32%), var(--bg);
+      }
+      .login-layout { width: min(1060px, 100%); display: grid; grid-template-columns: .9fr 1.1fr; gap: 30px; align-items: center; }
+      .login-intro { padding: 24px 8px; }
+      .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.04em; }
+      .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--brand); color: #fff; font-weight: 900; box-shadow: 0 7px 14px rgba(255, 106, 0, .22); }
+      .login-intro h1 { max-width: 430px; margin: 52px 0 18px; font-size: clamp(36px, 5vw, 62px); line-height: 1.04; letter-spacing: -.07em; }
+      .login-intro p { max-width: 420px; color: var(--muted); font-size: 16px; line-height: 1.8; }
+      .login-note { display: flex; gap: 10px; align-items: center; margin-top: 36px; color: var(--muted); }
+      .login-note strong { color: var(--text); }
+      .login-card { padding: 34px; background: var(--surface); border: 1px solid rgba(255,255,255,.75); border-radius: 28px; box-shadow: var(--shadow); }
+      .role-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 5px; background: var(--bg); border-radius: 14px; }
+      .role-tab { min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-weight: 700; }
+      .role-tab.active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-soft); }
+      .login-card h2 { margin: 30px 0 8px; font-size: 28px; letter-spacing: -.04em; }
+      .login-card .helper { margin: 0 0 24px; color: var(--muted); line-height: 1.6; }
+      .form-field { display: grid; gap: 8px; margin: 16px 0; }
+      .form-field label { color: #5c6877; font-size: 13px; font-weight: 700; }
+      .form-field input, .form-field textarea, .form-field select {
+        width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; outline: 0; background: var(--surface-soft); color: var(--text);
+        transition: border .18s ease, box-shadow .18s ease, background .18s ease;
+      }
+      .form-field textarea { padding-top: 12px; min-height: 108px; resize: vertical; }
+      .form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 4px var(--brand-soft); }
+      .login-submit { width: 100%; margin-top: 12px; }
+      .demo-hint { margin: 16px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+      .login-error { min-height: 18px; margin-top: 10px; color: var(--danger); font-size: 13px; }
+
+      .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) 1fr; }
+      .sidebar { display: flex; flex-direction: column; min-height: 100vh; padding: 24px 16px 18px; background: var(--surface); border-right: 1px solid var(--line); }
+      .sidebar .brand { padding: 0 10px 28px; }
+      .role-badge { display: inline-flex; align-items: center; gap: 7px; width: fit-content; margin: 0 10px 24px; padding: 7px 10px; background: var(--brand-soft); border-radius: 999px; color: var(--brand-dark); font-size: 12px; font-weight: 800; }
+      .role-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+      .nav { display: grid; gap: 5px; }
+      .nav-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 0 12px; border: 0; border-radius: 13px; background: transparent; color: var(--muted); text-align: left; font-weight: 700; }
+      .nav-item:hover { background: var(--surface-soft); color: var(--text); }
+      .nav-item.active { background: #f1f2f4; color: var(--text); }
+      .nav-icon { display: grid; place-items: center; width: 24px; color: currentColor; font-size: 18px; }
+      .sidebar-spacer { flex: 1; }
+      .profile-mini { display: flex; align-items: center; gap: 10px; padding: 14px 10px; border-top: 1px solid var(--line); }
+      .avatar { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #ffd4b7, #ffe9d7); color: var(--brand-dark); font-weight: 800; }
+      .profile-mini strong { display: block; font-size: 13px; }
+      .profile-mini span { color: var(--muted); font-size: 12px; }
+      .logout { width: 100%; margin-top: 10px; }
+      .main { min-width: 0; padding: 28px clamp(18px, 4vw, 56px) 42px; overflow: hidden; }
+      .topbar { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 28px; }
+      .topbar-actions { display: flex; align-items: center; gap: 10px; }
+      .status-pill { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border-radius: 999px; background: var(--surface); color: var(--muted); box-shadow: var(--shadow-soft); font-size: 12px; font-weight: 700; }
+      .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+      .view { display: grid; gap: 22px; animation: fade-in .22s ease both; }
+      @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+      .hero-card, .panel, .metric, .empty-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
+      .hero-card { display: flex; justify-content: space-between; gap: 24px; align-items: center; padding: 28px; background: linear-gradient(135deg, #fff8f2, #fff); }
+      .hero-card h2 { margin: 5px 0 8px; font-size: 25px; letter-spacing: -.04em; }
+      .hero-card p { margin: 0; color: var(--muted); line-height: 1.7; }
+      .hero-orb { display: grid; place-items: center; flex: 0 0 auto; width: 100px; height: 100px; border-radius: 32px; background: var(--brand); color: #fff; font-size: 34px; box-shadow: 0 16px 28px rgba(255, 106, 0, .22); }
+      .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+      .metric { padding: 20px; border-top: 3px solid var(--brand); }
+      .metric:nth-child(2) { border-top-color: var(--info); }
+      .metric:nth-child(3) { border-top-color: #a47af4; }
+      .metric:nth-child(4) { border-top-color: var(--success); }
+      .metric-label { color: var(--muted); font-size: 13px; }
+      .metric-value { margin: 8px 0 4px; font-size: 31px; font-weight: 800; letter-spacing: -.06em; }
+      .metric-note { color: var(--muted); font-size: 12px; }
+      .two-col { display: grid; grid-template-columns: 1.25fr .75fr; gap: 20px; }
+      .panel { padding: 22px; }
+      .panel-head { display: flex; justify-content: space-between; gap: 14px; align-items: center; margin-bottom: 18px; }
+      .panel-head h3 { margin: 0; font-size: 17px; letter-spacing: -.03em; }
+      .panel-head span { color: var(--brand); font-size: 12px; font-weight: 800; }
+      .job-list { display: grid; gap: 10px; }
+      .job-row { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; }
+      .job-logo { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; border-radius: 12px; background: var(--brand-soft); color: var(--brand); font-weight: 900; }
+      .job-info { min-width: 0; flex: 1; }
+      .job-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .job-info span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+      .score { color: var(--success); font-weight: 800; }
+      .notice-list { display: grid; gap: 12px; }
+      .notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--surface-soft); }
+      .notice-icon { display: grid; place-items: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 10px; background: var(--brand-soft); color: var(--brand); }
+      .notice strong { display: block; font-size: 13px; }
+      .notice span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+      .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .upload-zone { display: grid; place-items: center; min-height: 250px; padding: 28px; border: 1.5px dashed #ffb37f; border-radius: 20px; background: #fffaf6; text-align: center; }
+      .upload-icon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 15px; border-radius: 19px; background: var(--brand-soft); color: var(--brand); font-size: 26px; }
+      .upload-zone h3 { margin: 0 0 8px; font-size: 18px; }
+      .upload-zone p { max-width: 320px; margin: 0 auto 18px; color: var(--muted); line-height: 1.7; }
+      .file-input { display: none; }
+      .file-card { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 430px; margin-top: 18px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); text-align: left; }
+      .file-card strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .file-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+      .state-list { display: grid; gap: 12px; }
+      .state-row { display: flex; align-items: center; gap: 12px; padding: 13px; border-radius: 14px; background: var(--surface-soft); }
+      .state-marker { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--line); color: var(--muted); font-size: 13px; font-weight: 800; }
+      .state-row.done .state-marker { background: var(--success-soft); color: var(--success); }
+      .state-row.active .state-marker { background: var(--brand-soft); color: var(--brand); }
+      .state-row strong { display: block; font-size: 13px; }
+      .state-row span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+
+      .progress-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 4px; }
+      .filter-row { display: flex; flex-wrap: wrap; gap: 8px; }
+      .filter-chip { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
+      .filter-chip.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+      .application-list { display: grid; gap: 16px; }
+      .application-card { padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-soft); }
+      .application-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+      .application-top h3 { margin: 0; font-size: 16px; }
+      .application-top p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+      .tag { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--info-soft); color: var(--info); font-size: 11px; font-weight: 800; white-space: nowrap; }
+      .tag.offer { background: var(--success-soft); color: var(--success); }
+      .tag.terminated { background: var(--danger-soft); color: var(--danger); }
+      .timeline { display: grid; grid-template-columns: repeat(9, 1fr); gap: 0; margin-top: 24px; }
+      .timeline-step { position: relative; min-width: 0; padding-top: 17px; color: var(--muted-2); text-align: center; font-size: 10px; }
+      .timeline-step::before { content: ""; position: absolute; z-index: 1; top: 0; left: 50%; width: 10px; height: 10px; border: 3px solid var(--line); border-radius: 50%; background: var(--surface); transform: translateX(-50%); }
+      .timeline-step::after { content: ""; position: absolute; top: 4px; left: 0; width: 100%; height: 3px; background: var(--line); }
+      .timeline-step:first-child::after { left: 50%; width: 50%; }
+      .timeline-step:last-child::after { width: 50%; }
+      .timeline-step.active, .timeline-step.done { color: var(--text); font-weight: 800; }
+      .timeline-step.active::before, .timeline-step.done::before { border-color: var(--brand); background: var(--brand); }
+      .timeline-step.done::after { background: var(--brand); }
+      .timeline-step.active::after { background: linear-gradient(90deg, var(--brand) 0 50%, var(--line) 50%); }
+
+      .goal-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; }
+      .goal-form .wide { grid-column: 1 / -1; }
+      .condition-list { display: grid; gap: 10px; margin-top: 4px; }
+      .condition { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 13px; background: var(--surface-soft); color: var(--muted); }
+      .condition .check { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--line); color: transparent; font-size: 12px; }
+      .condition.done { color: var(--text); }
+      .condition.done .check { background: var(--success-soft); color: var(--success); }
+      .agent-card { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px; border-radius: 18px; background: linear-gradient(135deg, #fff7ef, #fff); }
+      .agent-card h3 { margin: 0 0 7px; font-size: 17px; }
+      .agent-card p { margin: 0; color: var(--muted); line-height: 1.6; }
+      .agent-state { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .agent-state .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-2); }
+      .agent-state.running { color: var(--success); }
+      .agent-state.running .pulse { background: var(--success); box-shadow: 0 0 0 5px var(--success-soft); }
+
+      .chat-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 570px; overflow: hidden; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
+      .chat-list { padding: 18px; border-right: 1px solid var(--line); background: #fcfcfd; }
+      .chat-list h3 { margin: 0 0 16px; font-size: 16px; }
+      .chat-contact { display: flex; gap: 10px; align-items: center; width: 100%; padding: 12px; border: 0; border-radius: 13px; background: transparent; text-align: left; }
+      .chat-contact.active { background: #f1f2f4; }
+      .chat-contact strong { display: block; font-size: 13px; }
+      .chat-contact span { display: block; overflow: hidden; max-width: 160px; margin-top: 4px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+      .chat-window { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
+      .chat-header { display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+      .chat-header h3 { margin: 0; font-size: 16px; }
+      .chat-header p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+      .messages { display: flex; flex-direction: column; gap: 13px; padding: 22px; overflow: auto; background: linear-gradient(180deg, #fafafa, #f5f6f7); }
+      .message { max-width: min(560px, 80%); padding: 12px 14px; border-radius: 14px; line-height: 1.6; }
+      .message.agent { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); }
+      .message.hr { align-self: flex-end; background: var(--brand); color: #fff; }
+      .message small { display: block; margin-top: 5px; opacity: .58; font-size: 10px; }
+      .typing { align-self: flex-start; color: var(--muted); font-size: 12px; font-style: italic; }
+      .composer { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); background: var(--surface); }
+      .composer input { flex: 1; min-width: 0; padding: 0 13px; border: 1px solid var(--line); border-radius: 12px; outline: 0; }
+      .composer input:focus { border-color: var(--brand); }
+
+      .update-table { display: grid; gap: 10px; }
+      .update-row { display: grid; grid-template-columns: 1.4fr .85fr .95fr; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+      .update-job strong { display: block; }
+      .update-job span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+      .update-select { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--text); outline: 0; }
+      .update-select:focus { border-color: var(--brand); }
+      .empty-card { display: grid; place-items: center; min-height: 290px; padding: 30px; text-align: center; }
+      .empty-icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 14px; border-radius: 18px; background: var(--brand-soft); color: var(--brand); font-size: 24px; }
+      .empty-card h3 { margin: 0 0 8px; font-size: 18px; }
+      .empty-card p { max-width: 420px; margin: 0; color: var(--muted); line-height: 1.7; }
+
+      .toast { position: fixed; right: 24px; bottom: 24px; z-index: 20; max-width: min(360px, calc(100vw - 48px)); padding: 13px 16px; border-radius: 13px; background: #1d252e; color: #fff; box-shadow: var(--shadow); animation: toast-in .22s ease both; }
+      @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(23, 32, 43, .25); }
+      .modal { width: min(460px, 100%); padding: 24px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+      .modal h3 { margin: 0 0 8px; font-size: 18px; }
+      .modal p { margin: 0; color: var(--muted); line-height: 1.7; }
+      .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+      @media (max-width: 960px) {
+        :root { --sidebar: 220px; }
+        .login-layout { grid-template-columns: 1fr; max-width: 620px; }
+        .login-intro { padding: 0; text-align: center; }
+        .login-intro h1, .login-intro p { margin-left: auto; margin-right: auto; }
+        .login-intro h1 { margin-top: 28px; }
+        .login-note { justify-content: center; margin-top: 20px; }
+        .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .two-col, .section-grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 700px) {
+        .app-shell { display: block; }
+        .sidebar { position: sticky; top: 0; z-index: 5; min-height: auto; padding: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+        .sidebar .brand { padding: 0 4px 10px; }
+        .role-badge, .profile-mini, .logout { display: none; }
+        .nav { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 2px; }
+        .nav-item { flex: 0 0 auto; width: auto; min-height: 38px; padding: 0 10px; font-size: 12px; }
+        .nav-icon { width: 20px; font-size: 15px; }
+        .main { padding: 20px 14px 32px; }
+        .topbar { margin-bottom: 20px; }
+        .topbar-actions { display: none; }
+        .hero-card { align-items: flex-start; padding: 20px; }
+        .hero-orb { width: 68px; height: 68px; border-radius: 22px; font-size: 26px; }
+        .metric-grid { gap: 10px; }
+        .metric { padding: 14px; }
+        .metric-value { font-size: 25px; }
+        .goal-form { grid-template-columns: 1fr; }
+        .goal-form .wide { grid-column: auto; }
+        .agent-card, .progress-head { display: block; }
+        .agent-card .btn { width: 100%; margin-top: 16px; }
+        .timeline { gap: 0; overflow-x: auto; min-width: 640px; }
+        .application-card { overflow-x: auto; }
+        .chat-layout { grid-template-columns: 1fr; min-height: auto; }
+        .chat-list { border-right: 0; border-bottom: 1px solid var(--line); }
+        .chat-list .chat-contact { display: inline-flex; width: auto; margin-right: 4px; }
+        .chat-window { min-height: 500px; }
+        .update-row { grid-template-columns: 1fr; gap: 9px; }
+        .login-shell { padding: 18px; }
+        .login-intro { display: none; }
+        .login-card { padding: 22px; }
+      }
+    </style>
+  </head>
+  <body>
+    <section id="loginScreen" class="login-shell">
+      <div class="login-layout">
+        <div class="login-intro">
+          <div class="brand"><span class="brand-mark">C</span><span>Careerpass</span></div>
+          <h1>让每一次求职，都更有方向。</h1>
+          <p>你的 AI 求职伙伴，帮你从目标设定、岗位匹配到求职沟通，持续推进下一份理想工作。</p>
+          <div class="login-note"><span>●</span><span><strong>演示模式</strong> · 使用预置身份即可进入原型</span></div>
+        </div>
+        <form id="loginForm" class="login-card">
+          <div class="role-tabs" role="tablist" aria-label="登录身份">
+            <button type="button" class="role-tab active" data-role="candidate">求职者登录</button>
+            <button type="button" class="role-tab" data-role="hr">HR 登录</button>
+          </div>
+          <h2 id="loginTitle">欢迎回来</h2>
+          <p id="loginHelper" class="helper">登录后继续管理你的求职目标和 Agent 进度。</p>
+          <div class="form-field"><label for="loginAccount">账号</label><input id="loginAccount" name="account" autocomplete="username" placeholder="请输入演示账号" value="candidate@careerpass.demo" /></div>
+          <div class="form-field"><label for="loginPassword">密码</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" value="demo1234" /></div>
+          <div id="loginError" class="login-error" aria-live="polite"></div>
+          <button type="submit" class="btn btn-primary login-submit">进入 Careerpass <span>→</span></button>
+          <p class="demo-hint">本页面不连接真实账号系统 · 点击右上身份标签切换角色</p>
+        </form>
+      </div>
+    </section>
+
+    <section id="appScreen" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">C</span><span>Careerpass</span></div>
+        <div class="role-badge"><span class="dot"></span><span id="roleBadgeText">求职者模式</span></div>
+        <nav id="candidateNav" class="nav" aria-label="求职者菜单">
+          <button class="nav-item active" data-view="candidateWelcome"><span class="nav-icon">⌂</span>欢迎页</button>
+          <button class="nav-item" data-view="candidateUpload"><span class="nav-icon">↥</span>求职资料上传</button>
+          <button class="nav-item" data-view="candidateGoal"><span class="nav-icon">◎</span>求职任务创建</button>
+          <button class="nav-item" data-view="candidateProgress"><span class="nav-icon">▥</span>求职进度查看</button>
+        </nav>
+        <nav id="hrNav" class="nav hidden" aria-label="HR菜单">
+          <button class="nav-item active" data-view="hrWelcome"><span class="nav-icon">⌂</span>欢迎页</button>
+          <button class="nav-item" data-view="hrUpload"><span class="nav-icon">↥</span>岗位 JD 上传</button>
+          <button class="nav-item" data-view="hrChat"><span class="nav-icon">□</span>求职沟通</button>
+          <button class="nav-item" data-view="hrUpdate"><span class="nav-icon">↗</span>投递进度更新</button>
+        </nav>
+        <div class="sidebar-spacer"></div>
+        <div class="profile-mini"><div class="avatar" id="profileAvatar">A</div><div><strong id="profileName">Alex Chen</strong><span id="profileRole">求职者</span></div></div>
+        <button id="logoutButton" class="btn btn-secondary logout">⇥ 退出登录</button>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <div><div class="eyebrow" id="topEyebrow">CAREER AGENT</div><h1 id="topTitle" class="page-title">你好，Alex</h1><p id="topSubtitle" class="page-subtitle">把求职交给 Agent，把时间留给更重要的准备。</p></div>
+          <div class="topbar-actions"><span class="status-pill"><span class="dot"></span><span id="topStatus">演示数据已就绪</span></span></div>
+        </header>
+        <div id="viewRoot"></div>
+      </main>
+    </section>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+    <div id="modalRoot"></div>
+
+    <script>
+      // 浏览器直开版本：这里使用与 mock/first-round-matching-jobs.js 对齐的展示投影。
+      const jobs = [
+        ["job-demo-001", "AI Agent 工程师", "星河智能科技", "深圳", "25-40K", 94],
+        ["job-demo-002", "大模型应用开发工程师", "云启信息", "杭州", "22-35K", 92],
+        ["job-demo-003", "后端开发工程师（Python）", "远见数据", "广州", "18-30K", 91],
+        ["job-demo-004", "RAG 应用工程师", "知行智能", "上海", "20-32K", 90],
+        ["job-demo-005", "智能产品技术负责人", "启明软件", "北京", "30-45K", 88],
+        ["job-demo-006", "数据平台开发工程师", "数澜科技", "杭州", "18-28K", 87],
+        ["job-demo-007", "机器学习平台工程师", "蓝图计算", "上海", "25-38K", 85],
+        ["job-demo-008", "全栈开发工程师", "木棉互联", "深圳", "20-32K", 84],
+        ["job-demo-009", "后端架构师", "极光云图", "广州", "32-50K", 82],
+        ["job-demo-010", "AI 解决方案工程师", "融智科技", "成都", "18-30K", 81],
+        ["job-demo-011", "软件工程师（智能办公）", "新岸办公", "南京", "16-26K", 79],
+        ["job-demo-012", "数据分析工程师", "瀚海消费科技", "上海", "15-25K", 77],
+        ["job-demo-013", "平台运维开发工程师", "稳态云服务", "武汉", "16-28K", 76],
+        ["job-demo-014", "技术产品经理（AI方向）", "智汇互娱", "北京", "20-35K", 75],
+        ["job-demo-015", "Java 后端开发工程师", "清源网络", "杭州", "18-30K", 73],
+        ["job-demo-016", "前端开发工程师", "界面实验室", "深圳", "16-28K", 72],
+        ["job-demo-017", "自动化测试开发工程师", "质量方舟", "苏州", "14-24K", 70],
+        ["job-demo-018", "技术写作与知识库工程师", "文脉科技", "成都", "12-22K", 68],
+        ["job-demo-019", "业务流程自动化工程师", "合流数字化", "重庆", "13-23K", 66],
+        ["job-demo-020", "云平台应用工程师", "云际互联", "厦门", "15-26K", 64],
+      ].map(([id, title, company, location, salary, score]) => ({ id, title, company, location, salary, score }));
+
+      const stages = [
+        ["submitted", "已投递"], ["screening", "初筛中"], ["written_test", "笔试"], ["interview_1", "一面"], ["interview_2", "二面"], ["interview_3", "三面"], ["hr_interview", "HR 面"], ["offer", "Offer"], ["terminated", "流程终止"],
+      ];
+      const state = {
+        role: "candidate",
+        view: "candidateWelcome",
+        candidateName: "Alex Chen",
+        resumeUploaded: false,
+        resumeParsed: false,
+        jdUploaded: false,
+        goalCreated: false,
+        agentStarted: false,
+        round: 0,
+        goal: { offers: 2, title: "AI Agent 工程师", filters: "优先深圳、杭州；薪资不低于 20K；接受线上面试" },
+        applications: [],
+        selectedChat: 0,
+        messages: [
+          { side: "agent", text: "您好，我是 Alex 的求职 Agent。感谢您查看这份投递，我可以补充说明候选人的项目经验。", time: "09:18" },
+          { side: "hr", text: "你好 Alex，我们想进一步了解你在智能应用项目中的职责。", time: "09:20" },
+          { side: "agent", text: "Alex 主要负责 Python 服务、RAG 检索链路和 Agent 工作流编排，能够独立完成从方案到上线的闭环。", time: "09:21" },
+        ],
+      };
+
+      const $ = (selector) => document.querySelector(selector);
+      const esc = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+      const showToast = (message) => { const node = $("#toast"); node.textContent = message; node.classList.remove("hidden"); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => node.classList.add("hidden"), 2600); };
+      const stageIndex = (status) => Math.max(0, stages.findIndex(([key]) => key === status));
+      const statusLabel = (status) => stages.find(([key]) => key === status)?.[1] || status;
+      const makeApplications = () => jobs.map((job, index) => ({ ...job, applicationId: `app-demo-${String(index + 1).padStart(3, "0")}`, status: index < 2 ? "interview_1" : index === 2 ? "screening" : index === 3 ? "offer" : index === 4 ? "terminated" : "submitted", recent: index < 2 ? "今天 10:24" : "昨天 16:40" }));
+
+      function setLoginRole(role) {
+        state.role = role;
+        document.querySelectorAll(".role-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.role === role));
+        $("#loginTitle").textContent = role === "candidate" ? "欢迎回来" : "进入 HR 工作台";
+        $("#loginHelper").textContent = role === "candidate" ? "登录后继续管理你的求职目标和 Agent 进度。" : "登录后查看候选人沟通与岗位投递进度。";
+        $("#loginAccount").value = role === "candidate" ? "candidate@careerpass.demo" : "hr@careerpass.demo";
+      }
+
+      function login(role = state.role) {
+        state.role = role;
+        state.view = role === "candidate" ? "candidateWelcome" : "hrWelcome";
+        $("#loginScreen").classList.add("hidden");
+        $("#appScreen").classList.remove("hidden");
+        renderShell();
+        showToast(role === "candidate" ? "已进入求职者演示模式" : "已进入 HR 演示模式");
+      }
+
+      function logout() {
+        $("#appScreen").classList.add("hidden");
+        $("#loginScreen").classList.remove("hidden");
+        $("#loginError").textContent = "";
+        showToast("已退出演示账号");
+      }
+
+      function renderShell() {
+        $("#candidateNav").classList.toggle("hidden", state.role !== "candidate");
+        $("#hrNav").classList.toggle("hidden", state.role !== "hr");
+        $("#roleBadgeText").textContent = state.role === "candidate" ? "求职者模式" : "HR 模式";
+        $("#profileName").textContent = state.role === "candidate" ? "Alex Chen" : "Morgan Lee";
+        $("#profileRole").textContent = state.role === "candidate" ? "求职者" : "招聘 HR";
+        $("#profileAvatar").textContent = state.role === "candidate" ? "A" : "M";
+        document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === state.view));
+        renderView();
+      }
+
+      function setHeader(title, subtitle, eyebrow = state.role === "candidate" ? "CANDIDATE AGENT" : "HR WORKSPACE") {
+        $("#topEyebrow").textContent = eyebrow;
+        $("#topTitle").textContent = title;
+        $("#topSubtitle").textContent = subtitle;
+        $("#topStatus").textContent = state.agentStarted ? "Agent 运行中" : "演示数据已就绪";
+      }
+
+      function renderView() {
+        const root = $("#viewRoot");
+        if (state.view === "candidateWelcome") return renderCandidateWelcome(root);
+        if (state.view === "candidateUpload") return renderCandidateUpload(root);
+        if (state.view === "candidateGoal") return renderCandidateGoal(root);
+        if (state.view === "candidateProgress") return renderCandidateProgress(root);
+        if (state.view === "hrWelcome") return renderHrWelcome(root);
+        if (state.view === "hrUpload") return renderHrUpload(root);
+        if (state.view === "hrChat") return renderHrChat(root);
+        if (state.view === "hrUpdate") return renderHrUpdate(root);
+      }
+
+      function jobRow(job) {
+        return `<div class="job-row"><div class="job-logo">${esc(job.company.slice(0, 1))}</div><div class="job-info"><strong>${esc(job.title)}</strong><span>${esc(job.company)} · ${esc(job.location)} · ${esc(job.salary)}</span></div><span class="score">${job.score}%</span></div>`;
+      }
+
+      function renderCandidateWelcome(root) {
+        setHeader("你好，Alex", "把求职交给 Agent，把时间留给更重要的准备。");
+        root.innerHTML = `<div class="view">
+          <section class="hero-card"><div><div class="eyebrow">YOUR CAREER COPILOT</div><h2>${state.agentStarted ? "Agent 正在为你推进求职" : "准备好开始你的求职旅程了吗？"}</h2><p>${state.agentStarted ? "首轮匹配已完成，你可以在进度看板查看岗位状态。" : "上传简历并设定目标，让 Agent 从第一步开始帮你行动。"}</p></div><div class="hero-orb">✦</div></section>
+          <section class="metric-grid"><div class="metric"><div class="metric-label">目标 Offer</div><div class="metric-value">${state.goal.offers}</div><div class="metric-note">你的阶段目标</div></div><div class="metric"><div class="metric-label">本轮匹配岗位</div><div class="metric-value">${state.round ? 20 : 0}</div><div class="metric-note">首轮匹配结果</div></div><div class="metric"><div class="metric-label">进行中岗位</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">持续推进中</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${state.applications.filter((app) => app.status === "offer").length}</div><div class="metric-note">目标 ${state.goal.offers} 个</div></div></section>
+          <section class="two-col"><div class="panel"><div class="panel-head"><h3>首轮匹配推荐</h3><span>${jobs.length} 个岗位</span></div><div class="job-list">${jobs.slice(0, 4).map(jobRow).join("")}</div></div><div class="panel"><div class="panel-head"><h3>演示流程</h3><span>下一步</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>完成资料准备</strong><span>${state.resumeParsed ? "简历解析成功" : "上传简历并等待解析"}</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>创建求职目标</strong><span>${state.goalCreated ? "求职目标已创建" : "设置目标岗位与过滤条件"}</span></div></div><div class="notice"><div class="notice-icon">3</div><div><strong>启动 Agent</strong><span>${state.agentStarted ? "首轮匹配已完成" : "满足条件后即可启动"}</span></div></div></div></div></section>
+        </div>`;
+      }
+
+      function renderCandidateUpload(root) {
+        setHeader("求职资料上传", "上传一份简历，Agent 会在后台完成解析并生成可用于匹配的画像。");
+        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>上传求职资料</h3><span>每次一份</span></div><div class="upload-zone"><div class="upload-icon">↥</div><h3>${state.resumeUploaded ? "简历已选择" : "拖入或选择你的简历"}</h3><p>${state.resumeUploaded ? "文件已接收，正在准备解析状态。" : "支持用于演示的 PDF、DOC 或 DOCX 文件。"}</p><input id="resumeInput" class="file-input" type="file" accept=".pdf,.doc,.docx" /><label for="resumeInput" class="btn btn-primary">${state.resumeUploaded ? "重新选择文件" : "选择文件"}</label>${state.resumeUploaded ? `<div class="file-card"><div class="job-logo">CV</div><div><strong>${esc(state.resumeName || "Alex-Chen-Resume.pdf")}</strong><span>${state.resumeParsed ? "解析成功 · 画像已就绪" : "上传成功 · 正在解析"}</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>处理状态</h3><span>${state.resumeParsed ? "已完成" : "准备中"}</span></div><div class="state-list"><div class="state-row ${state.resumeUploaded ? "done" : "active"}"><div class="state-marker">${state.resumeUploaded ? "✓" : "1"}</div><div><strong>文件上传</strong><span>${state.resumeUploaded ? "文件已安全接收" : "等待选择文件"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "2"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "结构化画像已生成" : state.resumeUploaded ? "Agent 正在解析" : "上传后开始"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "3"}</div><div><strong>可用于求职</strong><span>${state.resumeParsed ? "可以创建求职目标" : "等待解析完成"}</span></div></div></div></div></section></div>`;
+        const input = $("#resumeInput");
+        input?.addEventListener("change", (event) => { const file = event.target.files?.[0]; if (!file) return; state.resumeUploaded = true; state.resumeParsed = false; state.resumeName = file.name; renderView(); showToast("简历上传成功，正在解析…"); setTimeout(() => { state.resumeParsed = true; renderView(); showToast("简历解析成功，可以创建求职目标"); }, 850); });
+      }
+
+      function renderCandidateGoal(root) {
+        setHeader("求职任务配置与启动", "先创建一个清晰的求职目标，再让 Agent 开始首轮匹配。");
+        const canStart = state.resumeParsed && state.goalCreated && state.jdUploaded && !state.agentStarted;
+        root.innerHTML = `<div class="view"><section class="panel"><div class="panel-head"><h3>求职目标配置</h3><span>${state.goalCreated ? "已保存" : "未创建"}</span></div><div class="goal-form"><div class="form-field"><label for="offerTarget">目标 Offer 数量</label><input id="offerTarget" type="number" min="1" value="${state.goal.offers}" /></div><div class="form-field"><label for="targetTitle">目标岗位名称</label><input id="targetTitle" value="${esc(state.goal.title)}" /></div><div class="form-field wide"><label for="targetFilters">岗位过滤条件</label><textarea id="targetFilters">${esc(state.goal.filters)}</textarea></div><div class="wide"><button id="saveGoal" class="btn btn-primary">${state.goalCreated ? "保存修改" : "创建求职目标"}</button></div></div></section><section class="panel"><div class="panel-head"><h3>启动条件</h3><span>${canStart ? "条件满足" : "等待完成"}</span></div><div class="condition-list"><div class="condition ${state.resumeParsed ? "done" : ""}"><span class="check">✓</span><span>简历上传并解析成功</span></div><div class="condition ${state.jdUploaded ? "done" : ""}"><span class="check">✓</span><span>HR 已准备岗位 JD 数据</span></div><div class="condition ${state.goalCreated ? "done" : ""}"><span class="check">✓</span><span>求职目标创建完成</span></div></div></section><section class="agent-card"><div><h3>${state.agentStarted ? "Agent 正在运行" : "启动求职 Agent"}</h3><p>${state.agentStarted ? "首轮匹配任务已完成，进度看板可以查看 20 个岗位结果。" : "启动后，Agent 将在后台完成岗位筛选、匹配与投递。前端不展示中间过程。"}</p><div class="agent-state ${state.agentStarted ? "running" : ""}"><span class="pulse"></span>${state.agentStarted ? "Agent 运行中" : "尚未启动"}</div></div><button id="startAgent" class="btn btn-primary" ${canStart ? "" : "disabled"}>${state.agentStarted ? "已启动" : "启动求职 Agent"}</button></section></div>`;
+        $("#saveGoal")?.addEventListener("click", () => { state.goal.offers = Number($("#offerTarget").value || 1); state.goal.title = $("#targetTitle").value.trim() || "AI Agent 工程师"; state.goal.filters = $("#targetFilters").value.trim(); state.goalCreated = true; renderView(); showToast("求职目标创建成功"); });
+        $("#startAgent")?.addEventListener("click", () => { state.agentStarted = true; state.round = 1; state.applications = makeApplications(); renderView(); showToast("求职 Agent 已启动，首轮匹配结果已就绪"); });
+      }
+
+      function renderCandidateProgress(root) {
+        setHeader("投递岗位求职进度", "查看每个投递记录的推进状态，Agent 会持续同步已发生的变化。");
+        if (!state.agentStarted || state.round === 0) { root.innerHTML = `<div class="view"><div class="empty-card"><div><div class="empty-icon">◎</div><h3>${state.agentStarted ? "暂无投递记录" : "求职进程尚未开始"}</h3><p>${state.agentStarted ? "当前投递轮次为 0，暂无可以展示的岗位进度。" : "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"}</p><button class="btn btn-primary" data-view="candidateGoal" style="margin-top:18px">${state.agentStarted ? "返回任务配置" : "去启动 Agent"}</button></div></div></div>`; return; }
+        root.innerHTML = `<div class="view"><section class="progress-head"><div><div class="filter-row"><button class="filter-chip active">全部岗位</button><button class="filter-chip">进行中</button><button class="filter-chip">已获得 Offer</button></div></div><div class="status-pill"><span class="dot"></span>第 ${state.round} 轮 · ${state.applications.length} 条投递</div></section><section class="metric-grid"><div class="metric"><div class="metric-label">本轮投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">首轮新增</div></div><div class="metric"><div class="metric-label">累计投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">历史总数</div></div><div class="metric"><div class="metric-label">进行中岗位</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">尚未结束</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${state.applications.filter((app) => app.status === "offer").length}</div><div class="metric-note">目标 ${state.goal.offers} 个</div></div></section><section class="application-list">${state.applications.slice(0, 8).map((app) => { const active = stageIndex(app.status); return `<article class="application-card"><div class="application-top"><div><h3>${esc(app.title)}</h3><p>${esc(app.company)} · ${esc(app.location)} · 最近沟通：${esc(app.recent)}</p></div><span class="tag ${app.status === "offer" ? "offer" : app.status === "terminated" ? "terminated" : ""}">${statusLabel(app.status)}</span></div><div class="timeline">${stages.map(([key, label], index) => `<div class="timeline-step ${index < active ? "done" : index === active ? "active" : ""}">${label}</div>`).join("")}</div></article>`; }).join("")}</section></div>`;
+      }
+
+      function renderHrWelcome(root) {
+        setHeader("你好，Morgan", "在一个工作台里管理岗位、候选人沟通和投递进度。");
+        root.innerHTML = `<div class="view"><section class="hero-card"><div><div class="eyebrow">HR WORKSPACE</div><h2>${state.jdUploaded ? "岗位数据已准备好" : "从上传第一份岗位 JD 开始"}</h2><p>${state.jdUploaded ? "求职者 Agent 已经可以基于岗位信息发起沟通。" : "上传岗位 JD 后，求职者侧才能开始匹配和投递。"}</p></div><div class="hero-orb">⌁</div></section><section class="metric-grid"><div class="metric"><div class="metric-label">岗位 JD</div><div class="metric-value">${state.jdUploaded ? 20 : 0}</div><div class="metric-note">已准备岗位</div></div><div class="metric"><div class="metric-label">待沟通候选人</div><div class="metric-value">${state.agentStarted ? 3 : 0}</div><div class="metric-note">Agent 已发起沟通</div></div><div class="metric"><div class="metric-label">进行中投递</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">实时演示数据</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${state.applications.filter((app) => app.status === "offer").length}</div><div class="metric-note">候选人结果</div></div></section><section class="two-col"><div class="panel"><div class="panel-head"><h3>岗位概览</h3><span>${state.jdUploaded ? "已上传" : "待上传"}</span></div><div class="job-list">${jobs.slice(0, 4).map(jobRow).join("")}</div></div><div class="panel"><div class="panel-head"><h3>下一步</h3><span>演示流程</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>上传岗位 JD</strong><span>${state.jdUploaded ? "20 个岗位数据已就绪" : "建立首轮匹配的岗位池"}</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>等待 Agent 沟通</strong><span>${state.agentStarted ? "已收到求职者 Agent 消息" : "求职者启动后会主动发起沟通"}</span></div></div></div></div></section></div>`;
+      }
+
+      function renderHrUpload(root) {
+        setHeader("岗位 JD 上传", "上传岗位信息，为求职者 Agent 准备首轮匹配的岗位池。");
+        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>岗位 JD 资料</h3><span>${state.jdUploaded ? "已准备 20 个岗位" : "等待上传"}</span></div><div class="upload-zone"><div class="upload-icon">▤</div><h3>${state.jdUploaded ? "岗位 JD 已上传" : "上传岗位 JD 文件"}</h3><p>${state.jdUploaded ? "演示数据已载入，求职者可以使用首轮匹配岗位池。" : "选择一份用于演示的岗位 JD 文件，上传后载入 20 个虚拟岗位。"}</p><input id="jdInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.md" /><label for="jdInput" class="btn btn-primary">${state.jdUploaded ? "重新上传" : "选择文件"}</label>${state.jdUploaded ? `<div class="file-card"><div class="job-logo">JD</div><div><strong>${esc(state.jdName || "careerpass-jobs-round-1.md")}</strong><span>上传成功 · 岗位数据已就绪</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>岗位池状态</h3><span>${state.jdUploaded ? "可供匹配" : "未就绪"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD 上传</strong><span>${state.jdUploaded ? "文件已接收" : "等待选择文件"}</span></div></div><div class="state-row ${state.jdUploaded ? "done" : ""}"><div class="state-marker">${state.jdUploaded ? "✓" : "2"}</div><div><strong>岗位信息准备</strong><span>${state.jdUploaded ? "20 个岗位可用于首轮匹配" : "上传后载入演示数据"}</span></div></div></div></div></section></div>`;
+        $("#jdInput")?.addEventListener("change", (event) => { const file = event.target.files?.[0]; if (!file) return; state.jdUploaded = true; state.jdName = file.name; renderView(); showToast("岗位 JD 上传成功，20 个岗位数据已就绪"); });
+      }
+
+      function renderHrChat(root) {
+        setHeader("岗位沟通", "和求职者 Agent 沟通，了解候选人的经验与求职意向。");
+        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><div class="empty-icon">□</div><h3>等待求职者 Agent 发起沟通</h3><p>求职者启动 Agent 并完成首轮投递后，HR 侧会出现对应的沟通记录。</p></div></div></div>`; return; }
+        const app = state.applications[state.selectedChat] || state.applications[0];
+        root.innerHTML = `<div class="view"><div class="chat-layout"><aside class="chat-list"><h3>沟通中的投递</h3>${state.applications.slice(0, 5).map((item, index) => `<button class="chat-contact ${index === state.selectedChat ? "active" : ""}" data-chat-index="${index}"><div class="avatar">${esc(item.company.slice(0, 1))}</div><div><strong>${esc(item.title)}</strong><span>${esc(item.company)} · ${statusLabel(item.status)}</span></div></button>`).join("")}</aside><section class="chat-window"><header class="chat-header"><div class="avatar">${esc(app.company.slice(0, 1))}</div><div><h3>${esc(app.title)}</h3><p>${esc(app.company)} · 候选人 Alex Chen · ${statusLabel(app.status)}</p></div></header><div id="messages" class="messages">${state.messages.map((message) => `<div class="message ${message.side}">${esc(message.text)}<small>${esc(message.time)}</small></div>`).join("")}</div><form id="composer" class="composer"><input id="messageInput" placeholder="输入消息，发送给求职者 Agent…" autocomplete="off" /><button class="btn btn-primary" type="submit">发送</button></form></section></div></div>`;
+        document.querySelectorAll("[data-chat-index]").forEach((button) => button.addEventListener("click", () => { state.selectedChat = Number(button.dataset.chatIndex); renderView(); }));
+        $("#composer")?.addEventListener("submit", (event) => { event.preventDefault(); const input = $("#messageInput"); const text = input.value.trim(); if (!text) return; state.messages.push({ side: "hr", text, time: "刚刚" }); renderView(); showToast("消息已发送，Agent 正在回复"); setTimeout(() => { state.messages.push({ side: "agent", text: "收到，我会结合 Alex 的求职目标和项目经历进一步确认并回复。", time: "刚刚" }); renderView(); }, 900); });
+      }
+
+      function renderHrUpdate(root) {
+        setHeader("投递进度更新", "每次修改只作用于当前岗位下当前候选人的一条投递记录。");
+        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><div class="empty-icon">↗</div><h3>暂无可更新的投递记录</h3><p>求职者 Agent 启动并完成首轮投递后，HR 可以更新对应岗位的求职进度。</p></div></div></div>`; return; }
+        root.innerHTML = `<div class="view"><section class="panel"><div class="panel-head"><h3>岗位投递进度</h3><span>${state.applications.length} 条记录</span></div><div class="update-table">${state.applications.slice(0, 10).map((app, index) => `<div class="update-row"><div class="update-job"><strong>${esc(app.title)}</strong><span>${esc(app.company)} · 候选人 Alex Chen</span></div><span class="tag ${app.status === "offer" ? "offer" : app.status === "terminated" ? "terminated" : ""}">${statusLabel(app.status)}</span><select class="update-select" data-application-index="${index}" aria-label="更新 ${esc(app.title)} 的求职进度">${stages.map(([key, label]) => `<option value="${key}" ${app.status === key ? "selected" : ""}>${label}</option>`).join("")}</select></div>`).join("")}</div></section></div>`;
+        document.querySelectorAll("[data-application-index]").forEach((select) => select.addEventListener("change", () => { const app = state.applications[Number(select.dataset.applicationIndex)]; app.status = select.value; app.recent = "刚刚"; renderView(); showToast(`已更新 ${app.title} 的求职进度：${statusLabel(app.status)}`); }));
+      }
+
+      document.querySelectorAll(".role-tab").forEach((tab) => tab.addEventListener("click", () => setLoginRole(tab.dataset.role)));
+      $("#loginForm").addEventListener("submit", (event) => { event.preventDefault(); const account = $("#loginAccount").value.trim(); const password = $("#loginPassword").value.trim(); if (!account || !password) { $("#loginError").textContent = "请输入演示账号和密码"; return; } $("#loginError").textContent = ""; login(); });
+      $("#logoutButton").addEventListener("click", logout);
+      document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => { state.view = item.dataset.view; renderShell(); }));
+      document.addEventListener("click", (event) => { const button = event.target.closest("[data-view]"); if (button && !button.classList.contains("nav-item")) { state.view = button.dataset.view; renderShell(); } });
+    </script>
+  </body>
+</html>
