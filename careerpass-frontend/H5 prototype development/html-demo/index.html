@@ -65,6 +65,7 @@
       .btn:hover:not(:disabled) { transform: translateY(-1px); }
       .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 8px 18px rgba(255, 106, 0, .2); }
       .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+      .btn.is-disabled { pointer-events: none; opacity: .5; cursor: not-allowed; }
       .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
       .btn-ghost { min-height: 36px; padding: 0 12px; background: transparent; color: var(--brand); }
       .btn-danger { background: var(--danger-soft); color: var(--danger); }
@@ -158,6 +159,8 @@
       .notice span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 
       .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      .section-grid > .panel { display: flex; flex-direction: column; }
+      .section-grid > .panel .upload-zone { flex: 1; min-height: 280px; }
       .upload-zone { display: grid; place-items: center; min-height: 250px; padding: 28px; border: 1.5px dashed #ffb37f; border-radius: 20px; background: #fffaf6; text-align: center; }
       .upload-icon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 15px; border-radius: 19px; background: var(--brand-soft); color: var(--brand); font-size: 26px; }
       .upload-zone h3 { margin: 0 0 8px; font-size: 18px; }
@@ -166,6 +169,11 @@
       .file-card { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 430px; margin-top: 18px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); text-align: left; }
       .file-card strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .file-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+      .material-file-list { display: grid; gap: 8px; width: 100%; max-width: 430px; margin-top: 18px; }
+      .material-file-list .file-card { position: relative; max-width: none; margin-top: 0; padding-right: 42px; }
+      .material-file-remove { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 25px; height: 25px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; opacity: 0; cursor: pointer; transition: opacity .16s ease, background .16s ease, color .16s ease; }
+      .material-file:hover .material-file-remove, .material-file-remove:focus-visible { opacity: 1; }
+      .material-file-remove:hover { background: var(--danger-soft); color: var(--danger); }
       .state-list { display: grid; gap: 12px; }
       .state-row { display: flex; align-items: center; gap: 12px; padding: 13px; border-radius: 14px; background: var(--surface-soft); }
       .state-marker { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--line); color: var(--muted); font-size: 13px; font-weight: 800; }
@@ -178,6 +186,16 @@
       .filter-row { display: flex; flex-wrap: wrap; gap: 8px; }
       .filter-chip { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
       .filter-chip.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+      .offer-progress-panel { display: flex; align-items: center; gap: 28px; padding: 22px 26px; border-radius: var(--radius-lg); background: linear-gradient(135deg, #fff8f2, #fff); box-shadow: var(--shadow-soft); }
+      .offer-ring { display: grid; place-items: center; flex: 0 0 auto; width: 142px; height: 142px; border-radius: 50%; background: conic-gradient(var(--brand) var(--offer-progress), var(--brand-soft) 0); position: relative; }
+      .offer-ring::before { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: var(--surface); }
+      .offer-ring-content { position: relative; z-index: 1; text-align: center; }
+      .offer-ring-value { display: block; font-size: 25px; font-weight: 800; letter-spacing: -.05em; color: var(--ink); }
+      .offer-ring-label { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 700; }
+      .offer-progress-copy h3 { margin: 0; font-size: 17px; letter-spacing: -.03em; }
+      .offer-progress-copy p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+      .offer-progress-detail { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; color: var(--muted); font-size: 12px; font-weight: 700; }
+      .offer-progress-detail strong { color: var(--ink); font-size: 16px; }
       .application-list { display: grid; gap: 16px; }
       .application-card { padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-soft); }
       .application-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
@@ -211,6 +229,8 @@
       .agent-state .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-2); }
       .agent-state.running { color: var(--success); }
       .agent-state.running .pulse { background: var(--success); box-shadow: 0 0 0 5px var(--success-soft); }
+      .agent-state.finished { color: var(--success); }
+      .agent-state.finished .pulse { background: var(--success); }
 
       .chat-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 570px; overflow: hidden; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
       .chat-list { padding: 18px; border-right: 1px solid var(--line); background: #fcfcfd; }
@@ -281,6 +301,7 @@
         .goal-form { grid-template-columns: 1fr; }
         .goal-form .wide { grid-column: auto; }
         .agent-card, .progress-head { display: block; }
+        .offer-progress-panel { flex-direction: column; align-items: flex-start; gap: 18px; padding: 20px; }
         .agent-card .btn { width: 100%; margin-top: 16px; }
         .timeline { gap: 0; overflow-x: auto; min-width: 640px; }
         .application-card { overflow-x: auto; }
@@ -325,13 +346,13 @@
         <div class="brand"><span class="brand-mark">C</span><span>Careerpass</span></div>
         <div class="role-badge"><span class="dot"></span><span id="roleBadgeText">求职者模式</span></div>
         <nav id="candidateNav" class="nav" aria-label="求职者菜单">
-          <button class="nav-item active" data-view="candidateWelcome"><span class="nav-icon">⌂</span>欢迎页</button>
+          <button class="nav-item active" data-view="candidateWelcome"><span class="nav-icon">⌂</span>使用指南</button>
           <button class="nav-item" data-view="candidateUpload"><span class="nav-icon">↥</span>求职资料上传</button>
           <button class="nav-item" data-view="candidateGoal"><span class="nav-icon">◎</span>求职任务创建</button>
           <button class="nav-item" data-view="candidateProgress"><span class="nav-icon">▥</span>求职进度查看</button>
         </nav>
         <nav id="hrNav" class="nav hidden" aria-label="HR菜单">
-          <button class="nav-item active" data-view="hrWelcome"><span class="nav-icon">⌂</span>欢迎页</button>
+          <button class="nav-item active" data-view="hrWelcome"><span class="nav-icon">⌂</span>使用指南</button>
           <button class="nav-item" data-view="hrUpload"><span class="nav-icon">↥</span>岗位 JD 上传</button>
           <button class="nav-item" data-view="hrChat"><span class="nav-icon">□</span>求职沟通</button>
           <button class="nav-item" data-view="hrUpdate"><span class="nav-icon">↗</span>投递进度更新</button>
@@ -386,9 +407,11 @@
         candidateName: "Alex Chen",
         resumeUploaded: false,
         resumeParsed: false,
+        otherFiles: [],
         jdUploaded: false,
         goalCreated: false,
         agentStarted: false,
+        agentFinished: false,
         round: 0,
         goal: { offers: 2, title: "AI Agent 工程师", filters: "优先深圳、杭州；薪资不低于 20K；接受线上面试" },
         applications: [],
@@ -406,6 +429,8 @@
       const stageIndex = (status) => Math.max(0, stages.findIndex(([key]) => key === status));
       const statusLabel = (status) => stages.find(([key]) => key === status)?.[1] || status;
       const makeApplications = () => jobs.map((job, index) => ({ ...job, applicationId: `app-demo-${String(index + 1).padStart(3, "0")}`, status: index < 2 ? "interview_1" : index === 2 ? "screening" : index === 3 ? "offer" : index === 4 ? "terminated" : "submitted", recent: index < 2 ? "今天 10:24" : "昨天 16:40" }));
+      const currentOfferCount = () => state.applications.filter((app) => app.status === "offer").length;
+      const evaluateAgentCompletion = () => { if (state.agentStarted && currentOfferCount() >= state.goal.offers) state.agentFinished = true; };
 
       function setLoginRole(role) {
         state.role = role;
@@ -446,7 +471,7 @@
         $("#topEyebrow").textContent = eyebrow;
         $("#topTitle").textContent = title;
         $("#topSubtitle").textContent = subtitle;
-        $("#topStatus").textContent = state.agentStarted ? "Agent 运行中" : "演示数据已就绪";
+        $("#topStatus").textContent = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 运行中" : "演示数据已就绪";
       }
 
       function renderView() {
@@ -467,37 +492,52 @@
 
       function renderCandidateWelcome(root) {
         setHeader("你好，Alex", "把求职交给 Agent，把时间留给更重要的准备。");
+        const steps = [
+          { title: "上传求职资料", description: state.resumeParsed ? "简历解析成功，画像已就绪" : state.resumeUploaded ? "简历正在解析，请稍候" : "上传一份简历，完成资料准备", view: "candidateUpload", done: state.resumeParsed },
+          { title: "创建求职目标", description: state.goalCreated ? "求职目标已创建" : "设置目标岗位与筛选条件", view: "candidateGoal", done: state.goalCreated },
+          { title: "启动求职 Agent", description: state.agentFinished ? `目标 Offer 已达成，系统判定 Agent 运行结束` : state.agentStarted ? "Agent 正在持续推进求职" : "满足条件后启动首轮求职", view: "candidateGoal", done: state.agentStarted || state.agentFinished },
+        ];
+        const nextStep = steps.find((step) => !step.done) || { title: "查看求职进度", view: "candidateProgress", done: true };
         root.innerHTML = `<div class="view">
-          <section class="hero-card"><div><div class="eyebrow">YOUR CAREER COPILOT</div><h2>${state.agentStarted ? "Agent 正在为你推进求职" : "准备好开始你的求职旅程了吗？"}</h2><p>${state.agentStarted ? "首轮匹配已完成，你可以在进度看板查看岗位状态。" : "上传简历并设定目标，让 Agent 从第一步开始帮你行动。"}</p></div><div class="hero-orb">✦</div></section>
-          <section class="metric-grid"><div class="metric"><div class="metric-label">目标 Offer</div><div class="metric-value">${state.goal.offers}</div><div class="metric-note">你的阶段目标</div></div><div class="metric"><div class="metric-label">本轮匹配岗位</div><div class="metric-value">${state.round ? 20 : 0}</div><div class="metric-note">首轮匹配结果</div></div><div class="metric"><div class="metric-label">进行中岗位</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">持续推进中</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${state.applications.filter((app) => app.status === "offer").length}</div><div class="metric-note">目标 ${state.goal.offers} 个</div></div></section>
-          <section class="two-col"><div class="panel"><div class="panel-head"><h3>首轮匹配推荐</h3><span>${jobs.length} 个岗位</span></div><div class="job-list">${jobs.slice(0, 4).map(jobRow).join("")}</div></div><div class="panel"><div class="panel-head"><h3>演示流程</h3><span>下一步</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>完成资料准备</strong><span>${state.resumeParsed ? "简历解析成功" : "上传简历并等待解析"}</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>创建求职目标</strong><span>${state.goalCreated ? "求职目标已创建" : "设置目标岗位与过滤条件"}</span></div></div><div class="notice"><div class="notice-icon">3</div><div><strong>启动 Agent</strong><span>${state.agentStarted ? "首轮匹配已完成" : "满足条件后即可启动"}</span></div></div></div></div></section>
+          <section class="hero-card"><div><div class="eyebrow">YOUR CAREER COPILOT</div><h2>准备好开始你的求职旅程了吗？</h2><p>Careerpass 将陪你完成资料准备、目标设定和求职 Agent 启动，让每一步都更清晰。</p><button class="btn btn-primary" data-view="${nextStep.view}" style="margin-top:18px">${nextStep.done ? "查看求职进度" : nextStep.title} <span>→</span></button></div><div class="hero-orb">✦</div></section>
+          <section class="two-col"><div class="panel"><div class="panel-head"><h3>开始你的求职流程</h3><span>3 个步骤</span></div><div class="notice-list">${steps.map((step, index) => `<div class="notice"><div class="notice-icon">${step.done ? "✓" : index + 1}</div><div><strong>${step.title}</strong><span>${step.description}</span></div></div>`).join("")}</div></div><div class="panel"><div class="panel-head"><h3>当前准备状态</h3><span>${state.agentFinished ? "已结束" : state.agentStarted ? "进行中" : "待完成"}</span></div><div class="state-list"><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "1"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "已完成" : state.resumeUploaded ? "解析中" : "尚未开始"}</span></div></div><div class="state-row ${state.goalCreated ? "done" : state.resumeParsed ? "active" : ""}"><div class="state-marker">${state.goalCreated ? "✓" : "2"}</div><div><strong>求职目标</strong><span>${state.goalCreated ? "已创建" : "等待创建"}</span></div></div><div class="state-row ${state.agentFinished ? "done" : state.agentStarted ? "active" : ""}"><div class="state-marker">${state.agentFinished ? "✓" : state.agentStarted ? "…" : "3"}</div><div><strong>Agent 状态</strong><span>${state.agentFinished ? "运行结束" : state.agentStarted ? "正在运行" : "尚未启动"}</span></div></div></div></div></section>
+          <section class="panel"><div class="panel-head"><h3>关于本次演示</h3><span>Careerpass</span></div><p class="page-subtitle">本演示将展示从资料准备、求职目标创建到 Agent 推进求职进度的完整流程。岗位匹配结果和投递数据将在对应的求职进度页面中展示。</p></section>
         </div>`;
       }
 
       function renderCandidateUpload(root) {
-        setHeader("求职资料上传", "上传一份简历，Agent 会在后台完成解析并生成可用于匹配的画像。");
-        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>上传求职资料</h3><span>每次一份</span></div><div class="upload-zone"><div class="upload-icon">↥</div><h3>${state.resumeUploaded ? "简历已选择" : "拖入或选择你的简历"}</h3><p>${state.resumeUploaded ? "文件已接收，正在准备解析状态。" : "支持用于演示的 PDF、DOC 或 DOCX 文件。"}</p><input id="resumeInput" class="file-input" type="file" accept=".pdf,.doc,.docx" /><label for="resumeInput" class="btn btn-primary">${state.resumeUploaded ? "重新选择文件" : "选择文件"}</label>${state.resumeUploaded ? `<div class="file-card"><div class="job-logo">CV</div><div><strong>${esc(state.resumeName || "Alex-Chen-Resume.pdf")}</strong><span>${state.resumeParsed ? "解析成功 · 画像已就绪" : "上传成功 · 正在解析"}</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>处理状态</h3><span>${state.resumeParsed ? "已完成" : "准备中"}</span></div><div class="state-list"><div class="state-row ${state.resumeUploaded ? "done" : "active"}"><div class="state-marker">${state.resumeUploaded ? "✓" : "1"}</div><div><strong>文件上传</strong><span>${state.resumeUploaded ? "文件已安全接收" : "等待选择文件"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "2"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "结构化画像已生成" : state.resumeUploaded ? "Agent 正在解析" : "上传后开始"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "3"}</div><div><strong>可用于求职</strong><span>${state.resumeParsed ? "可以创建求职目标" : "等待解析完成"}</span></div></div></div></div></section></div>`;
+        setHeader("求职资料上传", "分别准备简历和其它求职资料；简历解析成功后才能创建求职目标。");
+        const resumeLocked = state.agentStarted || state.agentFinished;
+        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>简历</h3><span>${resumeLocked ? "本轮已绑定" : "必需"}</span></div><div class="upload-zone"><div class="upload-icon">CV</div><h3>${resumeLocked ? "本轮简历已绑定" : state.resumeUploaded ? "简历已选择" : "上传你的简历"}</h3><p>${resumeLocked ? "本轮投递已绑定当前简历，运行期间不可更换。" : state.resumeUploaded ? "文件已接收，正在更新解析状态。" : "支持用于演示的 PDF、DOC 或 DOCX 文件。"}</p><input id="resumeInput" class="file-input" type="file" accept=".pdf,.doc,.docx" ${resumeLocked ? "disabled" : ""} /><label for="resumeInput" class="btn btn-primary ${resumeLocked ? "is-disabled" : ""}">${resumeLocked ? "本轮已绑定" : state.resumeUploaded ? "重新选择简历" : "选择简历"}</label>${state.resumeUploaded ? `<div class="file-card"><div class="job-logo">CV</div><div><strong>${esc(state.resumeName || "Alex-Chen-Resume.pdf")}</strong><span>${state.resumeParsed ? "解析成功 · 画像已就绪" : "上传成功 · 正在解析"}</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>其它求职资料</h3><span>${state.otherFiles.length ? `${state.otherFiles.length} 份已上传` : "可选 · 支持多份"}</span></div><div class="upload-zone"><div class="upload-icon">＋</div><h3>${state.otherFiles.length ? "资料已添加" : "补充其它求职资料"}</h3><p>${state.otherFiles.length ? "新选择的资料会追加到当前列表，不会替换已有资料。" : "可一次选择多份，或分批上传证书、作品集等资料。"}</p><input id="otherInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple /><label for="otherInput" class="btn btn-primary">${state.otherFiles.length ? "继续添加资料" : "选择资料"}</label>${state.otherFiles.length ? `<div class="material-file-list">${state.otherFiles.map((name, index) => `<div class="file-card material-file"><div class="job-logo">＋</div><div><strong>${esc(name)}</strong><span>上传成功 · 资料已就绪</span></div><button class="material-file-remove" type="button" data-material-index="${index}" aria-label="删除 ${esc(name)}" title="删除资料">×</button></div>`).join("")}</div>` : ""}</div></div></section><section class="panel"><div class="panel-head"><h3>简历处理状态</h3><span>${state.resumeParsed ? "已完成" : "准备中"}</span></div><div class="state-list"><div class="state-row ${state.resumeUploaded ? "done" : "active"}"><div class="state-marker">${state.resumeUploaded ? "✓" : "1"}</div><div><strong>文件上传</strong><span>${state.resumeUploaded ? "简历文件已安全接收" : "等待选择简历"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "2"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "结构化画像已生成" : state.resumeUploaded ? "Agent 正在解析" : "上传后开始"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "3"}</div><div><strong>可用于求职</strong><span>${state.resumeParsed ? "可以创建求职目标" : "等待解析完成"}</span></div></div></div></section></div>`;
         const input = $("#resumeInput");
-        input?.addEventListener("change", (event) => { const file = event.target.files?.[0]; if (!file) return; state.resumeUploaded = true; state.resumeParsed = false; state.resumeName = file.name; renderView(); showToast("简历上传成功，正在解析…"); setTimeout(() => { state.resumeParsed = true; renderView(); showToast("简历解析成功，可以创建求职目标"); }, 850); });
+        input?.addEventListener("change", (event) => { if (resumeLocked) return; const file = event.target.files?.[0]; if (!file) return; state.resumeUploaded = true; state.resumeParsed = false; state.resumeName = file.name; renderView(); showToast("简历上传成功，正在解析…"); setTimeout(() => { state.resumeParsed = true; renderView(); showToast("简历解析成功，可以创建求职目标"); }, 850); });
+        $("#otherInput")?.addEventListener("change", (event) => { const files = Array.from(event.target.files || []); if (!files.length) return; state.otherFiles.push(...files.map((file) => file.name)); renderView(); showToast(`已添加 ${files.length} 份其它求职资料`); });
+        document.querySelectorAll("[data-material-index]").forEach((button) => button.addEventListener("click", () => { const index = Number(button.dataset.materialIndex); const [removed] = state.otherFiles.splice(index, 1); renderView(); showToast(`已删除 ${removed || "该资料"}`); }));
       }
 
       function renderCandidateGoal(root) {
         setHeader("求职任务配置与启动", "先创建一个清晰的求职目标，再让 Agent 开始首轮匹配。");
-        const canStart = state.resumeParsed && state.goalCreated && state.jdUploaded && !state.agentStarted;
-        root.innerHTML = `<div class="view"><section class="panel"><div class="panel-head"><h3>求职目标配置</h3><span>${state.goalCreated ? "已保存" : "未创建"}</span></div><div class="goal-form"><div class="form-field"><label for="offerTarget">目标 Offer 数量</label><input id="offerTarget" type="number" min="1" value="${state.goal.offers}" /></div><div class="form-field"><label for="targetTitle">目标岗位名称</label><input id="targetTitle" value="${esc(state.goal.title)}" /></div><div class="form-field wide"><label for="targetFilters">岗位过滤条件</label><textarea id="targetFilters">${esc(state.goal.filters)}</textarea></div><div class="wide"><button id="saveGoal" class="btn btn-primary">${state.goalCreated ? "保存修改" : "创建求职目标"}</button></div></div></section><section class="panel"><div class="panel-head"><h3>启动条件</h3><span>${canStart ? "条件满足" : "等待完成"}</span></div><div class="condition-list"><div class="condition ${state.resumeParsed ? "done" : ""}"><span class="check">✓</span><span>简历上传并解析成功</span></div><div class="condition ${state.jdUploaded ? "done" : ""}"><span class="check">✓</span><span>HR 已准备岗位 JD 数据</span></div><div class="condition ${state.goalCreated ? "done" : ""}"><span class="check">✓</span><span>求职目标创建完成</span></div></div></section><section class="agent-card"><div><h3>${state.agentStarted ? "Agent 正在运行" : "启动求职 Agent"}</h3><p>${state.agentStarted ? "首轮匹配任务已完成，进度看板可以查看 20 个岗位结果。" : "启动后，Agent 将在后台完成岗位筛选、匹配与投递。前端不展示中间过程。"}</p><div class="agent-state ${state.agentStarted ? "running" : ""}"><span class="pulse"></span>${state.agentStarted ? "Agent 运行中" : "尚未启动"}</div></div><button id="startAgent" class="btn btn-primary" ${canStart ? "" : "disabled"}>${state.agentStarted ? "已启动" : "启动求职 Agent"}</button></section></div>`;
+        const canStart = state.resumeParsed && state.goalCreated && state.jdUploaded && !state.agentStarted && !state.agentFinished;
+        const agentTitle = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 正在运行" : "启动求职 Agent";
+        const agentDescription = state.agentFinished ? `系统已判定获得 ${currentOfferCount()} 个 Offer，达到目标 ${state.goal.offers} 个，已停止新增投递。` : state.agentStarted ? "首轮匹配任务已完成，进度看板可以查看岗位结果。" : "启动后，Agent 将在后台完成岗位筛选、匹配与投递。前端不展示中间过程。";
+        const agentState = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 运行中" : "尚未启动";
+        root.innerHTML = `<div class="view"><section class="panel"><div class="panel-head"><h3>求职目标配置</h3><span>${state.goalCreated ? "已保存" : "未创建"}</span></div><div class="goal-form"><div class="form-field"><label for="offerTarget">目标 Offer 数量</label><input id="offerTarget" type="number" min="1" value="${state.goal.offers}" /></div><div class="form-field"><label for="targetTitle">目标岗位名称</label><input id="targetTitle" value="${esc(state.goal.title)}" /></div><div class="form-field wide"><label for="targetFilters">岗位过滤条件</label><textarea id="targetFilters">${esc(state.goal.filters)}</textarea></div><div class="wide"><button id="saveGoal" class="btn btn-primary">${state.goalCreated ? "保存修改" : "创建求职目标"}</button></div></div></section><section class="panel"><div class="panel-head"><h3>启动条件</h3><span>${state.agentFinished ? "Agent 已结束" : canStart ? "条件满足" : "等待完成"}</span></div><div class="condition-list"><div class="condition ${state.resumeParsed ? "done" : ""}"><span class="check">✓</span><span>简历上传并解析成功</span></div><div class="condition ${state.jdUploaded ? "done" : ""}"><span class="check">✓</span><span>HR 已准备岗位 JD 数据</span></div><div class="condition ${state.goalCreated ? "done" : ""}"><span class="check">✓</span><span>求职目标创建完成</span></div></div></section><section class="agent-card"><div><h3>${agentTitle}</h3><p>${agentDescription}</p><div class="agent-state ${state.agentFinished ? "finished" : state.agentStarted ? "running" : ""}"><span class="pulse"></span>${agentState}</div></div><button id="startAgent" class="btn btn-primary" ${canStart ? "" : "disabled"}>${state.agentFinished ? "运行已结束" : state.agentStarted ? "已启动" : "启动求职 Agent"}</button></section></div>`;
         $("#saveGoal")?.addEventListener("click", () => { state.goal.offers = Number($("#offerTarget").value || 1); state.goal.title = $("#targetTitle").value.trim() || "AI Agent 工程师"; state.goal.filters = $("#targetFilters").value.trim(); state.goalCreated = true; renderView(); showToast("求职目标创建成功"); });
-        $("#startAgent")?.addEventListener("click", () => { state.agentStarted = true; state.round = 1; state.applications = makeApplications(); renderView(); showToast("求职 Agent 已启动，首轮匹配结果已就绪"); });
+        $("#startAgent")?.addEventListener("click", () => { state.agentStarted = true; state.agentFinished = false; state.round = 1; state.applications = makeApplications(); evaluateAgentCompletion(); renderView(); showToast("求职 Agent 已启动，首轮匹配结果已就绪"); });
       }
 
       function renderCandidateProgress(root) {
         setHeader("投递岗位求职进度", "查看每个投递记录的推进状态，Agent 会持续同步已发生的变化。");
-        if (!state.agentStarted || state.round === 0) { root.innerHTML = `<div class="view"><div class="empty-card"><div><div class="empty-icon">◎</div><h3>${state.agentStarted ? "暂无投递记录" : "求职进程尚未开始"}</h3><p>${state.agentStarted ? "当前投递轮次为 0，暂无可以展示的岗位进度。" : "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"}</p><button class="btn btn-primary" data-view="candidateGoal" style="margin-top:18px">${state.agentStarted ? "返回任务配置" : "去启动 Agent"}</button></div></div></div>`; return; }
-        root.innerHTML = `<div class="view"><section class="progress-head"><div><div class="filter-row"><button class="filter-chip active">全部岗位</button><button class="filter-chip">进行中</button><button class="filter-chip">已获得 Offer</button></div></div><div class="status-pill"><span class="dot"></span>第 ${state.round} 轮 · ${state.applications.length} 条投递</div></section><section class="metric-grid"><div class="metric"><div class="metric-label">本轮投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">首轮新增</div></div><div class="metric"><div class="metric-label">累计投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">历史总数</div></div><div class="metric"><div class="metric-label">进行中岗位</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">尚未结束</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${state.applications.filter((app) => app.status === "offer").length}</div><div class="metric-note">目标 ${state.goal.offers} 个</div></div></section><section class="application-list">${state.applications.slice(0, 8).map((app) => { const active = stageIndex(app.status); return `<article class="application-card"><div class="application-top"><div><h3>${esc(app.title)}</h3><p>${esc(app.company)} · ${esc(app.location)} · 最近沟通：${esc(app.recent)}</p></div><span class="tag ${app.status === "offer" ? "offer" : app.status === "terminated" ? "terminated" : ""}">${statusLabel(app.status)}</span></div><div class="timeline">${stages.map(([key, label], index) => `<div class="timeline-step ${index < active ? "done" : index === active ? "active" : ""}">${label}</div>`).join("")}</div></article>`; }).join("")}</section></div>`;
+        if (!state.agentStarted || state.round === 0) { root.innerHTML = `<div class="view"><div class="empty-card"><div><h3>${state.agentStarted ? "暂无投递记录" : "求职进程尚未开始"}</h3><p>${state.agentStarted ? "当前投递轮次为 0，暂无可以展示的岗位进度。" : "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"}</p><button class="btn btn-primary" data-view="candidateGoal" style="margin-top:18px">${state.agentStarted ? "返回任务配置" : "去启动 Agent"}</button></div></div></div>`; return; }
+        const offerCount = currentOfferCount();
+        const offerTarget = Math.max(1, state.goal.offers);
+        const offerPercent = Math.min(100, Math.round((offerCount / offerTarget) * 100));
+        root.innerHTML = `<div class="view"><section class="progress-head"><div><div class="filter-row"><button class="filter-chip active">全部岗位</button><button class="filter-chip">进行中</button><button class="filter-chip">已获得 Offer</button></div></div><div class="status-pill"><span class="dot"></span>${state.agentFinished ? "Agent 已结束 · 目标已达成" : `第 ${state.round} 轮 · ${state.applications.length} 条投递`}</div></section><section class="offer-progress-panel"><div class="offer-ring" style="--offer-progress: ${offerPercent}%" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${offerPercent}" aria-label="Offer 达成进度"><div class="offer-ring-content"><span class="offer-ring-value">${offerCount}/${state.goal.offers}</span><span class="offer-ring-label">Offer 达成</span></div></div><div class="offer-progress-copy"><h3>目标 Offer 达成进度</h3><p>${state.agentFinished ? "目标已达成，系统已判定 Agent 运行结束。" : `继续推进求职沟通，当前已完成目标的 ${offerPercent}%。`}</p><div class="offer-progress-detail"><span>已获得 <strong>${offerCount}</strong> 个</span><span>目标 <strong>${state.goal.offers}</strong> 个</span></div></div></section><section class="metric-grid"><div class="metric"><div class="metric-label">本轮投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">首轮新增</div></div><div class="metric"><div class="metric-label">累计投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">历史总数</div></div><div class="metric"><div class="metric-label">进行中岗位</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">尚未结束</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${offerCount}</div><div class="metric-note">目标 ${state.goal.offers} 个</div></div></section><section class="application-list">${state.applications.slice(0, 8).map((app) => { const active = stageIndex(app.status); return `<article class="application-card"><div class="application-top"><div><h3>${esc(app.title)}</h3><p>${esc(app.company)} · ${esc(app.location)} · 最近沟通：${esc(app.recent)}</p></div><span class="tag ${app.status === "offer" ? "offer" : app.status === "terminated" ? "terminated" : ""}">${statusLabel(app.status)}</span></div><div class="timeline">${stages.map(([key, label], index) => `<div class="timeline-step ${index < active ? "done" : index === active ? "active" : ""}">${label}</div>`).join("")}</div></article>`; }).join("")}</section></div>`;
       }
 
       function renderHrWelcome(root) {
-        setHeader("你好，Morgan", "在一个工作台里管理岗位、候选人沟通和投递进度。");
-        root.innerHTML = `<div class="view"><section class="hero-card"><div><div class="eyebrow">HR WORKSPACE</div><h2>${state.jdUploaded ? "岗位数据已准备好" : "从上传第一份岗位 JD 开始"}</h2><p>${state.jdUploaded ? "求职者 Agent 已经可以基于岗位信息发起沟通。" : "上传岗位 JD 后，求职者侧才能开始匹配和投递。"}</p></div><div class="hero-orb">⌁</div></section><section class="metric-grid"><div class="metric"><div class="metric-label">岗位 JD</div><div class="metric-value">${state.jdUploaded ? 20 : 0}</div><div class="metric-note">已准备岗位</div></div><div class="metric"><div class="metric-label">待沟通候选人</div><div class="metric-value">${state.agentStarted ? 3 : 0}</div><div class="metric-note">Agent 已发起沟通</div></div><div class="metric"><div class="metric-label">进行中投递</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">实时演示数据</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${state.applications.filter((app) => app.status === "offer").length}</div><div class="metric-note">候选人结果</div></div></section><section class="two-col"><div class="panel"><div class="panel-head"><h3>岗位概览</h3><span>${state.jdUploaded ? "已上传" : "待上传"}</span></div><div class="job-list">${jobs.slice(0, 4).map(jobRow).join("")}</div></div><div class="panel"><div class="panel-head"><h3>下一步</h3><span>演示流程</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>上传岗位 JD</strong><span>${state.jdUploaded ? "20 个岗位数据已就绪" : "建立首轮匹配的岗位池"}</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>等待 Agent 沟通</strong><span>${state.agentStarted ? "已收到求职者 Agent 消息" : "求职者启动后会主动发起沟通"}</span></div></div></div></div></section></div>`;
+        setHeader("你好，Morgan", "通过 Careerpass，清晰了解岗位沟通与投递进度。");
+        root.innerHTML = `<div class="view"><section class="hero-card"><div><div class="eyebrow">HR WORKSPACE</div><h2>欢迎使用 HR 工作台</h2><p>从岗位信息准备到候选人沟通，Careerpass 帮你在一个工作台中完成招聘流程协作。</p><button class="btn btn-primary" data-view="hrUpload" style="margin-top:18px">开始准备岗位 JD <span>→</span></button></div><div class="hero-orb">⌁</div></section><section class="two-col"><div class="panel"><div class="panel-head"><h3>HR 演示流程</h3><span>3 个步骤</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>上传岗位 JD</strong><span>准备供求职者 Agent 匹配的岗位信息</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>参与岗位沟通</strong><span>求职者 Agent 发起沟通后进行交流</span></div></div><div class="notice"><div class="notice-icon">3</div><div><strong>更新投递进度</strong><span>根据实际情况推进指定投递记录</span></div></div></div></div><div class="panel"><div class="panel-head"><h3>当前准备状态</h3><span>${state.agentStarted ? "进行中" : "待完成"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD</strong><span>${state.jdUploaded ? "已准备岗位数据" : "尚未上传"}</span></div></div><div class="state-row ${state.agentStarted ? "done" : ""}"><div class="state-marker">${state.agentStarted ? "✓" : "2"}</div><div><strong>求职者 Agent 沟通</strong><span>${state.agentStarted ? "已有沟通记录" : "等待求职者启动 Agent"}</span></div></div><div class="state-row ${state.agentStarted ? "active" : ""}"><div class="state-marker">3</div><div><strong>投递进度更新</strong><span>${state.agentStarted ? "可以查看并更新" : "沟通开始后可用"}</span></div></div></div></div></section><section class="panel"><div class="panel-head"><h3>关于本次演示</h3><span>Careerpass</span></div><p class="page-subtitle">本演示将展示 HR 从岗位信息准备、候选人 Agent 沟通到投递进度更新的完整流程。具体岗位和投递数据将在对应功能页面中展示。</p></section></div>`;
       }
 
       function renderHrUpload(root) {
@@ -508,7 +548,7 @@
 
       function renderHrChat(root) {
         setHeader("岗位沟通", "和求职者 Agent 沟通，了解候选人的经验与求职意向。");
-        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><div class="empty-icon">□</div><h3>等待求职者 Agent 发起沟通</h3><p>求职者启动 Agent 并完成首轮投递后，HR 侧会出现对应的沟通记录。</p></div></div></div>`; return; }
+        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><h3>等待求职者 Agent 发起沟通</h3><p>求职者启动 Agent 并完成首轮投递后，HR 侧会出现对应的沟通记录。</p></div></div></div>`; return; }
         const app = state.applications[state.selectedChat] || state.applications[0];
         root.innerHTML = `<div class="view"><div class="chat-layout"><aside class="chat-list"><h3>沟通中的投递</h3>${state.applications.slice(0, 5).map((item, index) => `<button class="chat-contact ${index === state.selectedChat ? "active" : ""}" data-chat-index="${index}"><div class="avatar">${esc(item.company.slice(0, 1))}</div><div><strong>${esc(item.title)}</strong><span>${esc(item.company)} · ${statusLabel(item.status)}</span></div></button>`).join("")}</aside><section class="chat-window"><header class="chat-header"><div class="avatar">${esc(app.company.slice(0, 1))}</div><div><h3>${esc(app.title)}</h3><p>${esc(app.company)} · 候选人 Alex Chen · ${statusLabel(app.status)}</p></div></header><div id="messages" class="messages">${state.messages.map((message) => `<div class="message ${message.side}">${esc(message.text)}<small>${esc(message.time)}</small></div>`).join("")}</div><form id="composer" class="composer"><input id="messageInput" placeholder="输入消息，发送给求职者 Agent…" autocomplete="off" /><button class="btn btn-primary" type="submit">发送</button></form></section></div></div>`;
         document.querySelectorAll("[data-chat-index]").forEach((button) => button.addEventListener("click", () => { state.selectedChat = Number(button.dataset.chatIndex); renderView(); }));
@@ -517,9 +557,9 @@
 
       function renderHrUpdate(root) {
         setHeader("投递进度更新", "每次修改只作用于当前岗位下当前候选人的一条投递记录。");
-        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><div class="empty-icon">↗</div><h3>暂无可更新的投递记录</h3><p>求职者 Agent 启动并完成首轮投递后，HR 可以更新对应岗位的求职进度。</p></div></div></div>`; return; }
+        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><h3>暂无可更新的投递记录</h3><p>求职者 Agent 启动并完成首轮投递后，HR 可以更新对应岗位的求职进度。</p></div></div></div>`; return; }
         root.innerHTML = `<div class="view"><section class="panel"><div class="panel-head"><h3>岗位投递进度</h3><span>${state.applications.length} 条记录</span></div><div class="update-table">${state.applications.slice(0, 10).map((app, index) => `<div class="update-row"><div class="update-job"><strong>${esc(app.title)}</strong><span>${esc(app.company)} · 候选人 Alex Chen</span></div><span class="tag ${app.status === "offer" ? "offer" : app.status === "terminated" ? "terminated" : ""}">${statusLabel(app.status)}</span><select class="update-select" data-application-index="${index}" aria-label="更新 ${esc(app.title)} 的求职进度">${stages.map(([key, label]) => `<option value="${key}" ${app.status === key ? "selected" : ""}>${label}</option>`).join("")}</select></div>`).join("")}</div></section></div>`;
-        document.querySelectorAll("[data-application-index]").forEach((select) => select.addEventListener("change", () => { const app = state.applications[Number(select.dataset.applicationIndex)]; app.status = select.value; app.recent = "刚刚"; renderView(); showToast(`已更新 ${app.title} 的求职进度：${statusLabel(app.status)}`); }));
+        document.querySelectorAll("[data-application-index]").forEach((select) => select.addEventListener("change", () => { const app = state.applications[Number(select.dataset.applicationIndex)]; app.status = select.value; app.recent = "刚刚"; evaluateAgentCompletion(); renderView(); showToast(state.agentFinished ? `已更新 ${app.title}，目标 Offer 已达成，系统判定 Agent 运行结束` : `已更新 ${app.title} 的求职进度：${statusLabel(app.status)}`); }));
       }
 
       document.querySelectorAll(".role-tab").forEach((tab) => tab.addEventListener("click", () => setLoginRole(tab.dataset.role)));
