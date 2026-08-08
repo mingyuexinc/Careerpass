@@ -1,0 +1,415 @@
+# Careerpass 前端 Demo 数据规范
+
+## 1. 文档定位
+
+本文档定义正式前端 MVP 使用的固定演示数据、数据关系、状态变化和演示重置规则。
+
+数据用于支持以下完整演示闭环：
+
+```text
+HR 登录
+→ 上传岗位 JD
+→ 求职者登录
+→ 上传简历并完成解析
+→ 创建求职目标
+→ 启动 Agent
+→ 查看投递进度
+→ HR 沟通并更新投递状态
+→ Offer 达到目标
+→ Agent 运行结束
+```
+
+本文档只定义前端 Demo 数据，不定义真实后端数据模型、数据库字段、接口协议或生产数据。
+
+## 2. 数据使用原则
+
+| 原则 | 说明 |
+| --- | --- |
+| 固定可复现 | 每次启动 Demo 都能使用相同初始数据复现主流程 |
+| 最小够用 | 只准备完成页面展示和主流程所需的数据 |
+| 数据集中 | 用户、岗位、投递和消息不散落在页面组件中 |
+| 状态可演示 | 数据必须支持加载、空、失败、成功、禁用和状态变化 |
+| 角色可区分 | 求职者和 HR 使用不同 Demo 身份和可见页面 |
+| 前端安全 | 不使用真实个人信息、联系方式、密码或敏感简历内容 |
+| 原型解耦 | 正式前端不直接依赖 `prototypes/` 下的原型运行代码 |
+| 可替换 | Mock 数据访问层未来可以替换为真实数据访问层 |
+
+## 3. 数据集总览
+
+### 3.1 最小数据规模
+
+| 数据类型 | 初始规模 | 说明 |
+| --- | --- | --- |
+| 求职者 | 1 个 | 用于完成求职者主流程 |
+| HR | 1 个 | 用于完成 HR 主流程 |
+| 简历 | 1 份 | 当前求职任务绑定的简历 |
+| 其它资料 | 0 至 2 份 | 用于展示附加资料上传结果 |
+| 岗位 | 至少 1 个 | HR 上传或预置岗位 |
+| 求职目标 | 1 个 | 当前求职者的目标 |
+| 投递轮次 | 1 个 | 本期只演示首轮投递 |
+| 投递记录 | 0 或多条 | 由投递轮次状态决定是否展示 |
+| 沟通会话 | 0 或 1 个以上 | 只有已建立沟通的投递记录才有会话 |
+| 消息 | 每个会话至少 1 条 | 支持 HR 消息和 Agent 回复 |
+
+### 3.2 Demo 数据关系
+
+```mermaid
+flowchart TD
+    Candidate["求职者 Demo 用户"] --> Resume["当前简历"]
+    Candidate --> Goal["当前求职目标"]
+    HR["HR Demo 用户"] --> Job["岗位 JD"]
+    Goal --> Run["首轮投递轮次"]
+    Resume --> Run
+    Run --> Application["投递记录"]
+    Job --> Application
+    Application --> Conversation["沟通会话"]
+    Conversation --> Message["消息记录"]
+```
+
+## 4. 固定 Demo 身份
+
+### 4.1 求职者
+
+| 字段 | Demo 值 | 用途 |
+| --- | --- | --- |
+| `id` | `candidate-demo-001` | 关联简历、目标和投递记录 |
+| `role` | `candidate` | 决定求职者导航和页面权限 |
+| `displayName` | `林启明` | 页面展示名称 |
+| `loginName` | `candidate.demo` | 登录演示输入 |
+| `password` | `demo-only` | 仅用于前端演示，不作为真实凭证 |
+| `avatar` | 可选占位图 | 头像展示 |
+
+### 4.2 HR
+
+| 字段 | Demo 值 | 用途 |
+| --- | --- | --- |
+| `id` | `hr-demo-001` | 关联岗位、会话和投递记录 |
+| `role` | `hr` | 决定 HR 导航和页面权限 |
+| `displayName` | `星河智能科技 HR` | 页面展示名称 |
+| `loginName` | `hr.demo` | 登录演示输入 |
+| `password` | `demo-only` | 仅用于前端演示，不作为真实凭证 |
+| `companyName` | `星河智能科技` | 岗位和沟通页面展示 |
+
+### 4.3 登录行为
+
+| 场景 | 数据行为 | 页面结果 |
+| --- | --- | --- |
+| 求职者登录成功 | 设置当前身份为 `candidate-demo-001` | 进入求职者欢迎页 |
+| HR 登录成功 | 设置当前身份为 `hr-demo-001` | 进入 HR 欢迎页 |
+| 账号不存在 | 不修改当前身份 | 展示登录失败反馈 |
+| 退出登录 | 清除当前身份 | 返回登录页 |
+| 刷新页面 | 恢复当前 Demo 身份或回到未登录 | 不产生新业务数据 |
+
+## 5. 简历和其它资料
+
+### 5.1 当前简历
+
+| 字段 | Demo 值 |
+| --- | --- |
+| `id` | `resume-demo-001` |
+| `candidateId` | `candidate-demo-001` |
+| `fileName` | `林启明-后端与AI应用工程师-简历.pdf` |
+| `fileType` | `pdf` |
+| `parseStatus` | 初始为 `not_uploaded`，上传后进入 `processing` |
+| `uploadedAt` | `2026-08-08T09:00:00+08:00` |
+| `isBoundToRun` | Agent 启动后为 `true` |
+
+简历内容使用脱敏摘要或固定展示文本，不在 Demo 数据中保存真实联系方式、住址、证件信息或完整个人隐私。
+
+### 5.2 其它求职资料
+
+| `id` | `fileName` | 类型 | 初始状态 |
+| --- | --- | --- | --- |
+| `document-demo-001` | `Python后端项目证书.pdf` | 证书 | `ready` |
+| `document-demo-002` | `AI应用项目说明.pdf` | 其它资料 | `ready` |
+
+其它资料只展示上传和就绪状态，不进入简历解析流程。
+
+### 5.3 简历状态变化
+
+```mermaid
+stateDiagram-v2
+    [*] --> not_uploaded
+    not_uploaded --> uploading: 选择文件
+    uploading --> processing: 上传成功
+    processing --> succeeded: 模拟解析成功
+    processing --> failed: 模拟解析失败
+    failed --> uploading: 重新上传
+```
+
+| 状态 | 页面文案 | 允许操作 |
+| --- | --- | --- |
+| `not_uploaded` | 尚未上传简历 | 选择文件 |
+| `uploading` | 上传中 | 等待上传完成 |
+| `processing` | 简历解析中 | 等待或刷新 |
+| `succeeded` | 解析成功 | 创建求职目标 |
+| `failed` | 解析失败 | 重新上传 |
+
+## 6. 求职目标
+
+### 6.1 当前求职目标
+
+| 字段 | Demo 值 |
+| --- | --- |
+| `id` | `goal-demo-001` |
+| `candidateId` | `candidate-demo-001` |
+| `resumeId` | `resume-demo-001` |
+| `targetOfferCount` | `1` |
+| `jobTitle` | `AI Agent 工程师 / 大模型应用开发工程师` |
+| `filterDescription` | `不考虑北京；优先深圳、杭州和广州；期望薪资不低于 20K` |
+| `status` | 初始为 `not_created`，创建后为 `active` |
+| `agentStatus` | 初始为 `not_started` |
+| `createdAt` | `2026-08-08T09:10:00+08:00` |
+
+### 6.2 启动条件
+
+| 条件 | 判断依据 | 未满足时的表现 |
+| --- | --- | --- |
+| 已登录 | 当前存在求职者 Demo 身份 | 返回登录页 |
+| 简历已上传 | 当前简历存在 | 提示上传简历 |
+| 简历解析成功 | `parseStatus = succeeded` | 启动按钮禁用 |
+| 求职目标已创建 | 当前目标存在 | 启动按钮禁用 |
+| 当前 Agent 未运行 | `agentStatus` 不是 `running` | 启动按钮禁用 |
+
+## 7. 岗位数据
+
+### 7.1 岗位来源
+
+岗位数据分为两类：
+
+| 来源 | 用途 |
+| --- | --- |
+| 预置岗位 | 保证求职者流程开始时存在可匹配岗位 |
+| HR 上传岗位 | 演示 HR 上传岗位后的成功状态 |
+
+本期不要求 HR 上传的文件真实解析为结构化岗位；页面只需要展示上传成功和岗位摘要。
+
+### 7.2 主演示岗位
+
+| 字段 | Demo 值 |
+| --- | --- |
+| `id` | `job-demo-001` |
+| `title` | `AI Agent 工程师` |
+| `companyName` | `星河智能科技` |
+| `location` | `深圳` |
+| `salaryRange` | `25-40K` |
+| `jobNature` | `技术研发` |
+| `employmentType` | `全职` |
+| `interviewMode` | `线上/线下` |
+| `jdStatus` | `ready` |
+| `summary` | `负责企业级 AI Agent 应用的设计、开发与落地。` |
+
+### 7.3 原型岗位 Mock 数据
+
+`prototypes/mock/first-round-matching-jobs.js` 当前提供 20 个首轮岗位匹配结果，包含岗位基础信息、JD 摘要、匹配分数和推荐理由。
+
+正式前端使用时：
+
+- 该文件作为原型参考数据，不作为正式页面的直接依赖。
+- 正式 Mock 层可以复用其中的岗位内容，但应转换为正式前端所需的最小数据结构。
+- 求职进度看板不需要展示全部 20 个匹配结果，可以选择其中的岗位生成投递记录。
+
+## 8. 投递轮次和投递记录
+
+### 8.1 首轮投递轮次
+
+| 字段 | Demo 值 |
+| --- | --- |
+| `id` | `match-run-demo-001` |
+| `jobGoalId` | `goal-demo-001` |
+| `resumeId` | `resume-demo-001` |
+| `status` | `running` 或 `completed`，按演示阶段变化 |
+| `roundNumber` | `1` |
+| `startedAt` | `2026-08-08T09:20:00+08:00` |
+| `resultCount` | 初始为 `0`，启动后可变为 `3` |
+
+### 8.2 投递轮次为 0
+
+这是独立的空状态数据集，用于演示 Agent 已启动但尚未生成投递记录的页面：
+
+| 数据项 | 值 |
+| --- | --- |
+| `roundNumber` | `1` |
+| `resultCount` | `0` |
+| `applications` | `[]` |
+| 页面结果 | 展示“暂无投递记录”，不展示虚构岗位 |
+
+### 8.3 首轮投递记录
+
+正式演示可以使用以下 3 条投递记录，覆盖进行中、Offer 和流程终止状态：
+
+| `id` | 岗位 | 初始状态 | 用途 |
+| --- | --- | --- | --- |
+| `application-demo-001` | AI Agent 工程师 | `screening` | 展示进行中的主要岗位 |
+| `application-demo-002` | 大模型应用开发工程师 | `interview_1` | 展示面试阶段岗位 |
+| `application-demo-003` | 后端开发工程师（Python） | `terminated` | 展示终止记录长期保留 |
+
+每条投递记录至少包含：
+
+| 字段 | 示例 |
+| --- | --- |
+| `id` | `application-demo-001` |
+| `candidateId` | `candidate-demo-001` |
+| `jobId` | `job-demo-001` |
+| `goalId` | `goal-demo-001` |
+| `runId` | `match-run-demo-001` |
+| `resumeId` | `resume-demo-001` |
+| `status` | `screening` |
+| `latestCommunicationAt` | `2026-08-08T10:20:00+08:00` |
+| `createdAt` | `2026-08-08T09:30:00+08:00` |
+
+## 9. 求职进度状态
+
+### 9.1 状态值和显示文案
+
+| 状态值 | 页面文案 | 是否终态 |
+| --- | --- | --- |
+| `submitted` | 已投递 | 否 |
+| `screening` | 初筛中 | 否 |
+| `written_test` | 笔试 | 否 |
+| `interview_1` | 一面 | 否 |
+| `interview_2` | 二面 | 否 |
+| `interview_3` | 三面 | 否 |
+| `hr_interview` | HR 面 | 否 |
+| `offer` | 获得 Offer | 是 |
+| `terminated` | 流程终止 | 是 |
+
+### 9.2 状态迁移演示
+
+```mermaid
+flowchart LR
+    A["submitted 已投递"] --> B["screening 初筛中"]
+    B --> C["written_test 笔试"]
+    C --> D["interview_1 一面"]
+    D --> E["interview_2 二面"]
+    E --> F["interview_3 三面"]
+    F --> G["hr_interview HR 面"]
+    G --> H["offer 获得 Offer"]
+    A --> X["terminated 流程终止"]
+    B --> X
+    C --> X
+    D --> X
+    E --> X
+    F --> X
+    G --> X
+```
+
+本期 Demo 中，HR 修改的是当前岗位下当前候选人的一条投递记录，不修改候选人全局状态或岗位全局状态。
+
+## 10. 沟通会话和消息
+
+### 10.1 会话
+
+| 字段 | Demo 值 |
+| --- | --- |
+| `id` | `conversation-demo-001` |
+| `applicationId` | `application-demo-001` |
+| `jobId` | `job-demo-001` |
+| `candidateId` | `candidate-demo-001` |
+| `summary` | `HR 已开始了解候选人的 Agent 项目经验` |
+| `lastMessageAt` | `2026-08-08T10:20:00+08:00` |
+
+### 10.2 初始消息
+
+| 顺序 | 角色 | 内容 | 展示目的 |
+| --- | --- | --- | --- |
+| 1 | `candidate_agent` | 您好，我对贵司 AI Agent 工程师岗位很感兴趣，希望进一步了解岗位的技术方向。 | 展示 Agent 主动沟通 |
+| 2 | `hr` | 您好，方便介绍一下您最近参与的 Agent 项目和主要负责的部分吗？ | 展示 HR 提问 |
+| 3 | `candidate_agent` | 我主要负责 Agent 工作流、工具调用和 RAG 检索链路的设计与实现。 | 展示 Agent 回复 |
+
+### 10.3 新消息演示
+
+HR 发送新消息后，Mock 层按以下顺序变化：
+
+```text
+输入框有内容
+→ 点击发送
+→ 新增 HR 消息
+→ 展示 Agent 回复中
+→ 延迟后新增固定 Agent 回复
+→ 更新会话最近消息时间
+```
+
+示例 HR 消息：
+
+```text
+这个项目中你是如何处理工具调用失败和任务重试的？
+```
+
+示例 Agent 回复：
+
+```text
+我们对工具输入做结构化校验，并将可重试失败与确定性失败分开处理；每次运行都会记录任务状态，避免重复执行产生副作用。
+```
+
+## 11. Agent 状态和数据变化
+
+| Agent 状态 | 触发事件 | 数据变化 | 页面结果 |
+| --- | --- | --- | --- |
+| `not_started` | 求职目标创建前 | 目标可能不存在或未完成 | 启动按钮禁用 |
+| `ready` | 简历解析成功且目标已创建 | 目标状态为可启动 | 启动按钮可用 |
+| `running` | 用户点击启动 | 投递轮次开启，简历绑定当前轮次 | 展示运行中 |
+| `running` | 投递记录生成 | `applications` 从空变为有记录 | 看板展示投递数据 |
+| `running` | HR 更新非终态 | 对应投递记录状态变化 | 求职者侧进度刷新 |
+| `running` | HR 更新为 `offer` | Offer 数量增加 | 重新检查目标数量 |
+| `finished` | Offer 数量达到目标 | Agent 结束，目标标记完成 | 启动按钮禁用 |
+
+## 12. 页面状态数据集
+
+正式前端至少需要支持以下可切换数据集：
+
+| 数据集 | 用途 |
+| --- | --- |
+| `default` | 主流程初始数据，展示可操作页面 |
+| `resume-processing` | 展示简历解析中 |
+| `resume-failed` | 展示简历解析失败和重试 |
+| `empty-applications` | 展示投递轮次为 0 的空状态 |
+| `applications-active` | 展示进行中的投递记录 |
+| `applications-finished` | 展示 Offer 达标和 Agent 已结束 |
+| `conversation-loading` | 展示沟通记录加载中 |
+| `conversation-failed` | 展示消息发送或加载失败 |
+| `job-upload-empty` | 展示 HR 尚未上传岗位 |
+| `job-upload-success` | 展示岗位上传成功 |
+
+数据集切换可以通过开发模式配置、Demo 操作或测试夹具完成，不应由页面组件自行复制数据。
+
+## 13. 重置和变更规则
+
+### 13.1 重置规则
+
+每次重新进入 Demo 或点击“重置演示”时：
+
+1. 恢复固定用户和角色状态。
+2. 恢复简历为未上传或预设解析成功状态，按当前演示场景决定。
+3. 恢复求职目标为初始配置状态。
+4. 恢复 Agent 为 `not_started`。
+5. 恢复投递轮次和投递记录初始快照。
+6. 恢复会话和消息初始内容。
+7. 清除本次演示产生的临时消息和状态变化。
+
+### 13.2 运行时变更
+
+| 变更 | 是否持久化 | 说明 |
+| --- | --- | --- |
+| 登录身份 | 当前 Demo 会话内 | 刷新或重置后按实现策略恢复 |
+| 简历解析状态 | 当前 Demo 会话内 | 支持成功和失败路径切换 |
+| 求职目标 | 当前 Demo 会话内 | 只保留一个当前目标 |
+| 投递状态 | 当前 Demo 会话内 | 只影响对应投递记录 |
+| HR 新消息 | 当前 Demo 会话内 | 追加到当前会话 |
+| Agent 回复 | 当前 Demo 会话内 | 使用固定回复模板 |
+| 真实文件 | 不持久化 | 本期不保存真实文件 |
+
+## 14. 数据验收清单
+
+- [ ] 求职者和 HR 使用不同的固定 Demo 身份。
+- [ ] 主流程开始前存在至少一个可用岗位。
+- [ ] 简历支持未上传、解析中、成功和失败状态。
+- [ ] 求职目标与当前简历保持关联。
+- [ ] Agent 启动后绑定当前简历，运行中不能替换。
+- [ ] 投递轮次为 0 时展示空状态，不展示虚构记录。
+- [ ] 有投递记录时至少覆盖进行中、Offer 或流程终止中的代表状态。
+- [ ] HR 可以只修改单条投递记录的进度。
+- [ ] 沟通会话至少包含 HR 消息和 Agent 回复。
+- [ ] 消息发送支持发送中、成功和失败重试状态。
+- [ ] Offer 达到目标后 Agent 进入结束状态。
+- [ ] 重置 Demo 后数据恢复到初始快照。
