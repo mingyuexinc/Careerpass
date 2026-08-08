@@ -4,6 +4,11 @@
   "private": true,
   "description": "Careerpass repository development tooling",
   "scripts": {
+    "dev": "npm --prefix careerpass-frontend run dev",
+    "frontend:install": "npm --prefix careerpass-frontend install",
+    "frontend:build": "npm --prefix careerpass-frontend run build",
+    "frontend:test": "npm --prefix careerpass-frontend run test:run",
+    "frontend:check": "npm --prefix careerpass-frontend run typecheck && npm --prefix careerpass-frontend run lint && npm --prefix careerpass-frontend run format:check",
     "lint:commit": "commitlint --edit",
     "prepare": "git config core.hooksPath .githooks"
   },
