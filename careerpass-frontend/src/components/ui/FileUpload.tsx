@@ -7,6 +7,7 @@ interface FileUploadProps {
   accept?: string;
   multiple?: boolean;
   disabled?: boolean;
+  disabledLabel?: string;
   onFiles: (files: File[]) => void;
 }
 
@@ -16,6 +17,7 @@ export function FileUpload({
   accept,
   multiple = false,
   disabled = false,
+  disabledLabel = "当前不可替换",
   onFiles,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +41,7 @@ export function FileUpload({
         onChange={handleChange}
       />
       <Button type="button" disabled={disabled} onClick={() => inputRef.current?.click()}>
-        {disabled ? "当前不可替换" : "选择文件"}
+        {disabled ? disabledLabel : "选择文件"}
       </Button>
     </div>
   );
