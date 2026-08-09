@@ -355,14 +355,15 @@ select:focus {
 }
 .hero-orb {
   display: grid;
-  width: 125px;
-  height: 125px;
+  width: 100px;
+  height: 100px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 38% 62% 61% 39% / 44% 38% 62% 56%;
-  background: var(--color-brand-soft);
-  color: var(--color-brand);
-  font-size: 55px;
+  border-radius: 32px;
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 34px;
+  box-shadow: 0 16px 28px rgba(255, 106, 0, 0.22);
 }
 .panel-grid,
 .upload-grid {
@@ -1035,14 +1036,22 @@ select:focus {
   .login-card {
     padding: 26px 20px;
   }
-  .hero-card,
+  .hero-card {
+    display: flex;
+    align-items: flex-start;
+    padding: 20px;
+  }
   .offer-progress-panel,
   .agent-card {
     display: block;
     padding: 22px;
   }
   .hero-orb {
-    display: none;
+    display: grid;
+    width: 68px;
+    height: 68px;
+    border-radius: 22px;
+    font-size: 26px;
   }
   .form-grid {
     grid-template-columns: 1fr;
