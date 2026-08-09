@@ -41,8 +41,11 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
           <div className="brand-mark">C</div>
           <div>
             <div className="sidebar-title">Careerpass</div>
-            <div className="sidebar-role">{roleLabel}</div>
           </div>
+        </div>
+        <div className="role-badge" aria-label={`当前身份：${roleLabel}`}>
+          <span className="dot" aria-hidden="true" />
+          <span>{roleLabel}</span>
         </div>
         <nav className="sidebar-nav" aria-label={`${roleLabel}导航`}>
           {items.map((item) => (
