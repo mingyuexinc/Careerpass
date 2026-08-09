@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/PageHeader";
 import { LoadingState, StatusBadge } from "../../components/ui";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function HrHomePage() {
-  useDemoRefresh();
-  const { initialized, currentJob, applications, conversations } = useDemoStore(
+  useWorkspaceRefresh();
+  const { initialized, currentJob, applications, conversations } = useWorkspaceStore(
     (state) => state,
   );
   if (!initialized) return <LoadingState />;

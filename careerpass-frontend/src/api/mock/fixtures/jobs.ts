@@ -1,8 +1,8 @@
 import type { Job } from "../../../domain/types";
 
-export const demoJobs: Job[] = [
+export const jobFixtures: Job[] = [
   {
-    id: "job-demo-001",
+    id: "job-001",
     title: "AI 产品前端工程师",
     company: "界面实验室",
     location: "深圳",
@@ -11,7 +11,7 @@ export const demoJobs: Job[] = [
     uploaded: false,
   },
   {
-    id: "job-demo-002",
+    id: "job-002",
     title: "React 应用开发工程师",
     company: "星河科技",
     location: "上海",

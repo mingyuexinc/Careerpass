@@ -1,7 +1,7 @@
 import type {
   Application,
   Conversation,
-  DemoSnapshot,
+  WorkspaceSnapshot,
   DeliveryProgress,
   Job,
   JobGoal,
@@ -13,7 +13,7 @@ import type {
 export interface ResumeRepository {
   getCurrentResume(): Promise<Resume | null>;
   uploadResume(file: File): Promise<Resume>;
-  simulateParseResult(result: "succeeded" | "failed"): Promise<Resume>;
+  setParseResult(result: "succeeded" | "failed"): Promise<Resume>;
 }
 
 export interface SupportingDocumentRepository {
@@ -29,7 +29,7 @@ export interface JobRepository {
 export interface JobGoalRepository {
   getCurrentGoal(): Promise<JobGoal | null>;
   saveGoal(input: JobGoalInput): Promise<JobGoal>;
-  startAgent(): Promise<DemoSnapshot>;
+  startAgent(): Promise<WorkspaceSnapshot>;
 }
 
 export interface ApplicationRepository {
@@ -42,7 +42,7 @@ export interface ConversationRepository {
   sendConversationMessage(id: string, content: string): Promise<Conversation>;
 }
 
-export interface DemoRepository
+export interface WorkspaceRepository
   extends
     ResumeRepository,
     SupportingDocumentRepository,
@@ -50,6 +50,6 @@ export interface DemoRepository
     JobGoalRepository,
     ApplicationRepository,
     ConversationRepository {
-  getSnapshot(): Promise<DemoSnapshot>;
-  resetDemo(): Promise<DemoSnapshot>;
+  getSnapshot(): Promise<WorkspaceSnapshot>;
+  resetData(): Promise<WorkspaceSnapshot>;
 }

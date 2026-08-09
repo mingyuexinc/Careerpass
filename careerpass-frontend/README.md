@@ -1,6 +1,6 @@
-# Careerpass 前端
+﻿# Careerpass 前端
 
-Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP。当前版本采用 Mock Repository 驱动，支持求职者和 HR 两种角色的完整演示流程，便于重复演示和后续替换为真实数据源。
+Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP。当前版本采用 Mock Repository 驱动，支持求职者和 HR 两种角色的完整业务流程，并为后续接入真实数据源保留清晰边界。
 
 ## 当前状态
 
@@ -8,13 +8,13 @@ Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP
 - 正式运行代码位于 `src/`。
 - HTML 原型、原型 Mock 数据和参考图片位于 `prototypes/`，不作为正式运行入口。
 - 当前不依赖真实后端接口、真实认证或真实文件存储。
-- Demo 数据只保存在浏览器内存中，刷新页面或重置 Demo 后恢复初始状态。
+- 当前数据只保存在浏览器内存中，刷新页面后恢复初始状态。
 
 ## 功能范围
 
 ### 求职者
 
-- Demo 登录和角色工作台
+- 角色登录和角色工作台
 - 简历上传、解析中、解析成功和解析失败状态
 - 其它求职资料上传
 - 求职目标创建和启动条件展示
@@ -24,14 +24,14 @@ Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP
 
 ### HR
 
-- Demo 登录和 HR 工作台
+- 角色登录和 HR 工作台
 - 岗位 JD 上传和岗位摘要展示
 - 查看求职 Agent 沟通记录
-- 发送消息并接收固定 Mock 回复
+- 发送消息并接收系统回复
 - 更新单条投递记录的招聘阶段
 - Offer 达标后同步求职者侧 Agent 状态
 
-## Demo 流程
+## 标准流程
 
 1. 访问登录页，选择“求职者”或“HR”身份登录。
 2. HR 进入“岗位 JD”，上传一份岗位文件。
@@ -42,7 +42,7 @@ Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP
 7. HR 在“投递进度”逐步更新投递状态。
 8. 任意投递记录达到 Offer 且满足目标数量后，Agent 自动结束。
 
-侧边栏中的“重置演示数据”可以恢复初始 Demo 状态，便于重复演示。
+应用刷新后会恢复初始工作区状态。
 
 ## 技术栈
 
@@ -125,13 +125,13 @@ npm run frontend:build  # 构建前端生产版本
 src/
 ├── api/
 │   ├── repositories/       # Repository 接口
-│   └── mock/fixtures/      # Demo Fixture 和 Mock 实现
+│   └── mock/fixtures/      # 本地 Fixture 和 Mock 实现
 ├── components/             # 页面头部和通用 UI 组件
 ├── domain/                 # 领域类型、状态值和状态映射
 ├── features/               # 业务 Hook 和功能模块
 ├── layouts/                # 公共布局和角色布局
 ├── pages/                  # 路由页面
-├── stores/                 # 认证和 Demo 业务状态
+├── stores/                 # 认证和工作区业务状态
 ├── styles/                 # 设计令牌和全局样式
 └── test/                   # 单元、组件和页面测试
 ```
@@ -139,19 +139,19 @@ src/
 页面遵循以下数据访问方向，不直接读取 Fixture：
 
 ```text
-页面 → 业务组件或 Hook → Repository → Mock Repository → Demo Fixture
+页面 → 业务组件或 Hook → Repository → Mock Repository → 本地 Fixture
 ```
 
 后续接入真实 API 时，优先替换 Repository 实现，不重写页面主要流程。
 
 ## 开发文档
 
-- [前端主演示流程](docs/product/frontend-demo-flow.md)
+- [前端标准流程与验收](docs/product/frontend-acceptance-flow.md)
 - [前端正式产品形态与页面规格](docs/product/frontend-product-flow.md)
 - [前端技术架构](docs/architecture/frontend-architecture.md)
 - [前端开发决策](docs/decisions/frontend-development-decisions.md)
 - [UI/UX 设计规范](docs/design/design-guidelines.md)
-- [Demo 数据规范](docs/development/demo-data.md)
+- [本地数据规范](docs/development/local-data-spec.md)
 - [前端开发规范](docs/development/frontend-guidelines.md)
 
 ## 当前非目标

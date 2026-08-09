@@ -7,12 +7,12 @@ import {
   StatusBadge,
   Toast,
 } from "../../components/ui";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function JobsPage() {
-  useDemoRefresh();
-  const state = useDemoStore((store) => store);
+  useWorkspaceRefresh();
+  const state = useWorkspaceStore((store) => store);
   const [toast, setToast] = useState<string | null>(null);
   if (!state.initialized) return <LoadingState />;
   async function upload(file: File) {
@@ -38,7 +38,7 @@ export function JobsPage() {
           <div className="panel-heading">
             <div>
               <h2>岗位 JD 上传</h2>
-              <p className="muted-text">本期只支持准备一份演示岗位。</p>
+              <p className="muted-text">当前版本支持维护一份岗位 JD。</p>
             </div>
             <StatusBadge tone={state.currentJob ? "success" : "neutral"}>
               {state.currentJob ? "已准备" : "待上传"}
@@ -67,22 +67,22 @@ export function JobsPage() {
         </article>
         <article className="panel">
           <div className="panel-heading">
-            <h2>本期边界</h2>
-            <StatusBadge>Demo</StatusBadge>
+            <h2>当前版本范围</h2>
+            <StatusBadge>当前版本</StatusBadge>
           </div>
           <div className="notice-list">
             <div className="notice-row">
               <span>1</span>
               <div>
                 <strong>一份岗位</strong>
-                <p>上传新的 JD 会替换当前演示岗位。</p>
+                <p>上传新的 JD 会替换当前岗位。</p>
               </div>
             </div>
             <div className="notice-row">
               <span>2</span>
               <div>
                 <strong>不做复杂管理</strong>
-                <p>本期不实现岗位编辑、删除和岗位目录。</p>
+                <p>当前版本不包含岗位编辑、删除和岗位目录。</p>
               </div>
             </div>
             <div className="notice-row">

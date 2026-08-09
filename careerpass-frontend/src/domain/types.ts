@@ -16,7 +16,7 @@ export type DeliveryProgress =
   | "offer"
   | "terminated";
 
-export interface DemoUser {
+export interface UserProfile {
   id: string;
   role: UserRole;
   displayName: string;
@@ -85,7 +85,7 @@ export interface Conversation {
   messages: Message[];
 }
 
-export interface DemoSnapshot {
+export interface WorkspaceSnapshot {
   resume: Resume | null;
   supportingDocuments: SupportingDocument[];
   currentJob: Job | null;

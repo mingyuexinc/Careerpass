@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/auth-store";
-import { useDemoStore } from "../stores/demo-store";
 import type { UserRole } from "../domain/types";
 
 interface NavigationItem {
@@ -14,8 +13,6 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const signOut = useAuthStore((state) => state.signOut);
-  const resetDemo = useDemoStore((state) => state.resetDemo);
-  const demoLoading = useDemoStore((state) => state.loading);
   const roleLabel = role === "candidate" ? "求职者工作台" : "HR 工作台";
   const items: NavigationItem[] =
     role === "candidate"
@@ -35,11 +32,6 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
   function handleSignOut() {
     signOut();
     navigate("/login");
-  }
-
-  async function handleReset() {
-    await resetDemo();
-    navigate(`/${role}`);
   }
 
   return (
@@ -63,11 +55,8 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
         <div className="sidebar-footer">
           <div>
             <strong>{user?.displayName}</strong>
-            <span>演示账号 · {user?.title}</span>
+            <span>当前账号 · {user?.title}</span>
           </div>
-          <button type="button" onClick={() => void handleReset()} disabled={demoLoading}>
-            重置演示数据
-          </button>
           <button type="button" onClick={handleSignOut}>
             退出登录
           </button>

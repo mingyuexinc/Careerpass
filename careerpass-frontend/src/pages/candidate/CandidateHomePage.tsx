@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/PageHeader";
 import { LoadingState, StatusBadge } from "../../components/ui";
 import { agentStatusMeta, resumeStatusMeta } from "../../domain/mappings";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function CandidateHomePage() {
-  useDemoRefresh();
-  const { initialized, resume, jobGoal, agentStatus, applications } = useDemoStore(
+  useWorkspaceRefresh();
+  const { initialized, resume, jobGoal, agentStatus, applications } = useWorkspaceStore(
     (state) => state,
   );
   if (!initialized) return <LoadingState />;

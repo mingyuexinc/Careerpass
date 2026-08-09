@@ -10,12 +10,12 @@ import {
   deliveryProgressMeta,
   getOfferCount,
 } from "../../domain/mappings";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function ProgressPage() {
-  useDemoRefresh();
-  const state = useDemoStore((store) => store);
+  useWorkspaceRefresh();
+  const state = useWorkspaceStore((store) => store);
   if (!state.initialized) return <LoadingState />;
   const offerCount = getOfferCount(
     state.applications.map((application) => application.status),

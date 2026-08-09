@@ -25,7 +25,7 @@ export function LoginPage() {
           <span>求职 Agent</span>
         </div>
       </div>
-      <div className="eyebrow">CAREERPASS DEMO</div>
+      <div className="eyebrow">CAREERPASS</div>
       <h1 id="login-title">开始你的求职旅程</h1>
       <p className="page-subtitle">
         选择身份进入对应工作台，体验从资料准备到求职 Agent 推进的完整流程。
@@ -49,22 +49,18 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} className="login-form">
         <label>
           账号
-          <input
-            name="username"
-            defaultValue={role === "candidate" ? "candidate.demo" : "hr.demo"}
-            key={role}
-          />
+          <input name="username" key={role} placeholder="请输入账号" />
         </label>
         <label>
           密码
-          <input name="password" type="password" defaultValue="demo-only" />
+          <input name="password" type="password" placeholder="请输入密码" />
         </label>
         <button className="button button-primary" type="submit" disabled={submitting}>
-          {submitting ? "登录中…" : "登录 Demo"}
+          {submitting ? "登录中…" : "登录"}
         </button>
       </form>
       <Link className="login-register-link" to="/register">
-        了解注册流程（演示扩展）
+        了解注册流程
       </Link>
     </section>
   );

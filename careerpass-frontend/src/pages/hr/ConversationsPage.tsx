@@ -8,12 +8,12 @@ import {
   MessageList,
   StatusBadge,
 } from "../../components/ui";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function ConversationsPage() {
-  useDemoRefresh();
-  const state = useDemoStore((store) => store);
+  useWorkspaceRefresh();
+  const state = useWorkspaceStore((store) => store);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   if (!state.initialized) return <LoadingState />;
   const selected = state.conversations.find(
@@ -24,7 +24,7 @@ export function ConversationsPage() {
       <PageHeader
         eyebrow="HR / CONVERSATIONS"
         title="与求职 Agent 沟通"
-        description="查看指定岗位和候选人的会话记录，发送消息后会收到固定 Demo 回复。"
+        description="查看指定岗位和候选人的会话记录，并在工作台中完成沟通。"
       />
       {state.error ? (
         <ErrorState description={state.error} onRetry={state.clearError} />

@@ -1,25 +1,25 @@
 import { create } from "zustand";
 import { mockRepository } from "../api/mock/mockRepository";
-import type { DemoSnapshot, DeliveryProgress, JobGoalInput } from "../domain/types";
+import type { DeliveryProgress, JobGoalInput, WorkspaceSnapshot } from "../domain/types";
 
-interface DemoState extends DemoSnapshot {
+interface WorkspaceState extends WorkspaceSnapshot {
   initialized: boolean;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   uploadResume: (file: File) => Promise<void>;
-  simulateParse: (result: "succeeded" | "failed") => Promise<void>;
+  setParseResult: (result: "succeeded" | "failed") => Promise<void>;
   uploadDocuments: (files: File[]) => Promise<void>;
   uploadJob: (file: File) => Promise<void>;
   saveGoal: (input: JobGoalInput) => Promise<void>;
   startAgent: () => Promise<void>;
   updateApplicationStatus: (id: string, status: DeliveryProgress) => Promise<void>;
   sendMessage: (id: string, content: string) => Promise<void>;
-  resetDemo: () => Promise<void>;
+  resetData: () => Promise<void>;
   clearError: () => void;
 }
 
-const emptySnapshot: DemoSnapshot = {
+const emptySnapshot: WorkspaceSnapshot = {
   resume: null,
   supportingDocuments: [],
   currentJob: null,
@@ -31,8 +31,8 @@ const emptySnapshot: DemoSnapshot = {
 };
 
 async function runAction(
-  set: (partial: Partial<DemoState>) => void,
-  action: () => Promise<DemoSnapshot>,
+  set: (partial: Partial<WorkspaceState>) => void,
+  action: () => Promise<WorkspaceSnapshot>,
 ): Promise<void> {
   set({ loading: true, error: null });
   try {
@@ -47,7 +47,7 @@ async function runAction(
   }
 }
 
-export const useDemoStore = create<DemoState>((set) => ({
+export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   ...emptySnapshot,
   initialized: false,
   loading: false,
@@ -68,9 +68,9 @@ export const useDemoStore = create<DemoState>((set) => ({
       await mockRepository.uploadResume(file);
       return mockRepository.getSnapshot();
     }),
-  simulateParse: async (result) =>
+  setParseResult: async (result) =>
     runAction(set, async () => {
-      await mockRepository.simulateParseResult(result);
+      await mockRepository.setParseResult(result);
       return mockRepository.getSnapshot();
     }),
   uploadDocuments: async (files) =>
@@ -105,14 +105,14 @@ export const useDemoStore = create<DemoState>((set) => ({
       await mockRepository.sendConversationMessage(id, content);
       return mockRepository.getSnapshot();
     }),
-  resetDemo: async () => runAction(set, () => mockRepository.resetDemo()),
+  resetData: async () => runAction(set, () => mockRepository.resetData()),
   clearError: () => set({ error: null }),
 }));
 
-export function useDemoInitialized(): boolean {
-  return useDemoStore((state) => state.initialized);
+export function useWorkspaceInitialized(): boolean {
+  return useWorkspaceStore((state) => state.initialized);
 }
 
-export function getDemoState(): DemoState {
-  return useDemoStore.getState();
+export function getWorkspaceState(): WorkspaceState {
+  return useWorkspaceStore.getState();
 }

@@ -9,12 +9,12 @@ import {
   Toast,
 } from "../../components/ui";
 import { agentStatusMeta } from "../../domain/mappings";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function JobGoalPage() {
-  useDemoRefresh();
-  const state = useDemoStore((store) => store);
+  useWorkspaceRefresh();
+  const state = useWorkspaceStore((store) => store);
   const [offerTarget, setOfferTarget] = useState("1");
   const [title, setTitle] = useState("前端工程师");
   const [filters, setFilters] = useState("优先 AI 应用和数据产品，不考虑长期出差岗位。");
@@ -61,7 +61,7 @@ export function JobGoalPage() {
         <div className="panel-heading">
           <div>
             <h2>求职目标配置</h2>
-            <p className="muted-text">本期 Demo 只支持一个求职目标。</p>
+            <p className="muted-text">当前版本每位用户维护一个求职目标。</p>
           </div>
           {state.jobGoal ? (
             <StatusBadge tone="success">已保存</StatusBadge>

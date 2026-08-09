@@ -1,10 +1,10 @@
-# Careerpass 前端项目入口规则
+﻿# Careerpass 前端项目入口规则
 
 ## 1. 项目定位
 
 Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScript + React 的正式前端 MVP。
 
-当前目标是完成一个可维护、可重复演示、便于后续接入真实数据的前端应用，覆盖求职者和 HR 两种角色的核心求职 Agent 流程。
+当前目标是完成一个可维护、可重复验收、便于后续接入真实数据的前端应用，覆盖求职者和 HR 两种角色的核心求职 Agent 流程。
 
 本项目当前以 Mock 数据驱动，不依赖当前后端文档和真实后端接口完成前端 MVP。
 
@@ -14,7 +14,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 
 - 产品流程、页面形态和开发目标已经整理。
 - 技术栈确定为 TypeScript + React。
-- 技术架构、设计规范、Demo 数据和开发规范已经建立第一版。
+- 技术架构、设计规范、本地数据和开发规范已经建立第一版。
 - 正式前端源码尚未开始大规模实现。
 - HTML 原型位于 `prototypes/`，只作为流程和视觉参考。
 
@@ -41,7 +41,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 - 正式前端源码只能放在 `src/`。
 - `prototypes/` 保存 HTML 原型、原型 Mock 数据和参考图片。
 - 可以复用原型中的流程、视觉方向和数据内容，但不得直接复制原型单文件业务逻辑作为正式实现。
-- 正式前端不得直接依赖 `prototypes/html-demo/index.html` 的运行代码。
+- 正式前端不得直接依赖 `prototypes/html-reference/index.html` 的运行代码。
 
 ### 4.2 页面和数据分离
 
@@ -52,7 +52,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 → 业务组件或 Hook
 → Repository 接口
 → Mock Repository
-→ Demo Fixture
+→ 本地 Fixture
 ```
 
 - 页面不得直接读取或修改 Mock Fixture。
@@ -93,19 +93,19 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 
 - 不在代码、Fixture、日志或页面中保存真实密码、Token、联系方式和完整简历原文。
 - 不展示内部文件路径、原始异常堆栈或 Mock 内部结构。
-- 错误使用受控、面向用户的文案。
-- Demo 数据必须使用脱敏、虚构且可复现的内容。
+- 错误使用简洁、面向用户的文案。
+- 本地数据必须使用脱敏、虚构且可复现的内容。
 
 ## 5. 当前 MVP 范围
 
 ### 包含
 
-- 求职者和 HR Demo 登录。
+- 求职者和 HR 角色登录。
 - 求职者资料上传和简历解析状态展示。
 - 求职目标创建和 Agent 启动。
 - 首轮投递进度看板。
 - HR 岗位 JD 上传。
-- HR 求职沟通和固定 Agent 回复。
+- HR 求职沟通和系统 Agent 回复。
 - HR 修改单条投递记录的求职进度。
 - Offer 达标后 Agent 自动结束的页面表现。
 
@@ -126,7 +126,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 
 | 文档 | 用途 |
 | --- | --- |
-| [`docs/product/frontend-demo-flow.md`](docs/product/frontend-demo-flow.md) | 原型主演示流程、角色流程、产品规则和 Demo 验收范围 |
+| [`docs/product/frontend-acceptance-flow.md`](docs/product/frontend-acceptance-flow.md) | 标准业务流程、角色流程、产品规则和验收范围 |
 | [`docs/product/frontend-product-flow.md`](docs/product/frontend-product-flow.md) | 正式前端产品形态、页面职责、页面规格和页面关系 |
 
 ### 决策和架构文档
@@ -141,7 +141,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 | 文档 | 用途 |
 | --- | --- |
 | [`docs/design/design-guidelines.md`](docs/design/design-guidelines.md) | 视觉风格、设计令牌、布局、组件和可访问性规范 |
-| [`docs/development/demo-data.md`](docs/development/demo-data.md) | 固定 Demo 数据、状态变化、场景数据集和重置规则 |
+| [`docs/development/local-data-spec.md`](docs/development/local-data-spec.md) | 本地数据、状态变化、场景数据集和恢复规则 |
 | [`docs/development/frontend-guidelines.md`](docs/development/frontend-guidelines.md) | 文件组织、命名、组件、状态、测试和 AI/Codex 修改规范 |
 
 ## 7. 开发前阅读顺序
@@ -149,9 +149,9 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 处理前端开发任务时，按任务需要阅读：
 
 1. 先阅读本文件。
-2. 涉及产品流程时阅读 `frontend-demo-flow.md`。
+2. 涉及产品流程时阅读 `frontend-acceptance-flow.md`。
 3. 涉及页面时阅读 `frontend-product-flow.md`。
-4. 涉及数据时阅读 `demo-data.md`。
+4. 涉及数据时阅读 `local-data-spec.md`。
 5. 涉及技术实现时阅读 `frontend-architecture.md`。
 6. 涉及视觉时阅读 `design-guidelines.md`。
 7. 编码前阅读 `frontend-guidelines.md`。
@@ -177,15 +177,15 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 
 - 执行与改动匹配的类型检查、Lint、测试或构建检查。
 - 验证正常、加载、空、失败、成功和禁用状态。
-- 验证关键 Demo 流程没有被破坏。
+- 验证关键业务流程没有被破坏。
 - 如果改变页面范围、状态语义或技术方案，同步更新对应文档。
 
 ## 9. 当前推荐工作顺序
 
 1. 初始化 Vite + React + TypeScript 工程。
 2. 建立全局样式令牌和应用外壳。
-3. 建立路由、角色布局和登录 Demo。
-4. 建立领域类型、状态映射和 Demo Fixture。
+3. 建立路由、角色布局和登录流程。
+4. 建立领域类型、状态映射和本地 Fixture。
 5. 建立 Repository 和 Mock 数据访问层。
 6. 按求职者流程实现资料、任务和进度页面。
 7. 按 HR 流程实现岗位、沟通和投递进度页面。

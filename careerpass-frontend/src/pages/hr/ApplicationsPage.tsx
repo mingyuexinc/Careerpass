@@ -11,12 +11,12 @@ import {
 } from "../../components/ui";
 import { deliveryProgressMeta, deliveryProgressOrder } from "../../domain/mappings";
 import type { DeliveryProgress } from "../../domain/types";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function ApplicationsPage() {
-  useDemoRefresh();
-  const state = useDemoStore((store) => store);
+  useWorkspaceRefresh();
+  const state = useWorkspaceStore((store) => store);
   const [toast, setToast] = useState<string | null>(null);
   if (!state.initialized) return <LoadingState />;
   async function update(id: string, status: DeliveryProgress) {

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -100,7 +100,7 @@
       .form-field textarea { padding-top: 12px; min-height: 108px; resize: vertical; }
       .form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 4px var(--brand-soft); }
       .login-submit { width: 100%; margin-top: 12px; }
-      .demo-hint { margin: 16px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+      .reference-hint { margin: 16px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
       .login-error { min-height: 18px; margin-top: 10px; color: var(--danger); font-size: 13px; }
 
       .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) 1fr; }
@@ -323,7 +323,7 @@
           <div class="brand"><span class="brand-mark">C</span><span>Careerpass</span></div>
           <h1>让每一次求职，都更有方向。</h1>
           <p>你的 AI 求职伙伴，帮你从目标设定、岗位匹配到求职沟通，持续推进下一份理想工作。</p>
-          <div class="login-note"><span>●</span><span><strong>演示模式</strong> · 使用预置身份即可进入原型</span></div>
+          <div class="login-note"><span>●</span><span><strong>产品流程参考</strong> · 使用预置身份即可进入原型</span></div>
         </div>
         <form id="loginForm" class="login-card">
           <div class="role-tabs" role="tablist" aria-label="登录身份">
@@ -332,11 +332,11 @@
           </div>
           <h2 id="loginTitle">欢迎回来</h2>
           <p id="loginHelper" class="helper">登录后继续管理你的求职目标和 Agent 进度。</p>
-          <div class="form-field"><label for="loginAccount">账号</label><input id="loginAccount" name="account" autocomplete="username" placeholder="请输入演示账号" value="candidate@careerpass.demo" /></div>
-          <div class="form-field"><label for="loginPassword">密码</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" value="demo1234" /></div>
+          <div class="form-field"><label for="loginAccount">账号</label><input id="loginAccount" name="account" autocomplete="username" placeholder="请输入账号" value="candidate@careerpass.local" /></div>
+          <div class="form-field"><label for="loginPassword">密码</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" value="local1234" /></div>
           <div id="loginError" class="login-error" aria-live="polite"></div>
           <button type="submit" class="btn btn-primary login-submit">进入 Careerpass <span>→</span></button>
-          <p class="demo-hint">本页面不连接真实账号系统 · 点击右上身份标签切换角色</p>
+          <p class="reference-hint">本页面不连接真实账号系统 · 点击右上身份标签切换角色</p>
         </form>
       </div>
     </section>
@@ -364,7 +364,7 @@
       <main class="main">
         <header class="topbar">
           <div><div class="eyebrow" id="topEyebrow">CAREER AGENT</div><h1 id="topTitle" class="page-title">你好，Alex</h1><p id="topSubtitle" class="page-subtitle">把求职交给 Agent，把时间留给更重要的准备。</p></div>
-          <div class="topbar-actions"><span class="status-pill"><span class="dot"></span><span id="topStatus">演示数据已就绪</span></span></div>
+          <div class="topbar-actions"><span class="status-pill"><span class="dot"></span><span id="topStatus">业务数据已就绪</span></span></div>
         </header>
         <div id="viewRoot"></div>
       </main>
@@ -376,26 +376,26 @@
     <script>
       // 浏览器直开版本：这里使用与 mock/first-round-matching-jobs.js 对齐的展示投影。
       const jobs = [
-        ["job-demo-001", "AI Agent 工程师", "星河智能科技", "深圳", "25-40K", 94],
-        ["job-demo-002", "大模型应用开发工程师", "云启信息", "杭州", "22-35K", 92],
-        ["job-demo-003", "后端开发工程师（Python）", "远见数据", "广州", "18-30K", 91],
-        ["job-demo-004", "RAG 应用工程师", "知行智能", "上海", "20-32K", 90],
-        ["job-demo-005", "智能产品技术负责人", "启明软件", "北京", "30-45K", 88],
-        ["job-demo-006", "数据平台开发工程师", "数澜科技", "杭州", "18-28K", 87],
-        ["job-demo-007", "机器学习平台工程师", "蓝图计算", "上海", "25-38K", 85],
-        ["job-demo-008", "全栈开发工程师", "木棉互联", "深圳", "20-32K", 84],
-        ["job-demo-009", "后端架构师", "极光云图", "广州", "32-50K", 82],
-        ["job-demo-010", "AI 解决方案工程师", "融智科技", "成都", "18-30K", 81],
-        ["job-demo-011", "软件工程师（智能办公）", "新岸办公", "南京", "16-26K", 79],
-        ["job-demo-012", "数据分析工程师", "瀚海消费科技", "上海", "15-25K", 77],
-        ["job-demo-013", "平台运维开发工程师", "稳态云服务", "武汉", "16-28K", 76],
-        ["job-demo-014", "技术产品经理（AI方向）", "智汇互娱", "北京", "20-35K", 75],
-        ["job-demo-015", "Java 后端开发工程师", "清源网络", "杭州", "18-30K", 73],
-        ["job-demo-016", "前端开发工程师", "界面实验室", "深圳", "16-28K", 72],
-        ["job-demo-017", "自动化测试开发工程师", "质量方舟", "苏州", "14-24K", 70],
-        ["job-demo-018", "技术写作与知识库工程师", "文脉科技", "成都", "12-22K", 68],
-        ["job-demo-019", "业务流程自动化工程师", "合流数字化", "重庆", "13-23K", 66],
-        ["job-demo-020", "云平台应用工程师", "云际互联", "厦门", "15-26K", 64],
+        ["job-001", "AI Agent 工程师", "星河智能科技", "深圳", "25-40K", 94],
+        ["job-002", "大模型应用开发工程师", "云启信息", "杭州", "22-35K", 92],
+        ["job-003", "后端开发工程师（Python）", "远见数据", "广州", "18-30K", 91],
+        ["job-004", "RAG 应用工程师", "知行智能", "上海", "20-32K", 90],
+        ["job-005", "智能产品技术负责人", "启明软件", "北京", "30-45K", 88],
+        ["job-006", "数据平台开发工程师", "数澜科技", "杭州", "18-28K", 87],
+        ["job-007", "机器学习平台工程师", "蓝图计算", "上海", "25-38K", 85],
+        ["job-008", "全栈开发工程师", "木棉互联", "深圳", "20-32K", 84],
+        ["job-009", "后端架构师", "极光云图", "广州", "32-50K", 82],
+        ["job-010", "AI 解决方案工程师", "融智科技", "成都", "18-30K", 81],
+        ["job-011", "软件工程师（智能办公）", "新岸办公", "南京", "16-26K", 79],
+        ["job-012", "数据分析工程师", "瀚海消费科技", "上海", "15-25K", 77],
+        ["job-013", "平台运维开发工程师", "稳态云服务", "武汉", "16-28K", 76],
+        ["job-014", "技术产品经理（AI方向）", "智汇互娱", "北京", "20-35K", 75],
+        ["job-015", "Java 后端开发工程师", "清源网络", "杭州", "18-30K", 73],
+        ["job-016", "前端开发工程师", "界面实验室", "深圳", "16-28K", 72],
+        ["job-017", "自动化测试开发工程师", "质量方舟", "苏州", "14-24K", 70],
+        ["job-018", "技术写作与知识库工程师", "文脉科技", "成都", "12-22K", 68],
+        ["job-019", "业务流程自动化工程师", "合流数字化", "重庆", "13-23K", 66],
+        ["job-020", "云平台应用工程师", "云际互联", "厦门", "15-26K", 64],
       ].map(([id, title, company, location, salary, score]) => ({ id, title, company, location, salary, score }));
 
       const stages = [
@@ -428,7 +428,7 @@
       const showToast = (message) => { const node = $("#toast"); node.textContent = message; node.classList.remove("hidden"); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => node.classList.add("hidden"), 2600); };
       const stageIndex = (status) => Math.max(0, stages.findIndex(([key]) => key === status));
       const statusLabel = (status) => stages.find(([key]) => key === status)?.[1] || status;
-      const makeApplications = () => jobs.map((job, index) => ({ ...job, applicationId: `app-demo-${String(index + 1).padStart(3, "0")}`, status: index < 2 ? "interview_1" : index === 2 ? "screening" : index === 3 ? "offer" : index === 4 ? "terminated" : "submitted", recent: index < 2 ? "今天 10:24" : "昨天 16:40" }));
+      const makeApplications = () => jobs.map((job, index) => ({ ...job, applicationId: `app-${String(index + 1).padStart(3, "0")}`, status: index < 2 ? "interview_1" : index === 2 ? "screening" : index === 3 ? "offer" : index === 4 ? "terminated" : "submitted", recent: index < 2 ? "今天 10:24" : "昨天 16:40" }));
       const currentOfferCount = () => state.applications.filter((app) => app.status === "offer").length;
       const evaluateAgentCompletion = () => { if (state.agentStarted && currentOfferCount() >= state.goal.offers) state.agentFinished = true; };
 
@@ -437,7 +437,7 @@
         document.querySelectorAll(".role-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.role === role));
         $("#loginTitle").textContent = role === "candidate" ? "欢迎回来" : "进入 HR 工作台";
         $("#loginHelper").textContent = role === "candidate" ? "登录后继续管理你的求职目标和 Agent 进度。" : "登录后查看候选人沟通与岗位投递进度。";
-        $("#loginAccount").value = role === "candidate" ? "candidate@careerpass.demo" : "hr@careerpass.demo";
+        $("#loginAccount").value = role === "candidate" ? "candidate@careerpass.local" : "hr@careerpass.local";
       }
 
       function login(role = state.role) {
@@ -446,14 +446,14 @@
         $("#loginScreen").classList.add("hidden");
         $("#appScreen").classList.remove("hidden");
         renderShell();
-        showToast(role === "candidate" ? "已进入求职者演示模式" : "已进入 HR 演示模式");
+        showToast(role === "candidate" ? "已进入求职者产品流程参考" : "已进入 HR 产品流程参考");
       }
 
       function logout() {
         $("#appScreen").classList.add("hidden");
         $("#loginScreen").classList.remove("hidden");
         $("#loginError").textContent = "";
-        showToast("已退出演示账号");
+        showToast("已退出当前账号");
       }
 
       function renderShell() {
@@ -471,7 +471,7 @@
         $("#topEyebrow").textContent = eyebrow;
         $("#topTitle").textContent = title;
         $("#topSubtitle").textContent = subtitle;
-        $("#topStatus").textContent = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 运行中" : "演示数据已就绪";
+        $("#topStatus").textContent = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 运行中" : "业务数据已就绪";
       }
 
       function renderView() {
@@ -501,14 +501,14 @@
         root.innerHTML = `<div class="view">
           <section class="hero-card"><div><div class="eyebrow">YOUR CAREER COPILOT</div><h2>准备好开始你的求职旅程了吗？</h2><p>Careerpass 将陪你完成资料准备、目标设定和求职 Agent 启动，让每一步都更清晰。</p><button class="btn btn-primary" data-view="${nextStep.view}" style="margin-top:18px">${nextStep.done ? "查看求职进度" : nextStep.title} <span>→</span></button></div><div class="hero-orb">✦</div></section>
           <section class="two-col"><div class="panel"><div class="panel-head"><h3>开始你的求职流程</h3><span>3 个步骤</span></div><div class="notice-list">${steps.map((step, index) => `<div class="notice"><div class="notice-icon">${step.done ? "✓" : index + 1}</div><div><strong>${step.title}</strong><span>${step.description}</span></div></div>`).join("")}</div></div><div class="panel"><div class="panel-head"><h3>当前准备状态</h3><span>${state.agentFinished ? "已结束" : state.agentStarted ? "进行中" : "待完成"}</span></div><div class="state-list"><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "1"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "已完成" : state.resumeUploaded ? "解析中" : "尚未开始"}</span></div></div><div class="state-row ${state.goalCreated ? "done" : state.resumeParsed ? "active" : ""}"><div class="state-marker">${state.goalCreated ? "✓" : "2"}</div><div><strong>求职目标</strong><span>${state.goalCreated ? "已创建" : "等待创建"}</span></div></div><div class="state-row ${state.agentFinished ? "done" : state.agentStarted ? "active" : ""}"><div class="state-marker">${state.agentFinished ? "✓" : state.agentStarted ? "…" : "3"}</div><div><strong>Agent 状态</strong><span>${state.agentFinished ? "运行结束" : state.agentStarted ? "正在运行" : "尚未启动"}</span></div></div></div></div></section>
-          <section class="panel"><div class="panel-head"><h3>关于本次演示</h3><span>Careerpass</span></div><p class="page-subtitle">本演示将展示从资料准备、求职目标创建到 Agent 推进求职进度的完整流程。岗位匹配结果和投递数据将在对应的求职进度页面中展示。</p></section>
+          <section class="panel"><div class="panel-head"><h3>产品流程说明</h3><span>Careerpass</span></div><p class="page-subtitle">本页面展示从资料准备、求职目标创建到 Agent 推进求职进度的完整流程。岗位匹配结果和投递数据将在对应的求职进度页面中展示。</p></section>
         </div>`;
       }
 
       function renderCandidateUpload(root) {
         setHeader("求职资料上传", "分别准备简历和其它求职资料；简历解析成功后才能创建求职目标。");
         const resumeLocked = state.agentStarted || state.agentFinished;
-        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>简历</h3><span>${resumeLocked ? "本轮已绑定" : "必需"}</span></div><div class="upload-zone"><div class="upload-icon">CV</div><h3>${resumeLocked ? "本轮简历已绑定" : state.resumeUploaded ? "简历已选择" : "上传你的简历"}</h3><p>${resumeLocked ? "本轮投递已绑定当前简历，运行期间不可更换。" : state.resumeUploaded ? "文件已接收，正在更新解析状态。" : "支持用于演示的 PDF、DOC 或 DOCX 文件。"}</p><input id="resumeInput" class="file-input" type="file" accept=".pdf,.doc,.docx" ${resumeLocked ? "disabled" : ""} /><label for="resumeInput" class="btn btn-primary ${resumeLocked ? "is-disabled" : ""}">${resumeLocked ? "本轮已绑定" : state.resumeUploaded ? "重新选择简历" : "选择简历"}</label>${state.resumeUploaded ? `<div class="file-card"><div class="job-logo">CV</div><div><strong>${esc(state.resumeName || "Alex-Chen-Resume.pdf")}</strong><span>${state.resumeParsed ? "解析成功 · 画像已就绪" : "上传成功 · 正在解析"}</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>其它求职资料</h3><span>${state.otherFiles.length ? `${state.otherFiles.length} 份已上传` : "可选 · 支持多份"}</span></div><div class="upload-zone"><div class="upload-icon">＋</div><h3>${state.otherFiles.length ? "资料已添加" : "补充其它求职资料"}</h3><p>${state.otherFiles.length ? "新选择的资料会追加到当前列表，不会替换已有资料。" : "可一次选择多份，或分批上传证书、作品集等资料。"}</p><input id="otherInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple /><label for="otherInput" class="btn btn-primary">${state.otherFiles.length ? "继续添加资料" : "选择资料"}</label>${state.otherFiles.length ? `<div class="material-file-list">${state.otherFiles.map((name, index) => `<div class="file-card material-file"><div class="job-logo">＋</div><div><strong>${esc(name)}</strong><span>上传成功 · 资料已就绪</span></div><button class="material-file-remove" type="button" data-material-index="${index}" aria-label="删除 ${esc(name)}" title="删除资料">×</button></div>`).join("")}</div>` : ""}</div></div></section><section class="panel"><div class="panel-head"><h3>简历处理状态</h3><span>${state.resumeParsed ? "已完成" : "准备中"}</span></div><div class="state-list"><div class="state-row ${state.resumeUploaded ? "done" : "active"}"><div class="state-marker">${state.resumeUploaded ? "✓" : "1"}</div><div><strong>文件上传</strong><span>${state.resumeUploaded ? "简历文件已安全接收" : "等待选择简历"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "2"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "结构化画像已生成" : state.resumeUploaded ? "Agent 正在解析" : "上传后开始"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "3"}</div><div><strong>可用于求职</strong><span>${state.resumeParsed ? "可以创建求职目标" : "等待解析完成"}</span></div></div></div></section></div>`;
+        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>简历</h3><span>${resumeLocked ? "本轮已绑定" : "必需"}</span></div><div class="upload-zone"><div class="upload-icon">CV</div><h3>${resumeLocked ? "本轮简历已绑定" : state.resumeUploaded ? "简历已选择" : "上传你的简历"}</h3><p>${resumeLocked ? "本轮投递已绑定当前简历，运行期间不可更换。" : state.resumeUploaded ? "文件已接收，正在更新解析状态。" : "支持用于验证的 PDF、DOC 或 DOCX 文件。"}</p><input id="resumeInput" class="file-input" type="file" accept=".pdf,.doc,.docx" ${resumeLocked ? "disabled" : ""} /><label for="resumeInput" class="btn btn-primary ${resumeLocked ? "is-disabled" : ""}">${resumeLocked ? "本轮已绑定" : state.resumeUploaded ? "重新选择简历" : "选择简历"}</label>${state.resumeUploaded ? `<div class="file-card"><div class="job-logo">CV</div><div><strong>${esc(state.resumeName || "Alex-Chen-Resume.pdf")}</strong><span>${state.resumeParsed ? "解析成功 · 画像已就绪" : "上传成功 · 正在解析"}</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>其它求职资料</h3><span>${state.otherFiles.length ? `${state.otherFiles.length} 份已上传` : "可选 · 支持多份"}</span></div><div class="upload-zone"><div class="upload-icon">＋</div><h3>${state.otherFiles.length ? "资料已添加" : "补充其它求职资料"}</h3><p>${state.otherFiles.length ? "新选择的资料会追加到当前列表，不会替换已有资料。" : "可一次选择多份，或分批上传证书、作品集等资料。"}</p><input id="otherInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple /><label for="otherInput" class="btn btn-primary">${state.otherFiles.length ? "继续添加资料" : "选择资料"}</label>${state.otherFiles.length ? `<div class="material-file-list">${state.otherFiles.map((name, index) => `<div class="file-card material-file"><div class="job-logo">＋</div><div><strong>${esc(name)}</strong><span>上传成功 · 资料已就绪</span></div><button class="material-file-remove" type="button" data-material-index="${index}" aria-label="删除 ${esc(name)}" title="删除资料">×</button></div>`).join("")}</div>` : ""}</div></div></section><section class="panel"><div class="panel-head"><h3>简历处理状态</h3><span>${state.resumeParsed ? "已完成" : "准备中"}</span></div><div class="state-list"><div class="state-row ${state.resumeUploaded ? "done" : "active"}"><div class="state-marker">${state.resumeUploaded ? "✓" : "1"}</div><div><strong>文件上传</strong><span>${state.resumeUploaded ? "简历文件已安全接收" : "等待选择简历"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "2"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "结构化画像已生成" : state.resumeUploaded ? "Agent 正在解析" : "上传后开始"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "3"}</div><div><strong>可用于求职</strong><span>${state.resumeParsed ? "可以创建求职目标" : "等待解析完成"}</span></div></div></div></section></div>`;
         const input = $("#resumeInput");
         input?.addEventListener("change", (event) => { if (resumeLocked) return; const file = event.target.files?.[0]; if (!file) return; state.resumeUploaded = true; state.resumeParsed = false; state.resumeName = file.name; renderView(); showToast("简历上传成功，正在解析…"); setTimeout(() => { state.resumeParsed = true; renderView(); showToast("简历解析成功，可以创建求职目标"); }, 850); });
         $("#otherInput")?.addEventListener("change", (event) => { const files = Array.from(event.target.files || []); if (!files.length) return; state.otherFiles.push(...files.map((file) => file.name)); renderView(); showToast(`已添加 ${files.length} 份其它求职资料`); });
@@ -537,12 +537,12 @@
 
       function renderHrWelcome(root) {
         setHeader("你好，Morgan", "通过 Careerpass，清晰了解岗位沟通与投递进度。");
-        root.innerHTML = `<div class="view"><section class="hero-card"><div><div class="eyebrow">HR WORKSPACE</div><h2>欢迎使用 HR 工作台</h2><p>从岗位信息准备到候选人沟通，Careerpass 帮你在一个工作台中完成招聘流程协作。</p><button class="btn btn-primary" data-view="hrUpload" style="margin-top:18px">开始准备岗位 JD <span>→</span></button></div><div class="hero-orb">⌁</div></section><section class="two-col"><div class="panel"><div class="panel-head"><h3>HR 演示流程</h3><span>3 个步骤</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>上传岗位 JD</strong><span>准备供求职者 Agent 匹配的岗位信息</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>参与岗位沟通</strong><span>求职者 Agent 发起沟通后进行交流</span></div></div><div class="notice"><div class="notice-icon">3</div><div><strong>更新投递进度</strong><span>根据实际情况推进指定投递记录</span></div></div></div></div><div class="panel"><div class="panel-head"><h3>当前准备状态</h3><span>${state.agentStarted ? "进行中" : "待完成"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD</strong><span>${state.jdUploaded ? "已准备岗位数据" : "尚未上传"}</span></div></div><div class="state-row ${state.agentStarted ? "done" : ""}"><div class="state-marker">${state.agentStarted ? "✓" : "2"}</div><div><strong>求职者 Agent 沟通</strong><span>${state.agentStarted ? "已有沟通记录" : "等待求职者启动 Agent"}</span></div></div><div class="state-row ${state.agentStarted ? "active" : ""}"><div class="state-marker">3</div><div><strong>投递进度更新</strong><span>${state.agentStarted ? "可以查看并更新" : "沟通开始后可用"}</span></div></div></div></div></section><section class="panel"><div class="panel-head"><h3>关于本次演示</h3><span>Careerpass</span></div><p class="page-subtitle">本演示将展示 HR 从岗位信息准备、候选人 Agent 沟通到投递进度更新的完整流程。具体岗位和投递数据将在对应功能页面中展示。</p></section></div>`;
+        root.innerHTML = `<div class="view"><section class="hero-card"><div><div class="eyebrow">HR WORKSPACE</div><h2>欢迎使用 HR 工作台</h2><p>从岗位信息准备到候选人沟通，Careerpass 帮你在一个工作台中完成招聘流程协作。</p><button class="btn btn-primary" data-view="hrUpload" style="margin-top:18px">开始准备岗位 JD <span>→</span></button></div><div class="hero-orb">⌁</div></section><section class="two-col"><div class="panel"><div class="panel-head"><h3>HR 标准流程</h3><span>3 个步骤</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>上传岗位 JD</strong><span>准备供求职者 Agent 匹配的岗位信息</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>参与岗位沟通</strong><span>求职者 Agent 发起沟通后进行交流</span></div></div><div class="notice"><div class="notice-icon">3</div><div><strong>更新投递进度</strong><span>根据实际情况推进指定投递记录</span></div></div></div></div><div class="panel"><div class="panel-head"><h3>当前准备状态</h3><span>${state.agentStarted ? "进行中" : "待完成"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD</strong><span>${state.jdUploaded ? "已准备岗位数据" : "尚未上传"}</span></div></div><div class="state-row ${state.agentStarted ? "done" : ""}"><div class="state-marker">${state.agentStarted ? "✓" : "2"}</div><div><strong>求职者 Agent 沟通</strong><span>${state.agentStarted ? "已有沟通记录" : "等待求职者启动 Agent"}</span></div></div><div class="state-row ${state.agentStarted ? "active" : ""}"><div class="state-marker">3</div><div><strong>投递进度更新</strong><span>${state.agentStarted ? "可以查看并更新" : "沟通开始后可用"}</span></div></div></div></div></section><section class="panel"><div class="panel-head"><h3>产品流程说明</h3><span>Careerpass</span></div><p class="page-subtitle">本页面展示 HR 从岗位信息准备、候选人 Agent 沟通到投递进度更新的完整流程。具体岗位和投递数据将在对应功能页面中展示。</p></section></div>`;
       }
 
       function renderHrUpload(root) {
         setHeader("岗位 JD 上传", "上传岗位信息，为求职者 Agent 准备首轮匹配的岗位池。");
-        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>岗位 JD 资料</h3><span>${state.jdUploaded ? "已准备 20 个岗位" : "等待上传"}</span></div><div class="upload-zone"><div class="upload-icon">▤</div><h3>${state.jdUploaded ? "岗位 JD 已上传" : "上传岗位 JD 文件"}</h3><p>${state.jdUploaded ? "演示数据已载入，求职者可以使用首轮匹配岗位池。" : "选择一份用于演示的岗位 JD 文件，上传后载入 20 个虚拟岗位。"}</p><input id="jdInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.md" /><label for="jdInput" class="btn btn-primary">${state.jdUploaded ? "重新上传" : "选择文件"}</label>${state.jdUploaded ? `<div class="file-card"><div class="job-logo">JD</div><div><strong>${esc(state.jdName || "careerpass-jobs-round-1.md")}</strong><span>上传成功 · 岗位数据已就绪</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>岗位池状态</h3><span>${state.jdUploaded ? "可供匹配" : "未就绪"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD 上传</strong><span>${state.jdUploaded ? "文件已接收" : "等待选择文件"}</span></div></div><div class="state-row ${state.jdUploaded ? "done" : ""}"><div class="state-marker">${state.jdUploaded ? "✓" : "2"}</div><div><strong>岗位信息准备</strong><span>${state.jdUploaded ? "20 个岗位可用于首轮匹配" : "上传后载入演示数据"}</span></div></div></div></div></section></div>`;
+        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>岗位 JD 资料</h3><span>${state.jdUploaded ? "已准备 20 个岗位" : "等待上传"}</span></div><div class="upload-zone"><div class="upload-icon">▤</div><h3>${state.jdUploaded ? "岗位 JD 已上传" : "上传岗位 JD 文件"}</h3><p>${state.jdUploaded ? "岗位数据已载入，求职者可以使用首轮匹配岗位池。" : "选择一份支持的岗位 JD 文件，上传后载入 20 个虚拟岗位。"}</p><input id="jdInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.md" /><label for="jdInput" class="btn btn-primary">${state.jdUploaded ? "重新上传" : "选择文件"}</label>${state.jdUploaded ? `<div class="file-card"><div class="job-logo">JD</div><div><strong>${esc(state.jdName || "careerpass-jobs-round-1.md")}</strong><span>上传成功 · 岗位数据已就绪</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>岗位池状态</h3><span>${state.jdUploaded ? "可供匹配" : "未就绪"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD 上传</strong><span>${state.jdUploaded ? "文件已接收" : "等待选择文件"}</span></div></div><div class="state-row ${state.jdUploaded ? "done" : ""}"><div class="state-marker">${state.jdUploaded ? "✓" : "2"}</div><div><strong>岗位信息准备</strong><span>${state.jdUploaded ? "20 个岗位可用于首轮匹配" : "上传后载入岗位数据"}</span></div></div></div></div></section></div>`;
         $("#jdInput")?.addEventListener("change", (event) => { const file = event.target.files?.[0]; if (!file) return; state.jdUploaded = true; state.jdName = file.name; renderView(); showToast("岗位 JD 上传成功，20 个岗位数据已就绪"); });
       }
 
@@ -563,7 +563,7 @@
       }
 
       document.querySelectorAll(".role-tab").forEach((tab) => tab.addEventListener("click", () => setLoginRole(tab.dataset.role)));
-      $("#loginForm").addEventListener("submit", (event) => { event.preventDefault(); const account = $("#loginAccount").value.trim(); const password = $("#loginPassword").value.trim(); if (!account || !password) { $("#loginError").textContent = "请输入演示账号和密码"; return; } $("#loginError").textContent = ""; login(); });
+      $("#loginForm").addEventListener("submit", (event) => { event.preventDefault(); const account = $("#loginAccount").value.trim(); const password = $("#loginPassword").value.trim(); if (!account || !password) { $("#loginError").textContent = "请输入账号和密码"; return; } $("#loginError").textContent = ""; login(); });
       $("#logoutButton").addEventListener("click", logout);
       document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => { state.view = item.dataset.view; renderShell(); }));
       document.addEventListener("click", (event) => { const button = event.target.closest("[data-view]"); if (button && !button.classList.contains("nav-item")) { state.view = button.dataset.view; renderShell(); } });

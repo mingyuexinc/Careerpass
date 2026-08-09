@@ -581,12 +581,6 @@ select:focus {
   font-size: 9px;
   font-weight: 900;
 }
-.demo-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 9px;
-}
 .inline-empty {
   margin-top: 22px;
   padding: 18px;

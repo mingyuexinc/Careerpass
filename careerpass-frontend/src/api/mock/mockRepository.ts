@@ -1,7 +1,7 @@
 import type {
   Application,
   Conversation,
-  DemoSnapshot,
+  WorkspaceSnapshot,
   DeliveryProgress,
   Job,
   JobGoal,
@@ -10,10 +10,10 @@ import type {
   SupportingDocument,
 } from "../../domain/types";
 import { getOfferCount, isValidDeliveryTransition } from "../../domain/mappings";
-import { demoApplications } from "./fixtures/applications";
-import { demoJobs } from "./fixtures/jobs";
+import { applicationFixtures } from "./fixtures/applications";
+import { jobFixtures } from "./fixtures/jobs";
 import { createInitialSnapshot } from "./fixtures/scenarios";
-import type { DemoRepository } from "../repositories/interfaces";
+import type { WorkspaceRepository } from "../repositories/interfaces";
 
 const delay = (milliseconds = 180) =>
   new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -26,15 +26,15 @@ function now(): string {
   return new Date().toISOString();
 }
 
-class MockRepository implements DemoRepository {
-  private snapshot: DemoSnapshot = createInitialSnapshot();
+class MockRepository implements WorkspaceRepository {
+  private snapshot: WorkspaceSnapshot = createInitialSnapshot();
 
-  async getSnapshot(): Promise<DemoSnapshot> {
+  async getSnapshot(): Promise<WorkspaceSnapshot> {
     await delay(80);
     return clone(this.snapshot);
   }
 
-  async resetDemo(): Promise<DemoSnapshot> {
+  async resetData(): Promise<WorkspaceSnapshot> {
     await delay(120);
     this.snapshot = createInitialSnapshot();
     return clone(this.snapshot);
@@ -55,7 +55,7 @@ class MockRepository implements DemoRepository {
     }
     const resume: Resume = {
       id: `resume-${Date.now()}`,
-      fileName: file.name || "demo-resume.pdf",
+      fileName: file.name || "resume.pdf",
       uploadedAt: now(),
       parseStatus: "processing",
       version: (current?.version ?? 0) + 1,
@@ -65,7 +65,7 @@ class MockRepository implements DemoRepository {
     return clone(resume);
   }
 
-  async simulateParseResult(result: "succeeded" | "failed"): Promise<Resume> {
+  async setParseResult(result: "succeeded" | "failed"): Promise<Resume> {
     await delay(520);
     if (!this.snapshot.resume) throw new Error("请先上传简历。");
     this.snapshot.resume.parseStatus = result;
@@ -99,7 +99,7 @@ class MockRepository implements DemoRepository {
 
   async uploadJob(file: File): Promise<Job> {
     await delay(430);
-    const job = clone(demoJobs[0]);
+    const job = clone(jobFixtures[0]);
     job.uploaded = true;
     job.summary = file.name ? `${job.summary} 已上传文件：${file.name}` : job.summary;
     this.snapshot.currentJob = job;
@@ -127,7 +127,7 @@ class MockRepository implements DemoRepository {
     return clone(goal);
   }
 
-  async startAgent(): Promise<DemoSnapshot> {
+  async startAgent(): Promise<WorkspaceSnapshot> {
     await delay(520);
     if (!this.snapshot.resume || this.snapshot.resume.parseStatus !== "succeeded") {
       throw new Error("简历解析成功后才能启动 Agent。");
@@ -139,17 +139,17 @@ class MockRepository implements DemoRepository {
     this.snapshot.agentStatus = "running";
     this.snapshot.round = 1;
     if (this.snapshot.applications.length === 0) {
-      this.snapshot.applications = clone(demoApplications);
-      this.snapshot.currentJob ??= { ...clone(demoJobs[0]), uploaded: true };
+      this.snapshot.applications = clone(applicationFixtures);
+      this.snapshot.currentJob ??= { ...clone(jobFixtures[0]), uploaded: true };
       this.snapshot.conversations = [
         {
-          id: "conversation-demo-001",
-          applicationId: "application-demo-001",
+          id: "conversation-001",
+          applicationId: "application-001",
           jobTitle: "AI 产品前端工程师",
           candidateName: "Alex Chen",
           messages: [
             {
-              id: "message-demo-001",
+              id: "message-001",
               sender: "agent",
               text: "您好，我是 Alex 的求职 Agent，感谢您查看这份投递。",
               createdAt: "2026-08-08T09:18:00+08:00",

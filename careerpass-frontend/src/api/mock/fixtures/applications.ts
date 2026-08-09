@@ -1,10 +1,10 @@
 import type { Application } from "../../../domain/types";
 
-export const demoApplications: Application[] = [
+export const applicationFixtures: Application[] = [
   {
-    id: "application-demo-001",
-    jobId: "job-demo-001",
-    candidateId: "candidate-demo",
+    id: "application-001",
+    jobId: "job-001",
+    candidateId: "candidate-001",
     jobTitle: "AI 产品前端工程师",
     company: "界面实验室",
     location: "深圳",
@@ -14,9 +14,9 @@ export const demoApplications: Application[] = [
     lastContactAt: "2026-08-08T09:18:00+08:00",
   },
   {
-    id: "application-demo-002",
-    jobId: "job-demo-002",
-    candidateId: "candidate-demo",
+    id: "application-002",
+    jobId: "job-002",
+    candidateId: "candidate-001",
     jobTitle: "React 应用开发工程师",
     company: "星河科技",
     location: "上海",

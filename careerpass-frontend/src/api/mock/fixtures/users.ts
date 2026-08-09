@@ -1,11 +1,11 @@
-import type { DemoUser } from "../../../domain/types";
+import type { UserProfile } from "../../../domain/types";
 
-export const demoUsers: DemoUser[] = [
+export const userFixtures: UserProfile[] = [
   {
-    id: "candidate-demo",
+    id: "candidate-001",
     role: "candidate",
     displayName: "Alex Chen",
-    title: "求职者 Demo",
+    title: "求职者工作台",
   },
-  { id: "hr-demo", role: "hr", displayName: "Mia Wang", title: "HR Demo" },
+  { id: "hr-001", role: "hr", displayName: "Mia Wang", title: "HR 工作台" },
 ];

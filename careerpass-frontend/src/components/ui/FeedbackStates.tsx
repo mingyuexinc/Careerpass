@@ -5,7 +5,7 @@ interface FeedbackProps {
 
 export function LoadingState({
   title = "正在加载",
-  description = "请稍候，页面正在准备演示数据。",
+  description = "请稍候，页面正在加载数据。",
 }: FeedbackProps) {
   return (
     <div className="feedback-card" role="status">

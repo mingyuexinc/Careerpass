@@ -1,10 +1,10 @@
-import type { Conversation, DemoSnapshot } from "../../../domain/types";
-import { demoApplications } from "./applications";
-import { demoJobs } from "./jobs";
+import type { Conversation, WorkspaceSnapshot } from "../../../domain/types";
+import { applicationFixtures } from "./applications";
+import { jobFixtures } from "./jobs";
 
 export const initialConversations: Conversation[] = [];
 
-export function createInitialSnapshot(): DemoSnapshot {
+export function createInitialSnapshot(): WorkspaceSnapshot {
   return {
     resume: null,
     supportingDocuments: [],
@@ -17,13 +17,13 @@ export function createInitialSnapshot(): DemoSnapshot {
   };
 }
 
-export function createRunningSnapshot(): DemoSnapshot {
-  const applications = structuredClone(demoApplications);
-  const job = structuredClone(demoJobs[0]);
+export function createRunningSnapshot(): WorkspaceSnapshot {
+  const applications = structuredClone(applicationFixtures);
+  const job = structuredClone(jobFixtures[0]);
   job.uploaded = true;
   return {
     resume: {
-      id: "resume-demo-001",
+      id: "resume-001",
       fileName: "Alex_Chen_Resume.pdf",
       uploadedAt: "2026-08-08T08:50:00+08:00",
       parseStatus: "succeeded",
@@ -32,7 +32,7 @@ export function createRunningSnapshot(): DemoSnapshot {
     supportingDocuments: [],
     currentJob: job,
     jobGoal: {
-      id: "goal-demo-001",
+      id: "goal-001",
       offerTarget: 1,
       title: "前端工程师",
       filters: "优先 AI 应用和数据产品，不考虑长期出差岗位。",

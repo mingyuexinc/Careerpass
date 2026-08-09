@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
-  Button,
   ErrorState,
   FileUpload,
   LoadingState,
@@ -9,12 +8,12 @@ import {
   Toast,
 } from "../../components/ui";
 import { agentStatusMeta, resumeStatusMeta } from "../../domain/mappings";
-import { useDemoRefresh } from "../../features/demo/useDemoRefresh";
-import { useDemoStore } from "../../stores/demo-store";
+import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
+import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function DocumentsPage() {
-  useDemoRefresh();
-  const state = useDemoStore((store) => store);
+  useWorkspaceRefresh();
+  const state = useWorkspaceStore((store) => store);
   const [toast, setToast] = useState<string | null>(null);
   if (!state.initialized) return <LoadingState />;
   const resumeLocked =
@@ -26,13 +25,7 @@ export function DocumentsPage() {
     try {
       await state.uploadResume(file);
       setToast("简历已上传，正在进行解析。");
-      window.setTimeout(
-        () =>
-          void state.simulateParse(
-            file.name.toLowerCase().includes("fail") ? "failed" : "succeeded",
-          ),
-        700,
-      );
+      window.setTimeout(() => void state.setParseResult("succeeded"), 700);
     } catch {
       /* Store exposes the controlled error below. */
     }
@@ -50,7 +43,7 @@ export function DocumentsPage() {
       <PageHeader
         eyebrow="CANDIDATE / DOCUMENTS"
         title="准备你的求职资料"
-        description="上传简历和补充资料，系统会模拟解析流程并展示可用状态。"
+        description="上传简历和补充资料，系统将处理文件并更新资料状态。"
       />
       {state.error ? (
         <ErrorState description={state.error} onRetry={state.clearError} />
@@ -87,24 +80,6 @@ export function DocumentsPage() {
               </div>
             </div>
           ) : null}
-          <div className="demo-actions">
-            <Button
-              variant="ghost"
-              type="button"
-              disabled={!state.resume || state.loading}
-              onClick={() => void state.simulateParse("succeeded")}
-            >
-              模拟解析成功
-            </Button>
-            <Button
-              variant="ghost"
-              type="button"
-              disabled={!state.resume || state.loading}
-              onClick={() => void state.simulateParse("failed")}
-            >
-              演示解析失败
-            </Button>
-          </div>
         </article>
         <article className="panel upload-panel">
           <div className="panel-heading">
