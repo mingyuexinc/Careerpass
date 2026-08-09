@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/PageHeader";
-import { LoadingState, StatusBadge } from "../../components/ui";
+import {
+  LoadingState,
+  StatusBadge,
+  StepListItem,
+  type StepMarkerStatus,
+} from "../../components/ui";
 import { agentStatusMeta, resumeStatusMeta } from "../../domain/mappings";
 import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
 import { useAuthStore } from "../../stores/auth-store";
@@ -16,14 +21,35 @@ export function CandidateHomePage() {
   const status = agentStatusMeta[agentStatus];
   const firstName = user?.displayName.split(" ")[0] ?? "求职者";
   const resumeParsed = resume?.parseStatus === "succeeded";
-  const agentStarted = agentStatus === "running" || agentStatus === "finished";
+  const resumeStepStatus: StepMarkerStatus = resumeParsed
+    ? "completed"
+    : resume
+      ? "active"
+      : "waiting";
+  const goalStepStatus: StepMarkerStatus = jobGoal
+    ? "completed"
+    : resumeParsed
+      ? "active"
+      : "waiting";
+  const agentStepStatus: StepMarkerStatus =
+    agentStatus === "finished"
+      ? "completed"
+      : agentStatus === "running" || agentStatus === "ready"
+        ? "active"
+        : "waiting";
+  const agentActiveSymbol = agentStatus === "running" ? "…" : undefined;
   const nextStep =
     agentStatus === "finished"
       ? { to: "/candidate/progress", label: "查看求职进度" }
       : resumeParsed
         ? { to: "/candidate/job-goal", label: "进入求职任务" }
         : { to: "/candidate/documents", label: "上传求职资料" };
-  const flowSteps = [
+  const flowSteps: Array<{
+    title: string;
+    description: string;
+    status: StepMarkerStatus;
+    activeSymbol?: string;
+  }> = [
     {
       title: "上传求职资料",
       description: resumeParsed
@@ -33,12 +59,12 @@ export function CandidateHomePage() {
           : resume?.parseStatus === "failed"
             ? "简历解析未完成，请重新上传"
             : "上传一份简历，完成资料准备",
-      done: resumeParsed,
+      status: resumeStepStatus,
     },
     {
       title: "创建求职目标",
       description: jobGoal ? "求职目标已创建" : "设置目标岗位与筛选条件",
-      done: Boolean(jobGoal),
+      status: goalStepStatus,
     },
     {
       title: "启动求职 Agent",
@@ -50,7 +76,8 @@ export function CandidateHomePage() {
             : agentStatus === "ready"
               ? "启动条件已满足，可以启动 Agent"
               : "满足条件后启动首轮求职",
-      done: agentStarted,
+      status: agentStepStatus,
+      activeSymbol: agentActiveSymbol,
     },
   ];
   return (
@@ -78,63 +105,51 @@ export function CandidateHomePage() {
         <div className="hero-orb">✦</div>
       </section>
       <section className="two-col">
-        <article className="panel">
+        <article className="panel guide-panel">
           <div className="panel-heading">
             <h2>开始你的求职流程</h2>
             <span className="panel-heading-note">3 个步骤</span>
           </div>
-          <div className="guide-step-list">
+          <div className="step-list">
             {flowSteps.map((step, index) => (
-              <div
-                className={`guide-step ${step.done ? "is-done" : ""}`}
+              <StepListItem
                 key={step.title}
-              >
-                <span className="guide-step-marker">{step.done ? "✓" : index + 1}</span>
-                <div>
-                  <strong>{step.title}</strong>
-                  <span>{step.description}</span>
-                </div>
-              </div>
+                step={index + 1}
+                status={step.status}
+                title={step.title}
+                description={step.description}
+                activeSymbol={step.activeSymbol}
+              />
             ))}
           </div>
         </article>
-        <article className="panel">
+        <article className="panel guide-panel">
           <div className="panel-heading">
             <h2>当前准备状态</h2>
             <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
           </div>
-          <div className="state-list">
-            <div
-              className={`state-row ${resumeParsed ? "done" : resume ? "active" : ""}`}
-            >
-              <span className="state-marker">{resumeParsed ? "✓" : "1"}</span>
-              <div>
-                <strong>简历解析</strong>
-                <span>
-                  {resume ? resumeStatusMeta[resume.parseStatus].label : "尚未开始"}
-                </span>
-              </div>
-            </div>
-            <div
-              className={`state-row ${jobGoal ? "done" : resumeParsed ? "active" : ""}`}
-            >
-              <span className="state-marker">{jobGoal ? "✓" : "2"}</span>
-              <div>
-                <strong>求职目标</strong>
-                <span>{jobGoal ? "已创建" : "等待创建"}</span>
-              </div>
-            </div>
-            <div
-              className={`state-row ${agentStatus === "finished" ? "done" : agentStarted || agentStatus === "ready" ? "active" : ""}`}
-            >
-              <span className="state-marker">
-                {agentStatus === "finished" ? "✓" : agentStatus === "running" ? "…" : "3"}
-              </span>
-              <div>
-                <strong>Agent 状态</strong>
-                <span>{status.label}</span>
-              </div>
-            </div>
+          <div className="step-list">
+            <StepListItem
+              step={1}
+              status={resumeStepStatus}
+              title="简历解析"
+              description={
+                resume ? resumeStatusMeta[resume.parseStatus].label : "尚未开始"
+              }
+            />
+            <StepListItem
+              step={2}
+              status={goalStepStatus}
+              title="求职目标"
+              description={jobGoal ? "已创建" : "等待创建"}
+            />
+            <StepListItem
+              step={3}
+              status={agentStepStatus}
+              activeSymbol={agentActiveSymbol}
+              title="Agent 状态"
+              description={status.label}
+            />
           </div>
         </article>
       </section>
