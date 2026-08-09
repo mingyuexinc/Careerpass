@@ -56,11 +56,16 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
           ))}
         </nav>
         <div className="sidebar-footer">
-          <div>
-            <strong>{user?.displayName}</strong>
-            <span>当前账号 · {user?.title}</span>
+          <div className="profile-mini">
+            <div className="avatar" aria-hidden="true">
+              {user?.displayName.charAt(0) ?? "U"}
+            </div>
+            <div>
+              <strong>{user?.displayName}</strong>
+              <span>{user?.title}</span>
+            </div>
           </div>
-          <button type="button" onClick={handleSignOut}>
+          <button className="logout" type="button" onClick={handleSignOut}>
             退出登录
           </button>
         </div>

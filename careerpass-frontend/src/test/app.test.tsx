@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { RoleLayout } from "../layouts/RoleLayout";
 import { LoginPage } from "../pages/auth/LoginPage";
+import { useAuthStore } from "../stores/auth-store";
 
 describe("LoginPage", () => {
   it("renders the role selector and login form", () => {
@@ -30,6 +31,7 @@ describe("LoginPage", () => {
     ["candidate", "求职者工作台"],
     ["hr", "HR 工作台"],
   ] as const)("renders the %s workspace identity badge", (role, label) => {
+    act(() => useAuthStore.getState().signIn(role));
     const { container } = render(
       <MemoryRouter>
         <RoleLayout role={role}>
@@ -37,7 +39,14 @@ describe("LoginPage", () => {
         </RoleLayout>
       </MemoryRouter>,
     );
-    expect(screen.getByText(label)).toBeInTheDocument();
+    expect(container.querySelector(".role-badge")).toHaveTextContent(label);
     expect(container.querySelector(".role-badge .dot")).toBeInTheDocument();
+    expect(container.querySelector(".avatar")).toHaveTextContent(
+      role === "candidate" ? "A" : "M",
+    );
+    expect(
+      screen.getByText(role === "candidate" ? "Alex Chen" : "Mia Wang"),
+    ).toBeInTheDocument();
+    act(() => useAuthStore.getState().signOut());
   });
 });
