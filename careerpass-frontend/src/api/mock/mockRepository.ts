@@ -79,13 +79,26 @@ class MockRepository implements WorkspaceRepository {
 
   async uploadDocuments(files: File[]): Promise<SupportingDocument[]> {
     await delay(360);
-    const uploaded = files.map((file, index): SupportingDocument => ({
-      id: `document-${Date.now()}-${index}`,
-      fileName: file.name || `supporting-document-${index + 1}.pdf`,
-      kind: "other",
-      uploadedAt: now(),
-      status: "ready",
-    }));
+    const versions = new Map<string, number>();
+    this.snapshot.supportingDocuments.forEach((document) => {
+      versions.set(
+        document.fileName,
+        Math.max(versions.get(document.fileName) ?? 0, document.version),
+      );
+    });
+    const uploaded = files.map((file, index): SupportingDocument => {
+      const fileName = file.name || `supporting-document-${index + 1}.pdf`;
+      const version = (versions.get(fileName) ?? 0) + 1;
+      versions.set(fileName, version);
+      return {
+        id: `document-${Date.now()}-${index}`,
+        fileName,
+        kind: "other",
+        uploadedAt: now(),
+        version,
+        status: "ready",
+      };
+    });
     this.snapshot.supportingDocuments = [
       ...this.snapshot.supportingDocuments,
       ...uploaded,
@@ -93,17 +106,57 @@ class MockRepository implements WorkspaceRepository {
     return clone(uploaded);
   }
 
+  async deleteDocument(id: string): Promise<SupportingDocument[]> {
+    await delay(220);
+    const exists = this.snapshot.supportingDocuments.some(
+      (document) => document.id === id,
+    );
+    if (!exists) throw new Error("没有找到对应的求职资料。");
+    this.snapshot.supportingDocuments = this.snapshot.supportingDocuments.filter(
+      (document) => document.id !== id,
+    );
+    return clone(this.snapshot.supportingDocuments);
+  }
+
   async getCurrentJob(): Promise<Job | null> {
     return clone(this.snapshot.currentJob);
   }
 
-  async uploadJob(file: File): Promise<Job> {
+  async listJobs(): Promise<Job[]> {
+    return clone(this.snapshot.jobs);
+  }
+
+  async uploadJobs(files: File[]): Promise<Job[]> {
     await delay(430);
-    const job = clone(jobFixtures[0]);
-    job.uploaded = true;
-    job.summary = file.name ? `${job.summary} 已上传文件：${file.name}` : job.summary;
-    this.snapshot.currentJob = job;
-    return clone(job);
+    const current = this.snapshot.currentJob;
+    const existingCount = this.snapshot.jobs.length;
+    const uploadBatchId = Date.now();
+    const uploaded = files.map((file, index) => {
+      const job = clone(jobFixtures[(existingCount + index) % jobFixtures.length]);
+      job.id = `job-upload-${uploadBatchId}-${existingCount + index + 1}`;
+      job.fileName = file.name || `job-description-${index + 1}.pdf`;
+      job.uploadedAt = now();
+      job.version = (current?.version ?? 0) + index + 1;
+      job.uploaded = true;
+      return job;
+    });
+    this.snapshot.jobs = [...this.snapshot.jobs, ...uploaded];
+    this.snapshot.currentJob = uploaded.at(-1) ?? current;
+    return clone(uploaded);
+  }
+
+  async uploadJob(file: File): Promise<Job> {
+    const uploaded = await this.uploadJobs([file]);
+    return uploaded[0];
+  }
+
+  async deleteJob(id: string): Promise<Job[]> {
+    await delay(240);
+    const exists = this.snapshot.jobs.some((job) => job.id === id);
+    if (!exists) throw new Error("没有找到对应的岗位 JD。");
+    this.snapshot.jobs = this.snapshot.jobs.filter((job) => job.id !== id);
+    this.snapshot.currentJob = this.snapshot.jobs.at(-1) ?? null;
+    return clone(this.snapshot.jobs);
   }
 
   async getCurrentGoal(): Promise<JobGoal | null> {
@@ -140,7 +193,10 @@ class MockRepository implements WorkspaceRepository {
     this.snapshot.round = 1;
     if (this.snapshot.applications.length === 0) {
       this.snapshot.applications = clone(applicationFixtures);
-      this.snapshot.currentJob ??= { ...clone(jobFixtures[0]), uploaded: true };
+      if (!this.snapshot.currentJob) {
+        this.snapshot.currentJob = { ...clone(jobFixtures[0]), uploaded: true };
+        this.snapshot.jobs = [this.snapshot.currentJob];
+      }
       this.snapshot.conversations = [
         {
           id: "conversation-001",

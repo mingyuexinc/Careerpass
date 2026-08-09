@@ -19,11 +19,15 @@ export interface ResumeRepository {
 export interface SupportingDocumentRepository {
   listDocuments(): Promise<SupportingDocument[]>;
   uploadDocuments(files: File[]): Promise<SupportingDocument[]>;
+  deleteDocument(id: string): Promise<SupportingDocument[]>;
 }
 
 export interface JobRepository {
+  listJobs(): Promise<Job[]>;
   getCurrentJob(): Promise<Job | null>;
+  uploadJobs(files: File[]): Promise<Job[]>;
   uploadJob(file: File): Promise<Job>;
+  deleteJob(id: string): Promise<Job[]>;
 }
 
 export interface JobGoalRepository {

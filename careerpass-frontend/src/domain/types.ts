@@ -36,11 +36,15 @@ export interface SupportingDocument {
   fileName: string;
   kind: "certificate" | "portfolio" | "other";
   uploadedAt: string;
+  version: number;
   status: "uploading" | "ready" | "failed";
 }
 
 export interface Job {
   id: string;
+  fileName: string;
+  uploadedAt: string;
+  version: number;
   title: string;
   company: string;
   location: string;
@@ -88,6 +92,7 @@ export interface Conversation {
 export interface WorkspaceSnapshot {
   resume: Resume | null;
   supportingDocuments: SupportingDocument[];
+  jobs: Job[];
   currentJob: Job | null;
   jobGoal: JobGoal | null;
   agentStatus: AgentStatus;

@@ -3,6 +3,9 @@ import type { Job } from "../../../domain/types";
 export const jobFixtures: Job[] = [
   {
     id: "job-001",
+    fileName: "ai-product-frontend-engineer.pdf",
+    uploadedAt: "2026-08-08T08:40:00+08:00",
+    version: 1,
     title: "AI 产品前端工程师",
     company: "界面实验室",
     location: "深圳",
@@ -12,6 +15,9 @@ export const jobFixtures: Job[] = [
   },
   {
     id: "job-002",
+    fileName: "react-application-engineer.pdf",
+    uploadedAt: "2026-08-08T08:42:00+08:00",
+    version: 1,
     title: "React 应用开发工程师",
     company: "星河科技",
     location: "上海",

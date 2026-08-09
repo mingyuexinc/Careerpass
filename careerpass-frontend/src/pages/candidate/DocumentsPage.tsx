@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
   ErrorState,
+  FileInfoCard,
   FileUpload,
   LoadingState,
   StatusBadge,
@@ -38,6 +39,14 @@ export function DocumentsPage() {
       /* controlled by store */
     }
   }
+  async function removeDocument(id: string) {
+    try {
+      await state.deleteDocument(id);
+      setToast("求职资料已删除。");
+    } catch {
+      /* controlled by store */
+    }
+  }
   return (
     <div className="page-view">
       <PageHeader
@@ -65,20 +74,15 @@ export function DocumentsPage() {
               resumeLocked ? "当前投递轮次已绑定简历。" : "支持 PDF、DOCX 等常见格式。"
             }
             accept=".pdf,.doc,.docx"
-            disabled={resumeLocked || state.loading}
+            disabled={resumeLocked || state.resumeLoading}
             onFiles={(files) => void uploadResume(files[0])}
           />
           {state.resume ? (
-            <div className="file-card">
-              <span className="file-icon">PDF</span>
-              <div>
-                <strong>{state.resume.fileName}</strong>
-                <span>
-                  版本 {state.resume.version} ·{" "}
-                  {new Date(state.resume.uploadedAt).toLocaleDateString("zh-CN")}
-                </span>
-              </div>
-            </div>
+            <FileInfoCard
+              fileName={state.resume.fileName}
+              version={state.resume.version}
+              uploadedAt={state.resume.uploadedAt}
+            />
           ) : null}
         </article>
         <article className="panel upload-panel">
@@ -98,22 +102,25 @@ export function DocumentsPage() {
             description="可以一次选择多份文件，后续分批追加。"
             accept=".pdf,.doc,.docx,.png,.jpg"
             multiple
-            disabled={state.loading}
+            disabled={state.supportingDocumentsLoading}
+            disabledLabel="正在处理…"
             onFiles={(files) => void uploadDocuments(files)}
           />
           {state.supportingDocuments.length ? (
-            <div className="file-list">
-              {state.supportingDocuments.map((document) => (
-                <div className="file-card" key={document.id}>
-                  <span className="file-icon">FILE</span>
-                  <div>
-                    <strong>{document.fileName}</strong>
-                    <span>
-                      已就绪 · {document.kind === "other" ? "其它资料" : document.kind}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div className="file-list-scroll" aria-label="其它求职资料列表" role="region">
+              <div className="file-list">
+                {state.supportingDocuments.map((document) => (
+                  <FileInfoCard
+                    key={document.id}
+                    fileName={document.fileName}
+                    version={document.version}
+                    uploadedAt={document.uploadedAt}
+                    deleteLabel={document.fileName}
+                    deleteDisabled={state.supportingDocumentsLoading}
+                    onDelete={() => void removeDocument(document.id)}
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <div className="inline-empty">还没有其它资料，可稍后补充。</div>

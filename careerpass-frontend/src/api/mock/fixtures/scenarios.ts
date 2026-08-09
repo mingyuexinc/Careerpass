@@ -8,6 +8,7 @@ export function createInitialSnapshot(): WorkspaceSnapshot {
   return {
     resume: null,
     supportingDocuments: [],
+    jobs: [],
     currentJob: null,
     jobGoal: null,
     agentStatus: "not_started",
@@ -30,6 +31,7 @@ export function createRunningSnapshot(): WorkspaceSnapshot {
       version: 1,
     },
     supportingDocuments: [],
+    jobs: [job],
     currentJob: job,
     jobGoal: {
       id: "goal-001",
