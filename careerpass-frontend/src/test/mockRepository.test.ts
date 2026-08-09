@@ -19,6 +19,10 @@ describe("mock repository workspace lifecycle", () => {
     const running = await mockRepository.startAgent();
     expect(running.agentStatus).toBe("running");
     expect(running.applications).toHaveLength(2);
+    expect(running.conversations).toHaveLength(running.applications.length);
+    expect(
+      running.conversations.map((conversation) => conversation.applicationId),
+    ).toEqual(running.applications.map((application) => application.id));
   });
 
   it("keeps the resume failure state available to the data layer", async () => {
@@ -113,20 +117,16 @@ describe("mock repository workspace lifecycle", () => {
     expect((await mockRepository.getSnapshot()).currentJob?.id).toBe(uploaded[0].id);
   });
 
-  it("rejects invalid application transitions and finishes at the offer target", async () => {
+  it("allows a company-specific forward jump and finishes at the offer target", async () => {
     const file = new File(["resume"], "resume.pdf");
     await mockRepository.uploadResume(file);
     await mockRepository.setParseResult("succeeded");
     await mockRepository.saveGoal({ offerTarget: 1, title: "前端工程师", filters: "" });
     await mockRepository.startAgent();
-    await expect(
-      mockRepository.updateApplicationStatus("application-001", "interview_1"),
-    ).rejects.toThrow("不能直接跳转");
-    await mockRepository.updateApplicationStatus("application-001", "written_test");
     await mockRepository.updateApplicationStatus("application-001", "interview_1");
-    await mockRepository.updateApplicationStatus("application-001", "interview_2");
-    await mockRepository.updateApplicationStatus("application-001", "interview_3");
-    await mockRepository.updateApplicationStatus("application-001", "hr_interview");
+    expect((await mockRepository.getSnapshot()).applications[0].status).toBe(
+      "interview_1",
+    );
     await mockRepository.updateApplicationStatus("application-001", "offer");
     const snapshot = await mockRepository.getSnapshot();
     expect(snapshot.applications[0].status).toBe("offer");

@@ -11,6 +11,7 @@ import type {
 } from "../../domain/types";
 import { getOfferCount, isValidDeliveryTransition } from "../../domain/mappings";
 import { applicationFixtures } from "./fixtures/applications";
+import { conversationFixtures } from "./fixtures/conversations";
 import { jobFixtures } from "./fixtures/jobs";
 import { createInitialSnapshot } from "./fixtures/scenarios";
 import type { WorkspaceRepository } from "../repositories/interfaces";
@@ -197,22 +198,7 @@ class MockRepository implements WorkspaceRepository {
         this.snapshot.currentJob = { ...clone(jobFixtures[0]), uploaded: true };
         this.snapshot.jobs = [this.snapshot.currentJob];
       }
-      this.snapshot.conversations = [
-        {
-          id: "conversation-001",
-          applicationId: "application-001",
-          jobTitle: "AI 产品前端工程师",
-          candidateName: "Alex Chen",
-          messages: [
-            {
-              id: "message-001",
-              sender: "agent",
-              text: "您好，我是 Alex 的求职 Agent，感谢您查看这份投递。",
-              createdAt: "2026-08-08T09:18:00+08:00",
-            },
-          ],
-        },
-      ];
+      this.snapshot.conversations = clone(conversationFixtures);
     }
     return clone(this.snapshot);
   }

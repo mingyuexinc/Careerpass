@@ -1,8 +1,7 @@
-import type { Conversation, WorkspaceSnapshot } from "../../../domain/types";
+import type { WorkspaceSnapshot } from "../../../domain/types";
 import { applicationFixtures } from "./applications";
+import { conversationFixtures } from "./conversations";
 import { jobFixtures } from "./jobs";
-
-export const initialConversations: Conversation[] = [];
 
 export function createInitialSnapshot(): WorkspaceSnapshot {
   return {
@@ -43,6 +42,6 @@ export function createRunningSnapshot(): WorkspaceSnapshot {
     agentStatus: "running",
     round: 1,
     applications,
-    conversations: [],
+    conversations: structuredClone(conversationFixtures),
   };
 }

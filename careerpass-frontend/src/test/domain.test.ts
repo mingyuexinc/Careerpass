@@ -5,10 +5,12 @@ import {
 } from "../domain/mappings";
 
 describe("delivery progress rules", () => {
-  it("allows the next stage and termination, but prevents skipping stages", () => {
+  it("allows forward jumps and termination, but prevents backward changes", () => {
     expect(isValidDeliveryTransition("submitted", "screening")).toBe(true);
-    expect(isValidDeliveryTransition("submitted", "interview_1")).toBe(false);
+    expect(isValidDeliveryTransition("submitted", "interview_1")).toBe(true);
+    expect(isValidDeliveryTransition("screening", "offer")).toBe(true);
     expect(isValidDeliveryTransition("screening", "terminated")).toBe(true);
+    expect(isValidDeliveryTransition("interview_1", "screening")).toBe(false);
     expect(isValidDeliveryTransition("offer", "screening")).toBe(false);
   });
 

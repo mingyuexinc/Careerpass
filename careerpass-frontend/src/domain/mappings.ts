@@ -72,7 +72,7 @@ export function isValidDeliveryTransition(
   if (next === "terminated") return true;
   const currentIndex = deliveryProgressOrder.indexOf(current);
   const nextIndex = deliveryProgressOrder.indexOf(next);
-  return nextIndex >= currentIndex && nextIndex <= currentIndex + 1;
+  return nextIndex > currentIndex;
 }
 
 export function getOfferCount(statuses: DeliveryProgress[]): number {
