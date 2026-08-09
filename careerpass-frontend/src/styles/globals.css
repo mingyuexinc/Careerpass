@@ -496,20 +496,19 @@ select:focus {
   border-radius: 14px;
   background: var(--color-bg);
 }
-.guide-step-marker {
+.guide-step .guide-step-marker {
   display: grid;
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 10px;
-  background: var(--color-brand-soft);
-  color: var(--color-brand);
-  font-weight: 900;
-}
-.guide-step.is-done .guide-step-marker {
-  background: var(--color-success-soft);
-  color: var(--color-success);
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
 }
 .guide-step strong {
   display: block;
