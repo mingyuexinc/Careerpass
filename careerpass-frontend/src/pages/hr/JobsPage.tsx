@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
   ErrorState,
+  FileInfoCard,
   FileUpload,
   LoadingState,
   StatusBadge,
@@ -15,10 +16,18 @@ export function JobsPage() {
   const state = useWorkspaceStore((store) => store);
   const [toast, setToast] = useState<string | null>(null);
   if (!state.initialized) return <LoadingState />;
-  async function upload(file: File) {
+  async function upload(files: File[]) {
     try {
-      await state.uploadJob(file);
-      setToast("岗位 JD 已准备完成。");
+      await state.uploadJobs(files);
+      setToast(`${files.length} 份岗位 JD 已准备完成。`);
+    } catch {
+      /* controlled by store */
+    }
+  }
+  async function removeJob(id: string) {
+    try {
+      await state.deleteJob(id);
+      setToast("岗位 JD 已删除。");
     } catch {
       /* controlled by store */
     }
@@ -28,7 +37,7 @@ export function JobsPage() {
       <PageHeader
         eyebrow="HR / JOBS"
         title="准备岗位 JD"
-        description="上传一份岗位资料，为求职者 Agent 准备可以匹配和投递的岗位。"
+        description="上传岗位资料，为求职者 Agent 准备可以匹配和投递的岗位。"
       />
       {state.error ? (
         <ErrorState description={state.error} onRetry={state.clearError} />
@@ -38,61 +47,39 @@ export function JobsPage() {
           <div className="panel-heading">
             <div>
               <h2>岗位 JD 上传</h2>
-              <p className="muted-text">当前版本支持维护一份岗位 JD。</p>
+              <p className="muted-text">当前版本支持分批维护多份岗位 JD。</p>
             </div>
             <StatusBadge tone={state.currentJob ? "success" : "neutral"}>
-              {state.currentJob ? "已准备" : "待上传"}
+              {state.jobs.length ? `${state.jobs.length} 份已准备` : "待上传"}
             </StatusBadge>
           </div>
           <FileUpload
-            label={state.currentJob ? "重新上传岗位 JD" : "选择岗位 JD"}
-            description="支持 PDF、DOCX 等常见格式。"
+            label={state.currentJob ? "继续上传岗位 JD" : "选择岗位 JD"}
+            description="支持 PDF、DOCX 等常见格式，可分批追加。"
             accept=".pdf,.doc,.docx"
+            multiple
             disabled={state.loading}
-            onFiles={(files) => void upload(files[0])}
+            onFiles={(files) => void upload(files)}
           />
-          {state.currentJob ? (
-            <div className="job-summary">
-              <div className="job-symbol">⌁</div>
-              <div>
-                <h2>{state.currentJob.title}</h2>
-                <p>
-                  {state.currentJob.company} · {state.currentJob.location} ·{" "}
-                  {state.currentJob.salary}
-                </p>
-                <span>{state.currentJob.summary}</span>
+          {state.jobs.length || state.currentJob ? (
+            <div className="file-list-scroll" aria-label="岗位 JD 列表" role="region">
+              <div className="file-list">
+                {(state.jobs.length ? state.jobs : [state.currentJob]).map((job) => (
+                  <FileInfoCard
+                    key={job.id}
+                    fileName={job.fileName}
+                    iconLabel="JD"
+                    primaryText={`${job.title} · ${job.company} · ${job.location} · ${job.salary}`}
+                    version={job.version}
+                    uploadedAt={job.uploadedAt}
+                    deleteLabel="岗位 JD"
+                    deleteDisabled={state.loading}
+                    onDelete={() => void removeJob(job.id)}
+                  />
+                ))}
               </div>
             </div>
           ) : null}
-        </article>
-        <article className="panel">
-          <div className="panel-heading">
-            <h2>当前版本范围</h2>
-            <StatusBadge>当前版本</StatusBadge>
-          </div>
-          <div className="notice-list">
-            <div className="notice-row">
-              <span>1</span>
-              <div>
-                <strong>一份岗位</strong>
-                <p>上传新的 JD 会替换当前岗位。</p>
-              </div>
-            </div>
-            <div className="notice-row">
-              <span>2</span>
-              <div>
-                <strong>不做复杂管理</strong>
-                <p>当前版本不包含岗位编辑、删除和岗位目录。</p>
-              </div>
-            </div>
-            <div className="notice-row">
-              <span>3</span>
-              <div>
-                <strong>服务 Agent</strong>
-                <p>岗位准备后可查看沟通和投递进度。</p>
-              </div>
-            </div>
-          </div>
         </article>
       </section>
       {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
