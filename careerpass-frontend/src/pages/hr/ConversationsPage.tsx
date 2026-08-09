@@ -23,8 +23,8 @@ export function ConversationsPage() {
     <div className="page-view">
       <PageHeader
         eyebrow="HR / CONVERSATIONS"
-        title="与求职 Agent 沟通"
-        description="查看指定岗位和候选人的会话记录，并在工作台中完成沟通。"
+        title="候选人沟通"
+        description="查看指定候选人在对应岗位下的会话记录，并在工作台中完成沟通。"
       />
       {state.error ? (
         <ErrorState description={state.error} onRetry={state.clearError} />
@@ -32,7 +32,7 @@ export function ConversationsPage() {
       {!state.conversations.length ? (
         <EmptyState
           title="尚未发起沟通"
-          description="求职者启动 Agent 后，这里会出现可沟通的会话。"
+          description="求职流程开始后，这里会出现可沟通的会话。"
         />
       ) : (
         <section className="chat-layout">
@@ -48,8 +48,8 @@ export function ConversationsPage() {
                 key={conversation.id}
                 onClick={() => setSelectedId(conversation.id)}
               >
-                <strong>{conversation.jobTitle}</strong>
-                <span>{conversation.candidateName}</span>
+                <strong>{conversation.candidateName}</strong>
+                <span>{conversation.jobTitle}</span>
               </button>
             ))}
           </aside>
@@ -58,8 +58,8 @@ export function ConversationsPage() {
               <>
                 <div className="conversation-header">
                   <div>
-                    <h2>{selected.jobTitle}</h2>
-                    <p>{selected.candidateName} · Agent 沟通</p>
+                    <h2>{selected.candidateName}</h2>
+                    <p>{selected.jobTitle}</p>
                   </div>
                   <StatusBadge tone="success">可沟通</StatusBadge>
                 </div>
