@@ -1,5 +1,23 @@
 # 职达Agent
 
+## 文档分层与项目入口
+
+本项目的文档按“AI 如何开发、项目从哪里进入、子工程应该是什么”分层：
+
+| 文档层 | 回答的问题 | 典型内容 |
+| --- | --- | --- |
+| `.harness/` | AI 怎样开发？ | 上下文、执行、工具、反馈和修改规则 |
+| 根 `AGENTS.md` | 整个项目从哪里进入？ | 项目导航、子工程入口和跨工程红线 |
+| `careerpass-frontend/AGENTS.md` | 前端开发先看什么？ | 前端约束和前端文档导航 |
+| `careerpass-backend/AGENTS.md` | 后端开发先看什么？ | 后端约束和后端事实源导航 |
+| `careerpass-frontend/docs/` | 前端应该是什么？ | 页面、用户流程、UI、架构、组件和交互 |
+| `careerpass-backend/docs/` | 后端应该是什么？ | 领域、接口、数据库、工作流和垂直切片（Vertical Slice） |
+| `careerpass-frontend/src/`、`careerpass-backend/app/` | 现在实际是什么？ | 当前正式实现 |
+
+文档层职责不能相互替代：`.harness/` 的执行规则不能直接作为后端业务事实，前端页面不能单独决定后端领域规则，后端文档也不能替代当前源代码的实现证据。
+
+项目入口阅读顺序：先阅读本文件，再按任务进入 `careerpass-frontend/AGENTS.md` 或 `careerpass-backend/AGENTS.md`；进入子工程后，以对应 `docs/` 中的事实源为准。
+
 ## 技术栈
 
 |   层级   |   技术   |
@@ -48,3 +66,12 @@
 |   `.harness/wiki/04-technical-solutions/Resume parsing technical design.md`   | 正式简历的 MinerU MCP 文本提取、画像 Schema、失败映射与验收；涉及简历解析时必读   |
 |   `.harness/wiki/05-engineering/Development environment.md`   | 本地开发、Docker Compose 依赖服务、环境变量与真实集成测试说明   |
 |   `.harness/changes/`   | 变更追踪目录   |
+
+## 子工程入口
+
+| 子工程 | 入口文档 | 事实源目录 |
+| --- | --- | --- |
+| 前端 | [`careerpass-frontend/AGENTS.md`](careerpass-frontend/AGENTS.md) | [`careerpass-frontend/docs/`](careerpass-frontend/docs/) |
+| 后端 | [`careerpass-backend/AGENTS.md`](careerpass-backend/AGENTS.md) | [`careerpass-backend/docs/`](careerpass-backend/docs/) |
+
+进入具体子工程后，先阅读对应入口文档；不要用根项目治理文档替代子工程的产品、架构、接口或数据事实源。
