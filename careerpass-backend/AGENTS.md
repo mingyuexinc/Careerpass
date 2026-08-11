@@ -10,7 +10,7 @@
 
 | 文档层 | 回答的问题 | 后端工程中的职责 |
 | --- | --- | --- |
-| `.harness/` | AI 怎样开发？ | 提供项目级上下文、执行、工具、反馈和修改规则 |
+| `.harness/` | AI 怎样开发？ | 提供 AI Coding 工作流和 Slice Skill |
 | 根 `AGENTS.md` | 整个项目从哪里进入？ | 提供项目导航和跨工程红线 |
 | `careerpass-frontend/AGENTS.md` | 前端开发先看什么？ | 提供前端约束和前端文档导航 |
 | `careerpass-backend/AGENTS.md` | 后端开发先看什么？ | 提供后端约束和后端事实源导航 |
@@ -31,6 +31,10 @@
 - API 响应遵循 `{code, msg, data}` 统一结构。
 
 ## 4. 后端事实源导航
+
+### 疑难问题首要依据
+
+涉及后端环境、依赖、数据库、Docker、架构、联调或故障排查时，必须先阅读 [`docs/development/backend-troubleshooting.md`](docs/development/backend-troubleshooting.md)。该文档是后端疑难问题的首要诊断依据；已有案例适用时先复用其路径，再进行新增检查。
 
 ### 长期决策和工程原则
 
@@ -54,10 +58,8 @@
 
 | 文档 | 用途 |
 | --- | --- |
-| [`docs/contracts/api-contract.md`](docs/contracts/api-contract.md) | 前后端应用程序接口契约（API Contract）唯一事实源 |
-| [`docs/contracts/async-task-contract.md`](docs/contracts/async-task-contract.md) | 异步任务输入、输出、状态和失败语义 |
-| [`docs/domain/domain-model.md`](docs/domain/domain-model.md) | 已被当前版本或具体切片确认的领域模型 |
-| [`docs/domain/state-model.md`](docs/domain/state-model.md) | 已确认的状态集合和合法迁移 |
+| [`docs/development/slices/`](docs/development/slices/) | 具体 Slice 的 API、异步任务、状态和错误契约；契约只在实际使用它的 Slice 中锁定 |
+| [`docs/domain/domain-model.md`](docs/domain/domain-model.md) | 已被当前版本或具体切片确认的领域模型及其状态、合法迁移 |
 | [`docs/data/database-design.md`](docs/data/database-design.md) | 已被迁移、代码或具体切片确认的数据库设计 |
 
 ### 架构和外部能力
@@ -69,28 +71,29 @@
 | [`docs/architecture/async-task-architecture.md`](docs/architecture/async-task-architecture.md) | FastAPI、Dispatcher、Redis、Celery 和任务状态之间的职责 |
 | [`docs/integrations/external-capabilities.md`](docs/integrations/external-capabilities.md) | 外部能力总览、用途、验证状态和限制 |
 | [`docs/integrations/spikes/`](docs/integrations/spikes/) | 需要独立验证的外部能力专项记录 |
+| [`docs/development/backend-troubleshooting.md`](docs/development/backend-troubleshooting.md) | 后端环境、依赖和联调故障案例 |
 
 ### 当前垂直切片
 
 | 文档 | 用途 |
 | --- | --- |
-| [`docs/development/slices/`](docs/development/slices/) | 各垂直切片的范围、契约、方案、任务、测试和完成标准 |
+| [`docs/development/slices/`](docs/development/slices/) | Slice 规格模板及各垂直切片的范围、契约、方案、任务、测试和完成标准 |
 
 ## 5. 后端开发阅读顺序
 
 处理后端任务时：
 
 1. 阅读根 `AGENTS.md` 和本文件；
-2. 阅读后端开发决策和当前旧资产盘点；
-3. 涉及版本范围时阅读后端交付范围；
-4. 涉及正式前端接入时阅读前端流程文档和后端能力映射；
-5. 阅读当前垂直切片规格、应用程序接口契约（API Contract）和相关领域/数据事实；
-6. 涉及疑难环境、依赖、架构或联调问题时，先查 `.harness/wiki/00-governance/Difficult problem summary.md`；
-7. 编码前确认现有阶段门禁和跨开发包契约状态，不得以旧代码或旧任务文档代替门禁证据。
+2. 涉及疑难环境、依赖、数据库、Docker、架构或联调问题时，立即阅读 `docs/development/backend-troubleshooting.md`；
+3. 阅读后端开发决策和当前旧资产盘点；
+4. 涉及版本范围时阅读后端交付范围；
+5. 涉及正式前端接入时阅读前端流程文档和后端能力映射；
+6. 阅读当前垂直切片规格及其内嵌的应用程序接口、异步任务和状态契约，以及相关领域/数据事实；
+7. 编码前确认当前 Slice Gate 和 Handoff Contract，不得以旧代码或归档材料代替门禁证据。
 
 ## 6. 当前工作边界
 
 - 新后端文档中的占位文件不构成已确认事实。
-- 旧 `.harness` 变更包保留为历史证据，不直接转换为新的垂直切片任务清单。
-- 领域模型、状态模型和数据库设计按具体垂直切片（Vertical Slice）增量确认，不提前实现旧文档中的完整未来模型。
-- 真实前端接入必须依赖锁定的应用程序接口契约（API Contract），不能通过前端临时业务逻辑掩盖后端契约问题。
+- `archive/` 中的旧变更包和契约只保留为历史证据，不直接转换为新的垂直切片任务清单。
+- 领域模型（包括状态和合法迁移）与数据库设计按具体垂直切片（Vertical Slice）增量确认，不提前实现旧文档中的完整未来模型。
+- 真实前端接入必须依赖具体 Slice 中锁定的应用程序接口契约（API Contract），不能通过前端临时业务逻辑掩盖后端契约问题。
