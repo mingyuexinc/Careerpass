@@ -5,15 +5,22 @@ import { useAuthStore } from "../../stores/auth-store";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const signIn = useAuthStore((state) => state.signIn);
+  const login = useAuthStore((state) => state.login);
+  const error = useAuthStore((state) => state.error);
+  const submitting = useAuthStore((state) => state.submitting);
   const [role, setRole] = useState<UserRole>("candidate");
-  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
-    signIn(role);
-    window.setTimeout(() => navigate(`/${role}`), 220);
+    const form = new FormData(event.currentTarget);
+    const username = String(form.get("username") ?? "");
+    const password = String(form.get("password") ?? "");
+    try {
+      const user = await login(username, password, role);
+      navigate(`/${user.role}`);
+    } catch {
+      // The store keeps a safe, user-facing error message.
+    }
   }
 
   return (
@@ -58,6 +65,7 @@ export function LoginPage() {
         <button className="button button-primary" type="submit" disabled={submitting}>
           {submitting ? "登录中…" : "登录"}
         </button>
+        {error ? <p role="alert">{error}</p> : null}
       </form>
       <Link className="login-register-link" to="/register">
         了解注册流程
