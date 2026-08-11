@@ -13,8 +13,9 @@ from app.api.dependencies import auth
 from app.core.config import Settings
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
+from app.core.identity import CurrentIdentity
 from app.core.security import create_access_token
-from app.infrastructure.database.models import Candidate, User
+from app.infrastructure.database.models import User
 
 
 class _SessionContext:
@@ -30,24 +31,14 @@ class _Database:
         return _SessionContext()
 
 
-class _UserRepository:
-    user: User | None = None
+class _IdentityRepository:
+    identity: CurrentIdentity | None = None
 
     def __init__(self, _: object) -> None:
         pass
 
-    async def get_by_id(self, _: object) -> User | None:
-        return self.user
-
-
-class _CandidateRepository:
-    candidate: Candidate | None = None
-
-    def __init__(self, _: object) -> None:
-        pass
-
-    async def get_by_user_id(self, _: object) -> Candidate | None:
-        return self.candidate
+    async def get_current(self, *, user_id: object, active_role: object = None) -> CurrentIdentity | None:
+        return self.identity
 
 
 @pytest.fixture
@@ -76,13 +67,18 @@ def test_current_identity_validates_token_and_persisted_ownership(
     settings: Settings,
 ) -> None:
     user = User(id=uuid4(), username="alice", password_hash="scrypt$hash")
-    candidate = Candidate(id=uuid4(), user_id=user.id, name="Alice")
-    _UserRepository.user = user
-    _CandidateRepository.candidate = candidate
-    monkeypatch.setattr(auth, "UserRepository", _UserRepository)
-    monkeypatch.setattr(auth, "CandidateRepository", _CandidateRepository)
+    identity = CurrentIdentity(
+        user_id=user.id,
+        username="alice",
+        name="Alice",
+        roles=("candidate",),
+        active_role="candidate",
+        candidate_id=uuid4(),
+    )
+    _IdentityRepository.identity = identity
+    monkeypatch.setattr(auth, "IdentityRepository", _IdentityRepository)
 
-    identity = asyncio.run(
+    resolved = asyncio.run(
         auth.get_current_identity(
             request=_request(),
             credentials=_credentials(create_access_token(user_id=user.id, settings=settings)),
@@ -90,10 +86,10 @@ def test_current_identity_validates_token_and_persisted_ownership(
         )
     )
 
-    assert identity.user_id == user.id
-    assert identity.candidate_id == candidate.id
-    assert identity.username == "alice"
-    assert identity.name == "Alice"
+    assert resolved.user_id == user.id
+    assert resolved.candidate_id == identity.candidate_id
+    assert resolved.username == "alice"
+    assert resolved.name == "Alice"
 
 
 @pytest.mark.parametrize("credentials", [None, _credentials("not-a-jwt")])
@@ -118,8 +114,8 @@ def test_current_identity_rejects_a_token_for_a_missing_user(
     monkeypatch: pytest.MonkeyPatch,
     settings: Settings,
 ) -> None:
-    _UserRepository.user = None
-    monkeypatch.setattr(auth, "UserRepository", _UserRepository)
+    _IdentityRepository.identity = None
+    monkeypatch.setattr(auth, "IdentityRepository", _IdentityRepository)
 
     with pytest.raises(AppException) as error:
         asyncio.run(
@@ -133,21 +129,13 @@ def test_current_identity_rejects_a_token_for_a_missing_user(
     assert error.value.code is ErrorCode.UNAUTHORIZED
 
 
-@pytest.mark.parametrize("candidate_user_id", [None, uuid4()])
-def test_current_identity_rejects_missing_or_mismatched_candidate(
+def test_current_identity_rejects_missing_or_mismatched_identity(
     monkeypatch: pytest.MonkeyPatch,
-    candidate_user_id: object,
     settings: Settings,
 ) -> None:
     user = User(id=uuid4(), username="alice", password_hash="scrypt$hash")
-    _UserRepository.user = user
-    _CandidateRepository.candidate = (
-        None
-        if candidate_user_id is None
-        else Candidate(id=uuid4(), user_id=candidate_user_id, name="Other")
-    )
-    monkeypatch.setattr(auth, "UserRepository", _UserRepository)
-    monkeypatch.setattr(auth, "CandidateRepository", _CandidateRepository)
+    _IdentityRepository.identity = None
+    monkeypatch.setattr(auth, "IdentityRepository", _IdentityRepository)
 
     with pytest.raises(AppException) as error:
         asyncio.run(

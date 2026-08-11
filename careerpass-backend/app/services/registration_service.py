@@ -35,12 +35,18 @@ class RegistrationService:
             raise UsernameAlreadyExistsError
 
         user, candidate = identity
-        access_token = create_access_token(user_id=user.id, settings=self._settings)
+        access_token = create_access_token(
+            user_id=user.id,
+            settings=self._settings,
+            active_role="candidate",
+        )
         return AuthenticationResponse(
             access_token=access_token,
             expires_in=self._settings.jwt_access_token_expire_minutes * 60,
             user={
                 "user_id": user.id,
+                "roles": ["candidate"],
+                "active_role": "candidate",
                 "candidate_id": candidate.id,
                 "profile_status": "incomplete",
             },

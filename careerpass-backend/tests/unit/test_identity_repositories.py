@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import Candidate, User
+from app.infrastructure.database.models import Candidate, User, UserRole
 from app.repositories import CandidateRepository, UsernameConflictError, UserRepository
 
 
@@ -86,7 +86,8 @@ def test_user_repository_creates_user_and_candidate_in_one_transaction() -> None
     assert isinstance(user, User)
     assert isinstance(candidate, Candidate)
     assert candidate.user is user
-    assert session.added == (user, candidate)
+    assert session.added[0:2] == (user, candidate)
+    assert isinstance(session.added[2], UserRole)
     assert session.transaction_started and session.transaction_finished
     assert session.flush_called
 

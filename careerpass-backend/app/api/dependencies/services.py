@@ -8,8 +8,8 @@ from fastapi import Depends, Request
 from app.core.config import Settings, get_settings
 from app.repositories.async_task_repository import AsyncTaskRepository
 from app.repositories.candidate_preparation_repository import CandidatePreparationRepository
-from app.repositories.candidate_repository import CandidateRepository
 from app.repositories.document_parsing_repository import DocumentParsingRepository
+from app.repositories.identity_repository import IdentityRepository
 from app.repositories.user_repository import UserRepository
 from app.services.candidate_preparation_service import CandidatePreparationService
 from app.services.document_parsing_service import DocumentParsingService
@@ -34,7 +34,7 @@ async def get_login_service(
     async with request.app.state.database.session_factory() as session:
         yield LoginService(
             user_repository=UserRepository(session),
-            candidate_repository=CandidateRepository(session),
+            identity_repository=IdentityRepository(session),
             settings=settings,
         )
 

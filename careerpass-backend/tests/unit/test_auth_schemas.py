@@ -49,6 +49,8 @@ def test_authentication_response_excludes_refresh_token() -> None:
         expires_in=1800,
         user={
             "user_id": uuid4(),
+            "roles": ["candidate"],
+            "active_role": "candidate",
             "candidate_id": uuid4(),
             "profile_status": "incomplete",
         },
@@ -66,6 +68,8 @@ def test_current_user_response_rejects_non_mvp_profile_status() -> None:
     with pytest.raises(ValidationError):
         CurrentUserResponse(
             user_id=uuid4(),
+            roles=["candidate"],
+            active_role="candidate",
             candidate_id=uuid4(),
             profile_status="pending",
             username="alice",

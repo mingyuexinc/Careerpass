@@ -14,6 +14,7 @@ import jwt
 from jwt import InvalidTokenError
 
 from app.core.config import Settings
+from app.core.identity import UserRole
 
 _SCRYPT_N = 2**14
 _SCRYPT_R = 8
@@ -67,7 +68,13 @@ def verify_password(password: str, password_hash: str) -> bool:
     return hmac.compare_digest(actual_key, expected_key)
 
 
-def create_access_token(*, user_id: UUID, settings: Settings, now: datetime | None = None) -> str:
+def create_access_token(
+    *,
+    user_id: UUID,
+    settings: Settings,
+    active_role: UserRole | None = None,
+    now: datetime | None = None,
+) -> str:
     """Issue a short-lived JWT containing only the authenticated user identifier."""
     issued_at = now or datetime.now(UTC)
     expires_at = issued_at + timedelta(minutes=settings.jwt_access_token_expire_minutes)
@@ -78,6 +85,8 @@ def create_access_token(*, user_id: UUID, settings: Settings, now: datetime | No
         "iat": issued_at,
         "exp": expires_at,
     }
+    if active_role is not None:
+        payload["active_role"] = active_role
     return jwt.encode(
         payload,
         settings.jwt_secret_key.get_secret_value(),
@@ -87,6 +96,14 @@ def create_access_token(*, user_id: UUID, settings: Settings, now: datetime | No
 
 def decode_access_token(*, token: str, settings: Settings) -> UUID:
     """Validate an access token and return its user identifier without logging the token."""
+    user_id, _ = decode_access_token_context(token=token, settings=settings)
+    return user_id
+
+
+def decode_access_token_context(
+    *, token: str, settings: Settings
+) -> tuple[UUID, UserRole | None]:
+    """Validate a token and return its user identifier plus optional active role."""
     try:
         payload = jwt.decode(
             token,
@@ -96,7 +113,10 @@ def decode_access_token(*, token: str, settings: Settings) -> UUID:
             audience=settings.jwt_audience,
             options={"require": ["sub", "iss", "aud", "iat", "exp"]},
         )
-        return UUID(str(payload["sub"]))
+        active_role = payload.get("active_role")
+        if active_role is not None and active_role not in ("candidate", "hr"):
+            raise InvalidAccessTokenError("invalid active role")
+        return UUID(str(payload["sub"])), active_role
     except (InvalidTokenError, KeyError, TypeError, ValueError) as exc:
         raise InvalidAccessTokenError("invalid access token") from exc
 

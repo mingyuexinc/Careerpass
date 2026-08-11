@@ -75,9 +75,11 @@ def test_auth_me_returns_the_trusted_identity_in_the_uniform_envelope() -> None:
     async def identity_override() -> CurrentIdentity:
         return CurrentIdentity(
             user_id=UUID("a2c51d36-f30d-4878-b38c-7951a97d1c2a"),
-            candidate_id=UUID("3911cbf8-7a30-4e3c-8e18-4afc4c3260bf"),
             username="alice",
             name="Alice",
+            roles=("candidate",),
+            active_role="candidate",
+            candidate_id=UUID("3911cbf8-7a30-4e3c-8e18-4afc4c3260bf"),
         )
 
     app.dependency_overrides[get_current_identity] = identity_override
@@ -90,10 +92,13 @@ def test_auth_me_returns_the_trusted_identity_in_the_uniform_envelope() -> None:
         "msg": "success",
         "data": {
             "user_id": "a2c51d36-f30d-4878-b38c-7951a97d1c2a",
-            "candidate_id": "3911cbf8-7a30-4e3c-8e18-4afc4c3260bf",
             "username": "alice",
             "name": "Alice",
-            "profile_status": "incomplete",
+            "roles": ["candidate"],
+            "active_role": "candidate",
+            "candidate_id": "3911cbf8-7a30-4e3c-8e18-4afc4c3260bf",
+            "hr_profile_id": None,
+            "profile_status": None,
         },
     }
 
@@ -116,6 +121,8 @@ def test_register_and_login_routes_use_the_uniform_response_contract() -> None:
         expires_in=1800,
         user={
             "user_id": UUID("a2c51d36-f30d-4878-b38c-7951a97d1c2a"),
+            "roles": ["candidate"],
+            "active_role": "candidate",
             "candidate_id": UUID("3911cbf8-7a30-4e3c-8e18-4afc4c3260bf"),
             "profile_status": "incomplete",
         },

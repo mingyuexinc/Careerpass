@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import Candidate, User
+from app.infrastructure.database.models import Candidate, User, UserRole
 
 
 class UsernameConflictError(Exception):
@@ -48,7 +48,7 @@ class UserRepository:
                 )
                 if existing_user.scalar_one_or_none() is not None:
                     return None
-                self._session.add_all((user, candidate))
+                self._session.add_all((user, candidate, UserRole(user=user, role="candidate")))
                 await self._session.flush()
         except IntegrityError as exc:
             if _is_username_conflict(exc):

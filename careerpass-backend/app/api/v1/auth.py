@@ -63,10 +63,12 @@ async def get_current_user(
     """Return the minimum persisted identity for the authenticated request."""
     response = CurrentUserResponse(
         user_id=identity.user_id,
+        roles=list(identity.roles),
+        active_role=identity.active_role,
         candidate_id=identity.candidate_id,
+        hr_profile_id=identity.hr_profile_id,
         username=identity.username,
         name=identity.name,
-        profile_status="incomplete",
     )
     return success_response(response.model_dump(mode="json"))
 

@@ -9,6 +9,7 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://test_user:test_password@localhost:5432/careerpass_test",
 )
+os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-with-at-least-32-characters")
 

@@ -35,8 +35,10 @@ ASYNC_TASK_STATUS = postgresql.ENUM(
     "queued", "running", "succeeded", "failed", name="async_task_run_status_enum", create_type=False
 )
 
+USER_ROLE = postgresql.ENUM("candidate", "hr", name="user_role_enum", create_type=False)
+
 if TYPE_CHECKING:
-    from app.infrastructure.database.models import Candidate
+    from app.infrastructure.database.models import Candidate, HrProfile, UserRole
 
 
 class User(Base):
@@ -65,6 +67,16 @@ class User(Base):
         back_populates="user",
         uselist=False,
         lazy="raise",
+    )
+    hr_profile: Mapped[HrProfile | None] = relationship(
+        back_populates="user",
+        uselist=False,
+        lazy="raise",
+    )
+    roles: Mapped[list[UserRole]] = relationship(
+        back_populates="user",
+        lazy="raise",
+        cascade="all, delete-orphan",
     )
 
 
@@ -96,6 +108,51 @@ class Candidate(Base):
         server_default=text("CURRENT_TIMESTAMP"),
     )
     user: Mapped[User] = relationship(back_populates="candidate", lazy="raise")
+
+
+class HrProfile(Base):
+    """HR business identity associated one-to-one with a user account."""
+
+    __tablename__ = "hr_profiles"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT", name="fk_hr_profile_user"),
+        nullable=False,
+        unique=True,
+    )
+    name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+    user: Mapped[User] = relationship(back_populates="hr_profile", lazy="raise")
+
+
+class UserRole(Base):
+    """Role membership used to validate the active login workspace."""
+
+    __tablename__ = "user_roles"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(USER_ROLE, nullable=False)
+    user: Mapped[User] = relationship(back_populates="roles", lazy="raise")
 
 
 class StoredFileObject(Base):

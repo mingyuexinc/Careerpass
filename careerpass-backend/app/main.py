@@ -20,6 +20,8 @@ from app.infrastructure.storage.cleanup import (
     stop_cleanup_schedule,
 )
 from app.infrastructure.tasks import create_celery_app
+from app.repositories.demo_account_repository import DemoAccountRepository
+from app.services.demo_account_service import DemoAccountService, default_demo_accounts
 from app.services.runtime_health_service import RuntimeHealthService
 
 
@@ -46,6 +48,11 @@ def create_app() -> FastAPI:
         app.state.redis_client = redis_client
         app.state.celery_app = celery_app
         app.state.object_storage = LocalObjectStorage(settings.object_storage_root)
+        if settings.app_env.value != "test":
+            async with database.session_factory() as session:
+                await DemoAccountService(DemoAccountRepository(session)).ensure_accounts(
+                    default_demo_accounts()
+                )
         cleanup_task = asyncio.create_task(
             run_cleanup_schedule(
                 lambda: run_hourly_object_cleanup(database, app.state.object_storage)

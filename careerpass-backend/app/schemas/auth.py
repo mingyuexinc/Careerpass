@@ -13,6 +13,7 @@ _USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+$")
 Username = Annotated[str, Field(min_length=3, max_length=64)]
 CandidateName = Annotated[str, Field(min_length=1, max_length=64)]
 ProfileStatus = Literal["incomplete", "blocked", "ready"]
+UserRole = Literal["candidate", "hr"]
 
 
 class _AuthenticationRequest(BaseModel):
@@ -40,13 +41,18 @@ class RegisterRequest(_AuthenticationRequest):
 class LoginRequest(_AuthenticationRequest):
     """Input accepted by ``POST /api/v1/auth/login``."""
 
+    active_role: UserRole | None = None
+
 
 class AuthenticatedUser(BaseModel):
     """Minimum identity returned after successful registration or login."""
 
     user_id: UUID
-    candidate_id: UUID
-    profile_status: ProfileStatus
+    roles: list[UserRole]
+    active_role: UserRole
+    candidate_id: UUID | None = None
+    hr_profile_id: UUID | None = None
+    profile_status: ProfileStatus | None = None
 
 
 class AuthenticationResponse(BaseModel):

@@ -6,7 +6,8 @@ from pydantic import ValidationError
 from app.core.config import AppEnvironment, Settings
 
 
-def test_settings_default_to_development() -> None:
+def test_settings_default_to_development(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
     settings = Settings(_env_file=None)
 
     assert settings.app_env is AppEnvironment.DEVELOPMENT

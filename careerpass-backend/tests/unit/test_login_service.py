@@ -7,9 +7,10 @@ from uuid import uuid4
 import pytest
 
 from app.core.config import Settings
+from app.core.identity import CurrentIdentity
 from app.core.security import decode_access_token, hash_password
-from app.infrastructure.database.models import Candidate, User
-from app.repositories.candidate_repository import CandidateRepository
+from app.infrastructure.database.models import User
+from app.repositories.identity_repository import IdentityRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import LoginRequest
 from app.services.login_service import InvalidCredentialsError, LoginService
@@ -25,14 +26,16 @@ class _UserRepository:
         return self._user
 
 
-class _CandidateRepository:
-    def __init__(self, candidate: Candidate | None) -> None:
-        self._candidate = candidate
+class _IdentityRepository:
+    def __init__(self, identity: CurrentIdentity | None) -> None:
+        self._identity = identity
         self.requested_user_id = None
+        self.requested_role = None
 
-    async def get_by_user_id(self, user_id: object) -> Candidate | None:
+    async def get_current(self, *, user_id: object, active_role: object = None) -> CurrentIdentity | None:
         self.requested_user_id = user_id
-        return self._candidate
+        self.requested_role = active_role
+        return self._identity
 
 
 @pytest.fixture
@@ -48,19 +51,19 @@ def settings() -> Settings:
 def _service(
     *,
     user: User | None,
-    candidate: Candidate | None,
+    identity: CurrentIdentity | None,
     settings: Settings,
-) -> tuple[LoginService, _UserRepository, _CandidateRepository]:
+) -> tuple[LoginService, _UserRepository, _IdentityRepository]:
     users = _UserRepository(user)
-    candidates = _CandidateRepository(candidate)
+    identities = _IdentityRepository(identity)
     return (
         LoginService(
             user_repository=cast(UserRepository, users),
-            candidate_repository=cast(CandidateRepository, candidates),
+            identity_repository=cast(IdentityRepository, identities),
             settings=settings,
         ),
         users,
-        candidates,
+        identities,
     )
 
 
@@ -70,29 +73,37 @@ def test_login_verifies_credentials_and_candidate_identity(settings: Settings) -
         username="alice",
         password_hash=hash_password("StrongPassword123!"),
     )
-    candidate = Candidate(id=uuid4(), user_id=user.id, name="Alice")
-    service, users, candidates = _service(user=user, candidate=candidate, settings=settings)
+    identity = CurrentIdentity(
+        user_id=user.id,
+        username="alice",
+        name="Alice",
+        roles=("candidate",),
+        active_role="candidate",
+        candidate_id=uuid4(),
+    )
+    service, users, identities = _service(user=user, identity=identity, settings=settings)
 
     response = asyncio.run(
         service.login(LoginRequest(username="alice", password="StrongPassword123!"))
     )
 
     assert users.requested_username == "alice"
-    assert candidates.requested_user_id == user.id
+    assert identities.requested_user_id == user.id
+    assert identities.requested_role is None
     assert decode_access_token(token=response.access_token, settings=settings) == user.id
     assert response.user.user_id == user.id
-    assert response.user.candidate_id == candidate.id
-    assert response.user.profile_status == "incomplete"
+    assert response.user.candidate_id == identity.candidate_id
+    assert response.user.active_role == "candidate"
     assert response.expires_in == 1800
 
 
 def test_login_hides_unknown_user_as_invalid_credentials(settings: Settings) -> None:
-    service, _, candidates = _service(user=None, candidate=None, settings=settings)
+    service, _, identities = _service(user=None, identity=None, settings=settings)
 
     with pytest.raises(InvalidCredentialsError):
         asyncio.run(service.login(LoginRequest(username="alice", password="StrongPassword123!")))
 
-    assert candidates.requested_user_id is None
+    assert identities.requested_user_id is None
 
 
 def test_login_hides_wrong_password_as_invalid_credentials(settings: Settings) -> None:
@@ -101,30 +112,21 @@ def test_login_hides_wrong_password_as_invalid_credentials(settings: Settings) -
         username="alice",
         password_hash=hash_password("StrongPassword123!"),
     )
-    service, _, candidates = _service(user=user, candidate=None, settings=settings)
+    service, _, identities = _service(user=user, identity=None, settings=settings)
 
     with pytest.raises(InvalidCredentialsError):
         asyncio.run(service.login(LoginRequest(username="alice", password="WrongPassword123!")))
 
-    assert candidates.requested_user_id is None
+    assert identities.requested_user_id is None
 
 
-@pytest.mark.parametrize("candidate_user_id", [None, uuid4()])
-def test_login_rejects_missing_or_mismatched_candidate(
-    candidate_user_id: object,
-    settings: Settings,
-) -> None:
+def test_login_rejects_missing_or_mismatched_identity(settings: Settings) -> None:
     user = User(
         id=uuid4(),
         username="alice",
         password_hash=hash_password("StrongPassword123!"),
     )
-    candidate = (
-        None
-        if candidate_user_id is None
-        else Candidate(id=uuid4(), user_id=candidate_user_id, name="Other")
-    )
-    service, _, _ = _service(user=user, candidate=candidate, settings=settings)
+    service, _, _ = _service(user=user, identity=None, settings=settings)
 
     with pytest.raises(InvalidCredentialsError):
         asyncio.run(service.login(LoginRequest(username="alice", password="StrongPassword123!")))

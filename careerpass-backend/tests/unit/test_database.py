@@ -32,6 +32,8 @@ def test_base_metadata_contains_candidate_preparation_models() -> None:
         "candidates",
         "resumes",
         "stored_file_objects",
+        "hr_profiles",
+        "user_roles",
         "users",
     }
     assert User.__table__.c.username.type.length == 64
