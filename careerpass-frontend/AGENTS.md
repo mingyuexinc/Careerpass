@@ -6,7 +6,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 
 当前目标是完成一个可维护、可重复验收、便于后续接入真实数据的前端应用，覆盖求职者和 HR 两种角色的核心求职 Agent 流程。
 
-本项目当前以 Mock 数据驱动，不依赖当前后端文档和真实后端接口完成前端 MVP。
+本项目当前以 Mock 数据驱动完成正式前端，但 Mock 必须以已锁定的 Integration Contract 为依据；前端 MVP 的页面完成不等于真实前后端交付完成。
 
 ## 2. 当前开发阶段
 
@@ -17,7 +17,8 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 - 技术架构、设计规范、本地数据和开发规范已经建立第一版。
 - 正式前端源码已经完成当前版本的页面、流程和 Mock 数据实现。
 - HTML 原型位于 `prototypes/`，只作为流程和视觉参考；正式实现以 `src/` 为准。
-- 真实后端接口、后端业务能力和后端数据模型不由本工程单独裁决，需要与 `careerpass-backend/docs/` 的后端事实源共同完成接入。
+- 跨前后端共享的业务语义以 [`../docs/business/business-baseline.md`](../docs/business/business-baseline.md) 为共同基线；真实后端接口、后端业务能力和后端数据模型不由本工程单独裁决，需要与 `careerpass-backend/docs/` 的后端事实源共同完成接入。
+- 跨端请求、响应、状态和错误以 [`../docs/integration/README.md`](../docs/integration/README.md) 及具体 Integration Contract 为准；开发者演示路径、自测结果和整改记录以对应 Integration Scenario 为准。
 
 ## 3. 技术基线
 
@@ -52,14 +53,15 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 页面
 → 业务组件或 Hook
 → Repository 接口
-→ Mock Repository
-→ 本地 Fixture
+→ Contract Mock / HTTP Repository
+→ Contract 示例数据或本地 Fixture
 ```
 
 - 页面不得直接读取或修改 Mock Fixture。
 - 业务状态通过明确的 Action 变更。
 - 状态值、显示文案、颜色和是否终态集中维护。
 - 后续接入真实 API 时，优先替换数据访问实现，不重写页面流程。
+- Mock 不得返回真实 Contract 未定义的后端事实；仅用于视觉演示的占位数据必须与 Contract 数据分开。
 
 ### 4.3 组件和样式
 
@@ -132,6 +134,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 | `careerpass-frontend/AGENTS.md` | 前端开发先看什么？ | 提供前端约束和前端文档导航 |
 | `careerpass-frontend/docs/` | 前端应该是什么？ | 定义页面、用户流程、UI、架构、组件和交互 |
 | `careerpass-backend/docs/` | 后端应该是什么？ | 定义领域、接口、数据库、工作流和垂直切片（Vertical Slice） |
+| `docs/business/` | 项目业务上是什么？ | 定义跨前后端共享的业务事实、角色、流程、规则和状态 |
 | `careerpass-frontend/src/` | 现在前端实际是什么？ | 当前正式前端实现 |
 
 前端文档定义用户看到什么、用户如何操作和页面如何流转；不直接定义后端 API、数据库表、资源归属或服务端状态拥有者。真实后端接入时，前端以锁定的应用程序接口契约（API Contract）为消费依据。
@@ -142,6 +145,13 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 | --- | --- |
 | [`docs/product/frontend-acceptance-flow.md`](docs/product/frontend-acceptance-flow.md) | 标准业务流程、角色流程、产品规则和验收范围 |
 | [`docs/product/frontend-product-flow.md`](docs/product/frontend-product-flow.md) | 正式前端产品形态、页面职责、页面规格和页面关系 |
+
+### 跨前后端业务事实
+
+| 文档 | 用途 |
+| --- | --- |
+| [`../docs/business/business-baseline.md`](../docs/business/business-baseline.md) | 当前已确认的跨前后端业务事实、事实编号和待裁决事项 |
+| [`../docs/business/business-fact-extraction.md`](../docs/business/business-fact-extraction.md) | 从前端文档提取、审核、更新和供 Slice 使用业务事实的机制 |
 
 ### 决策和架构文档
 
@@ -163,12 +173,13 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 处理前端开发任务时，按任务需要阅读：
 
 1. 先阅读本文件。
-2. 涉及产品流程时阅读 `frontend-acceptance-flow.md`。
-3. 涉及页面时阅读 `frontend-product-flow.md`。
-4. 涉及数据时阅读 `local-data-spec.md`。
-5. 涉及技术实现时阅读 `frontend-architecture.md`。
-6. 涉及视觉时阅读 `design-guidelines.md`。
-7. 编码前阅读 `frontend-guidelines.md`。
+2. 先阅读 `../docs/business/business-baseline.md`；发现 `pending` 事实时，不将其当作已确认业务规则。
+3. 涉及产品流程时阅读 `frontend-acceptance-flow.md`。
+4. 涉及页面时阅读 `frontend-product-flow.md`。
+5. 涉及数据时阅读 `local-data-spec.md`。
+6. 涉及技术实现时阅读 `frontend-architecture.md`。
+7. 涉及视觉时阅读 `design-guidelines.md`。
+8. 编码前阅读 `frontend-guidelines.md`。
 
 ## 8. AI/Codex 工作规则
 

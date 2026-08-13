@@ -12,11 +12,13 @@
 | `careerpass-backend/AGENTS.md` | 后端开发先看什么？ | 后端约束和后端事实源导航 |
 | `careerpass-frontend/docs/` | 前端应该是什么？ | 页面、用户流程、UI、架构、组件和交互 |
 | `careerpass-backend/docs/` | 后端应该是什么？ | 领域、接口、数据库、工作流和垂直切片（Vertical Slice） |
+| `docs/integration/` | 如何跨端交付？ | Integration Contract、Integration Scenario、联调、自测和整改证据 |
+| `docs/business/` | 项目业务上是什么？ | 跨前后端共享的业务事实、来源、状态和裁决机制 |
 | `careerpass-frontend/src/`、`careerpass-backend/app/` | 现在实际是什么？ | 当前正式实现 |
 
-文档层职责不能相互替代：`.harness/` 的执行规则不能直接作为后端业务事实，前端页面不能单独决定后端领域规则，后端文档也不能替代当前源代码的实现证据。
+文档层职责不能相互替代：`.harness/` 的执行规则不能直接作为后端业务事实，前端页面不能单独决定后端领域规则，后端文档也不能替代当前源代码的实现证据；`docs/integration/` 只定义跨端协作和交付证据，不替代业务基线、Slice 规格或后端技术设计。
 
-项目入口阅读顺序：先阅读本文件，再按任务进入 `careerpass-frontend/AGENTS.md` 或 `careerpass-backend/AGENTS.md`；进入子工程后，以对应 `docs/` 中的事实源为准。
+项目入口阅读顺序：先阅读本文件，再阅读 [`docs/business/business-baseline.md`](docs/business/business-baseline.md) 和 [`docs/business/business-fact-extraction.md`](docs/business/business-fact-extraction.md)，再按任务进入 `careerpass-frontend/AGENTS.md` 或 `careerpass-backend/AGENTS.md`；进入子工程后，以业务基线和对应 `docs/` 中的事实源为准。
 
 后端疑难问题入口：凡涉及后端环境、依赖、数据库、Docker、架构、联调或故障排查，进入后端任务后必须优先阅读 [`careerpass-backend/docs/development/backend-troubleshooting.md`](careerpass-backend/docs/development/backend-troubleshooting.md)，并先复用其中适用的诊断路径；问题解决后将可复用结论补充回该文档。
 
@@ -46,7 +48,7 @@
 
 ## 红线（不可违反）
 
-1. **开发必须按前端优先、Slice 层级的六阶段门禁执行**：依次通过 Slice Select、Slice Design、Readiness Check、Implement、Verify 和 Close；当前 Gate 未通过不得进入下一阶段。任何 Slice 边界、授权、数据模型、状态机、契约或关键依赖变化，必须按影响回退并重新通过相应 Gate。
+1. **开发必须按前端优先、Slice 层级的六阶段门禁执行**：依次通过 Slice Select、Slice Design、Readiness Check、Implement、Verify 和 Close；每个 Slice 必须绑定至少一个 Integration Scenario，并在 Slice Design 锁定或引用 Integration Contract；当前 Gate 未通过不得进入下一阶段。任何 Slice 边界、授权、数据模型、状态机、跨端契约或关键依赖变化，必须按影响回退并重新通过相应 Gate。
 1. **数据访问必须经过 Repository 层**：禁止在 Service、Agent、Workflow 中直接编写 SQL 或访问 ORM Session；禁止反向跨层依赖。
 1. **所有资源必须进行候选人/用户级权限与归属校验**：简历、画像、求职目标、匹配结果、投递记录、会话和消息，均不得仅凭资源 ID 读取或修改，必须校验当前用户的归属关系。
 1. **LLM 输出不可直接作为事实或执行指令**：必须经 Pydantic 结构化校验、业务规则校验后才可入库或驱动流程；涉及投递、对外沟通、状态变更等副作用操作，必须有明确授权与可审计记录。
@@ -65,7 +67,11 @@
 | - - - - -| - - - - - |
 | `.harness/README.md` | AI Coding 指令范围和阅读顺序 |
 | `.harness/rules/AI coding workflow.md` | 前端优先、Slice 层级的 AI Coding Gate |
-| `.harness/skills/slice-design/SKILL.md` | Slice 选择、设计和 Readiness 文档技能 |
+| `.harness/skills/slice-design/切片设计技能.md` | Slice 选择、设计和 Readiness 文档技能 |
+| `.harness/skills/implementation-decision-autonomy/实现决策自主权.md` | 实现细节自主决策与人工确认边界 |
+| `docs/business/business-baseline.md` | 跨前后端已确认业务事实唯一基线 |
+| `docs/business/business-fact-extraction.md` | 业务事实提取、冲突裁决和更新机制 |
+| `docs/integration/README.md` | 跨端契约、集成交付场景、联调、自测和整改机制 |
 | `archive/` | 旧开发包和契约历史归档，不属于当前事实源 |
 
 ## 子工程入口
@@ -75,4 +81,4 @@
 | 前端 | [`careerpass-frontend/AGENTS.md`](careerpass-frontend/AGENTS.md) | [`careerpass-frontend/docs/`](careerpass-frontend/docs/) |
 | 后端 | [`careerpass-backend/AGENTS.md`](careerpass-backend/AGENTS.md) | [`careerpass-backend/docs/`](careerpass-backend/docs/) |
 
-进入具体子工程后，先阅读对应入口文档；不要用根项目治理文档替代子工程的产品、架构、接口或数据事实源。
+进入具体子工程后，先阅读对应入口文档；不要用根项目治理文档或业务基线替代子工程的架构、接口、数据和实现证据。

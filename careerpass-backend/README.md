@@ -1,4 +1,4 @@
-# Careerpass Backend
+# Careerpass 后端
 
 ## 1. 环境
 
@@ -38,6 +38,16 @@ docker-compose.integration.yml 提供 PostgreSQL、Redis、迁移、Backend、Wo
 不要在未确认目标卷属于本项目隔离环境前删除卷。
 
 ## 4. 验证
+
+开始首个 Slice 或前后端联调前，先完成基础服务基线检查：
+
+    docker compose -f docker-compose.integration.yml config --quiet
+    docker compose -f docker-compose.integration.yml up -d --build
+    docker compose -f docker-compose.integration.yml ps
+    curl http://localhost:8080/health/live
+    curl http://localhost:8080/health/ready
+
+确认 PostgreSQL、Redis、迁移、Backend、Worker 和 Dispatcher 正常后，再执行 Slice 的单元、接口、集成和前后端端到端验证。基础服务异常时先查 `docs/development/backend-troubleshooting.md`，不要把环境故障归因于当前 Slice。
 
     uv run pytest
     uv run pytest -m integration

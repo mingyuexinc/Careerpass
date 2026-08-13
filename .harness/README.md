@@ -1,4 +1,4 @@
-# AI Coding 指令
+# AI 编码指令
 
 ## 目录职责
 
@@ -19,9 +19,11 @@
 
 ## AI 阅读顺序
 
-1. 阅读根 AGENTS.md 和目标子工程 AGENTS.md。
-2. 按任务读取对应产品、架构、领域、数据和 Slice 事实源。
-3. 读取 rules/AI coding workflow.md 确认当前 Slice Gate。
-4. 需要建立或修订 Slice 开发文档时使用 skills/slice-design/SKILL.md。
+1. 阅读根 AGENTS.md、`docs/business/business-baseline.md` 和 `docs/business/business-fact-extraction.md`。
+2. 阅读 `docs/integration/README.md`；涉及真实接入时读取对应 Integration Contract 和 Integration Scenario。
+3. 阅读目标子工程 AGENTS.md，再按任务读取对应产品、架构、领域、数据和 Slice 事实源。
+4. 读取 rules/AI coding workflow.md 确认当前 Slice Gate，并核对业务事实编号及其状态。
+5. 需要建立或修订 Slice 开发文档时使用 `skills/slice-design/切片设计技能.md`。
+6. 遇到实现细节是否需要人工确认的疑问时，使用 `skills/implementation-decision-autonomy/实现决策自主权.md`。
 
 目录内指令不能替代代码、迁移或子工程事实源。

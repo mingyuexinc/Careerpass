@@ -1,0 +1,4 @@
+interface:
+  display_name: "实现决策自主权"
+  short_description: "控制讨论边界，让 Coding Agent 在产品约束内自主完成局部实现决策"
+  default_prompt: "使用实现决策自主权 Skill 判断当前技术问题是否需要人工确认，并在产品等价方案中选择最低复杂度方案继续实现。"

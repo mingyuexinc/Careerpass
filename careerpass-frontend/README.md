@@ -7,7 +7,7 @@ Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP
 - 前端 MVP 已完成。
 - 正式运行代码位于 `src/`。
 - HTML 原型、原型 Mock 数据和参考图片位于 `prototypes/`，不作为正式运行入口。
-- 当前不依赖真实后端接口、真实认证或真实文件存储。
+- 用户登录 Slice 已接入真实后端认证 API；除登录外，其余当前版本流程仍主要由 Mock Repository 驱动。
 - 当前数据只保存在浏览器内存中，刷新页面后恢复初始状态。
 
 ## 功能范围
@@ -80,6 +80,10 @@ npm run dev
 ```
 
 开发服务器启动后，在浏览器访问终端输出的本地地址。
+
+## 前后端联调前置检查
+
+前后端联调属于项目级基础服务基线的一部分。启动前确认后端 Docker Compose 已完成迁移，PostgreSQL、Redis、Backend、Worker 和 Dispatcher 正常，且 `http://localhost:8080/health/ready` 返回成功；再在前端目录运行 `npm run dev`，确认终端出现 `VITE ready` 和 `http://localhost:5173/`，保持该终端持续运行后再打开浏览器。
 
 ## 常用命令
 
