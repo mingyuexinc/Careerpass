@@ -6,6 +6,8 @@
 >
 > 依据：`docs/product/frontend-acceptance-flow.md`
 
+跨前后端业务语义以项目级 [`docs/business/business-baseline.md`](../../../docs/business/business-baseline.md) 为共同基线；本文档只记录前端范围和前端工程决策。
+
 ## 1. 文档目的
 
 本文档定义 Careerpass 前端项目当前阶段的开发目标、交付边界和基本开发决策，为页面规格、本地数据、前端架构和开发规范提供统一依据。

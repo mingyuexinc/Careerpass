@@ -1,56 +1,104 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { JobsPage } from "../pages/hr/JobsPage";
-import { useWorkspaceStore } from "../stores/workspace-store";
+import { useAuthStore } from "../stores/auth-store";
 
 describe("JobsPage", () => {
-  it("combines the JD identity and job summary in one upload card", () => {
-    useWorkspaceStore.setState({
-      initialized: true,
-      loading: false,
-      error: null,
-      jobs: [
-        {
-          id: "job-001",
-          fileName: "frontend-job.pdf",
-          uploadedAt: "2026-08-09T09:30:00+08:00",
-          version: 2,
-          title: "AI 产品前端工程师",
-          company: "界面实验室",
-          location: "深圳",
-          salary: "16-28K",
-          summary: "负责 AI 应用前端界面的设计实现。",
-          uploaded: true,
-        },
-      ],
-      currentJob: {
-        id: "job-001",
-        fileName: "frontend-job.pdf",
-        uploadedAt: "2026-08-09T09:30:00+08:00",
-        version: 2,
-        title: "AI 产品前端工程师",
-        company: "界面实验室",
-        location: "深圳",
-        salary: "16-28K",
-        summary: "负责 AI 应用前端界面的设计实现。",
-        uploaded: true,
-      },
-    });
+  beforeEach(() => {
+    useAuthStore.setState({ accessToken: "hr-access-token", error: null });
+    vi.restoreAllMocks();
+  });
 
+  it("uploads multiple files through the S-02 API and shows per-file success", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 200,
+          msg: "job upload processed",
+          data: {
+            results: [
+              { index: 1, outcome: "created", job_id: "job-002", task_status: "queued" },
+              { index: 0, outcome: "created", job_id: "job-001", task_status: "queued" },
+            ],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
     render(<JobsPage />);
 
-    expect(screen.getByText("JD")).toBeInTheDocument();
-    expect(screen.queryByText("当前版本范围")).not.toBeInTheDocument();
-    expect(screen.queryByText("不做复杂管理")).not.toBeInTheDocument();
-    expect(screen.queryByText("frontend-job.pdf")).not.toBeInTheDocument();
-    expect(screen.getByText(/版本 2 · 上传于/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "删除 岗位 JD" })).toBeInTheDocument();
-    expect(
-      screen.getByText("AI 产品前端工程师 · 界面实验室 · 深圳 · 16-28K"),
-    ).toBeInTheDocument();
-    expect(document.querySelectorAll(".file-info-card")).toHaveLength(1);
-    expect(document.querySelector(".file-list-scroll")).toBeInTheDocument();
-    expect(
-      (document.querySelector('input[type="file"]') as HTMLInputElement).multiple,
-    ).toBe(true);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const files = [
+      new File(["# first job"], "first-job.md", { type: "text/markdown" }),
+      new File(["# second job"], "second-job.md", { type: "text/markdown" }),
+    ];
+    expect(input.multiple).toBe(true);
+    expect(input.accept).toBe(".md");
+    fireEvent.change(input, { target: { files } });
+
+    await waitFor(() => expect(screen.getAllByText("上传成功")).toHaveLength(4));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, request] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/v1/jobs");
+    expect(request).toEqual(expect.objectContaining({
+      method: "POST",
+      headers: { Authorization: "Bearer hr-access-token" },
+    }));
+    expect(request?.body).toBeInstanceOf(FormData);
+    expect((request?.body as FormData).getAll("files")).toHaveLength(2);
+    const resultItems = screen.getAllByRole("listitem");
+    expect(resultItems[0]).toHaveTextContent("first-job.md");
+    expect(resultItems[1]).toHaveTextContent("second-job.md");
+    expect(screen.getByRole("region", { name: "岗位 JD 上传结果" })).toHaveClass("file-list-scroll");
+    expect(screen.queryByRole("button", { name: "确认上传" })).not.toBeInTheDocument();
+
+    expect(screen.queryByText(/AI 产品前端工程师/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/界面实验室/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/版本/)).not.toBeInTheDocument();
+    expect(screen.queryByText("解析中")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /删除/ })).not.toBeInTheDocument();
+  });
+
+  it("maps a failed Contract result to 上传失败", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 200,
+          msg: "job upload processed",
+          data: { results: [{ index: 0, outcome: "failed", error_code: "invalid_file" }] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    render(<JobsPage />);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(["# bad"], "bad.md", { type: "text/markdown" })] },
+    });
+
+    await waitFor(() => expect(screen.getAllByText("上传失败")).toHaveLength(2));
+  });
+
+  it("disables file selection while the automatic upload is pending", async () => {
+    let resolveUpload!: (response: Response) => void;
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      new Promise((resolve) => {
+        resolveUpload = resolve;
+      }),
+    );
+    render(<JobsPage />);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(["# pending"], "pending.md", { type: "text/markdown" })] },
+    });
+
+    await waitFor(() => expect(input).toBeDisabled());
+    expect(screen.getByRole("button", { name: "当前不可替换" })).toBeDisabled();
+    resolveUpload(
+      new Response(
+        JSON.stringify({ code: 200, msg: "job upload processed", data: { results: [] } }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await waitFor(() => expect(input).not.toBeDisabled());
   });
 });
