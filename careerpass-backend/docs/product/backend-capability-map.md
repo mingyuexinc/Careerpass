@@ -6,6 +6,8 @@
 >
 > 本文档是 `backend-delivery-scope.md` 与 `backend-gap-analysis.md` 之间的中间事实源。它记录“前端需要什么后端能力以及当前证据如何”，不直接锁定 API 字段、数据库结构或实现任务。
 
+业务目标、角色、流程、状态和跨角色规则以项目级 [`../../../docs/business/business-baseline.md`](../../../docs/business/business-baseline.md) 为准；本文档只负责后端能力映射和实现证据。
+
 ## 1. 文档定位
 
 ### 1.1 本文档回答的问题
@@ -20,9 +22,9 @@
 
 | 不承担的内容 | 事实源 |
 | --- | --- |
-| 当前版本是否交付、延期或属于非目标 | `docs/product/backend-delivery-scope.md` |
-| 精确 API 路径、请求字段、响应字段和错误码 | 具体 Slice 的“接口与数据契约”章节 |
-| 异步任务的详细输入、输出、状态和失败语义 | 具体 Slice 的“接口与数据契约”章节 |
+| 当前版本是否交付、延期或属于非目标 | `docs/product/backend-delivery-scope.md` 和 `../../../docs/business/business-baseline.md` |
+| 精确 API 路径、请求字段、响应字段和错误码 | 具体 Slice 的 `technical-design.md` |
+| 异步任务的详细输入、输出、状态和失败语义 | 具体 Slice 的 `technical-design.md` |
 | 完整领域实体、字段和数据库表 | `docs/domain/`、`docs/data/` |
 | 详细状态迁移、业务规则和进度事件 | `docs/domain/domain-model.md`、`docs/product/business-rules.md` |
 | 具体类、函数、Repository、任务和技术实现 | `docs/architecture/`、切片方案和代码 |
@@ -126,7 +128,7 @@
 | CAP-05 | 求职者：创建求职目标 | 目标保存，启动条件可计算 | 创建和查询当前候选人的求职目标 | 同步写入/查询 API | 无，除非后续 Slice 证明需要异步处理 | 当前候选人拥有目标 | `missing` | `none` | CAP-01、CAP-04 | 求职目标 |
 | CAP-06 | 求职者：查看启动条件 | 页面说明可启动或不可启动原因 | 根据身份、解析终态、目标和当前任务状态计算启动资格 | 查询 API | 可能读取任务状态，但不直接改变状态 | 只能查看当前候选人的任务上下文 | `missing` | `none` | CAP-04、CAP-05 | Agent 启动 |
 | CAP-07 | 求职者：启动 Agent | Agent 进入运行中，重复启动被拒绝 | 创建或幂等复用当前求职任务，并建立授权执行边界 | 命令 API | Agent Workflow；任务必须可追踪、幂等并有终态 | 当前候选人授权启动；不得替换其他人的任务 | `missing` | `none` | CAP-05、CAP-06、CAP-09 | Agent 启动 |
-| CAP-08 | HR：上传岗位 JD | 岗位进入可用状态并展示摘要 | 创建 HR 所属岗位及受控 JD 资料 | 文件写入 API | 仅在 Slice 证明需要时触发解析 | HR 只能管理其拥有或被授权的岗位 | `missing` | `none` | CAP-01 | `slice-01-jd-upload` 候选 |
+| CAP-08 | HR：上传岗位 JD | 岗位进入可用状态并展示摘要 | 创建 HR 所属岗位及受控 JD 资料 | 文件写入 API | 仅在 Slice 证明需要时触发解析 | HR 只能管理其拥有或被授权的岗位 | `missing` | `none` | CAP-01 | `slice-02-jd-upload` 候选 |
 | CAP-09 | 系统：准备可匹配岗位 | Agent 可以读取当前版本允许使用的岗位 | 查询可用岗位并形成受控匹配输入 | 查询/内部服务能力 | 可依赖 JD 解析，但不得默认引入公开网络爬取 | 岗位数据必须有明确提供者和可见范围 | `missing` | `none` | CAP-08 | 匹配 |
 | CAP-10 | 系统：生成匹配结果 | 求职者看到结构化、可解释匹配结果 | 根据候选人画像、求职目标和可用岗位生成并保存匹配结果 | 查询/命令 API | Agent Workflow；LLM 输出须经结构化和业务校验 | 结果必须同时绑定候选人和岗位 | `missing` | `none` | CAP-04、CAP-05、CAP-09 | 匹配 |
 | CAP-11 | 系统：创建投递记录 | 求职者看到首轮投递记录或空状态 | 根据授权的匹配结果创建系统内投递记录 | 内部命令/查询 API | 可由 Agent 任务产生；必须幂等，不产生真实外部投递 | 投递记录属于候选人与岗位关系；双方按角色读取 | `missing` | `none` | CAP-07、CAP-10 | 投递 |
@@ -176,7 +178,7 @@
 
 依赖关系只说明能力进入下一阶段所需的前置条件，不提前确定数据库外键、事务边界、Celery 编排或具体实现方式。
 
-## 8. Vertical Slice 归属规则
+## 8. 垂直切片归属规则
 
 能力进入具体 Slice 前，必须补充并确认：
 
@@ -219,7 +221,7 @@
 | --- | --- |
 | 前端流程不属于当前版本范围 | `backend-delivery-scope.md` |
 | 能力缺少或误映射 | 本文档和 `backend-gap-analysis.md` |
-| API 字段、状态或语义不一致 | 对应 Slice 的“接口与数据契约”章节 |
+| API 字段、状态或语义不一致 | 对应 Slice 的 `technical-design.md`，并回退 Slice Design |
 | 资源归属、状态或事务边界不一致 | 领域、状态或切片方案 |
 | 外部能力不可用 | `integrations/spikes/` |
 
@@ -228,10 +230,12 @@
 | 后续文档 | 使用本文件的内容 |
 | --- | --- |
 | `docs/development/backend-gap-analysis.md` | 逐项判断映射能力与当前实现之间的差距、风险和优先级 |
-| `docs/development/slices/<slice>/slice-spec.md` | 在具体 Slice 中锁定需要的公开 API、异步任务和状态契约 |
+| `docs/development/slices/<slice>/slice-spec.md` | 在具体 Slice 中引用业务事实并锁定本 Slice 的目标、范围、规则和验收标准 |
+| `docs/development/slices/<slice>/technical-design.md` | 在具体 Slice 中锁定公开 API、异步任务、状态、数据影响和交接契约 |
 | `docs/domain/`、`docs/data/` | 只为已进入具体 Slice 的能力增量确认领域、状态和数据 |
 | `docs/integrations/spikes/` | 验证本表中标记为 `conditional` 的外部能力 |
 | `docs/development/vertical-slice-plan.md` | 根据差距、依赖和闭环价值裁决 Slice 顺序 |
-| `docs/development/slices/<slice>/slice-spec.md` | 将某个能力组细化为切片范围、契约、方案和验收 |
+| `docs/development/slices/<slice>/slice-spec.md` | 将某个能力组细化为业务范围、事实引用和验收 |
+| `docs/development/slices/<slice>/technical-design.md` | 将某个能力组细化为契约、数据影响、方案和验证 |
 
 本文件完成后，下一步应编写 `backend-gap-analysis.md`，而不是直接编写完整数据库设计或实现任务。

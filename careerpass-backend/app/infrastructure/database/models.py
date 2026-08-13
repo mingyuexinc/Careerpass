@@ -27,9 +27,11 @@ PARSE_FAILURE_CODE = postgresql.ENUM(
 DOCUMENT_TYPE = postgresql.ENUM(
     "certificate", "strategy", "other", name="document_type_enum", create_type=False
 )
-ASYNC_TASK_TYPE = postgresql.ENUM("resume_parse", name="async_task_type_enum", create_type=False)
+ASYNC_TASK_TYPE = postgresql.ENUM(
+    "resume_parse", "job_jd_parse", name="async_task_type_enum", create_type=False
+)
 ASYNC_RESOURCE_TYPE = postgresql.ENUM(
-    "resume", name="async_task_resource_type_enum", create_type=False
+    "resume", "job", name="async_task_resource_type_enum", create_type=False
 )
 ASYNC_TASK_STATUS = postgresql.ENUM(
     "queued", "running", "succeeded", "failed", name="async_task_run_status_enum", create_type=False
@@ -134,6 +136,32 @@ class HrProfile(Base):
         DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
     user: Mapped[User] = relationship(back_populates="hr_profile", lazy="raise")
+
+
+class Job(Base):
+    """HR-owned job created from one uploaded JD file."""
+
+    __tablename__ = "jobs"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    hr_profile_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("hr_profiles.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    stored_file_object_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("stored_file_objects.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
 
 
 class UserRole(Base):

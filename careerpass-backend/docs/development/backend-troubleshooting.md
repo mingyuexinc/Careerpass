@@ -53,3 +53,28 @@ Docker Desktop 和 CLI 文件存在，PATH 也包含 Docker 目录，但当前 S
 - Docker Desktop 4.83.0、Engine 29.6.2、Compose 5.3.1 和 `desktop-linux` context 均正常。
 - 旧容器因未执行 Alembic，Dispatcher 报 `async_task_runs` 不存在；退出码 137 是旧栈停止后的结果，不是 Docker Engine 故障。
 - 当前 Compose 已增加一次性 `migrate` 服务；修正迁移枚举重复创建后，迁移、健康检查和两个预置账号登录均通过，重复启动也可正常完成。
+
+## 误判 Docker 未安装：CLI 已安装但当前 Shell 无法执行
+
+### 现象与原因
+
+执行 `docker --version` 返回“无法将 docker 识别为命令”，容易被误判为 Docker 未安装。若当前执行上下文还限制了命令发现或进程启动，实际原因可能是用户级 Docker CLI 已安装，但当前 Shell 未正确发现，或执行 `docker.exe` 时被拒绝访问。
+
+本次 S-02 联调前的误判属于此类：Docker CLI 实际位于 `C:\Users\58280\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe`，当前 `PATH` 也包含对应目录；但受限执行上下文直接运行该文件返回“拒绝访问”。因此当时只能得出“当前上下文无法执行 Docker CLI”，不能得出“Docker 未安装”或“Docker Engine 未运行”。
+
+### 正确诊断路径
+
+1. 先用 `Get-Command docker -ErrorAction SilentlyContinue` 检查当前命令发现结果；命令未发现不等于 CLI 文件不存在。
+2. 用 `Test-Path` 检查常见安装位置和当前 `PATH` 中 Docker 目录下的 `docker.exe`。
+3. 若文件存在，使用已确认的绝对路径执行 `docker version`、`docker compose version` 和 `docker context show`。
+4. 若绝对路径执行返回“拒绝访问”，记录为当前 Shell/沙箱执行权限问题；不得记录为“未安装”。
+5. 只有在具备 Docker CLI 执行权限的终端中确认 `docker version` 的 Engine 部分失败后，才能判断 Engine 未启动或不可连接。
+6. 只有完成上述检查后，才能继续执行项目 Compose 配置检查和服务启动。
+
+### 结论边界
+
+- `Get-Command` 找不到：只能说明当前 Shell 未发现命令；
+- `Test-Path` 为真：说明 CLI 文件已安装；
+- CLI 返回“拒绝访问”：说明执行上下文受限；
+- CLI 能运行但 Engine 连接失败：才进入 Docker Engine/Context 排查；
+- Docker Engine 可用但 Compose 服务失败：再排查项目 Compose、迁移和服务日志。

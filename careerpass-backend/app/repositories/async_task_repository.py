@@ -11,7 +11,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import AsyncTaskRun, Resume, StoredFileObject
+from app.infrastructure.database.models import AsyncTaskRun, Job, Resume, StoredFileObject
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,10 @@ class ExecutionLease:
 
 class ResumeTaskPreconditionError(Exception):
     """Raised when a resume cannot safely receive a parsing task."""
+
+
+class JobTaskPreconditionError(Exception):
+    """Raised when a job cannot safely receive a parsing task."""
 
 
 class AsyncTaskRepository:
@@ -103,6 +107,65 @@ class AsyncTaskRepository:
         )
         if task is None:
             raise ResumeTaskPreconditionError
+        return task, result.rowcount == 1
+
+    async def create_or_get_queued_job_task(
+        self,
+        *,
+        hr_profile_id: UUID,
+        job_id: UUID,
+        task_version: str = "v1",
+    ) -> tuple[AsyncTaskRun, bool]:
+        """Create or reuse the durable queued task handed off by S-02."""
+        resource = await self._session.execute(
+            select(Job, StoredFileObject)
+            .join(StoredFileObject, Job.stored_file_object_id == StoredFileObject.id)
+            .where(
+                Job.id == job_id,
+                Job.hr_profile_id == hr_profile_id,
+                Job.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+        if resource.one_or_none() is None:
+            raise JobTaskPreconditionError
+
+        idempotency_key = f"job_jd_parse:{job_id}:{task_version}"
+        existing = await self._session.scalar(
+            select(AsyncTaskRun)
+            .where(AsyncTaskRun.idempotency_key == idempotency_key)
+            .with_for_update()
+        )
+        if existing is not None:
+            if (
+                existing.task_type != "job_jd_parse"
+                or existing.resource_type != "job"
+                or existing.resource_id != job_id
+                or existing.task_version != task_version
+            ):
+                raise JobTaskPreconditionError
+            return existing, False
+
+        statement = (
+            postgres_insert(AsyncTaskRun)
+            .values(
+                task_type="job_jd_parse",
+                resource_type="job",
+                resource_id=job_id,
+                idempotency_key=idempotency_key,
+                task_version=task_version,
+                status="queued",
+            )
+            .on_conflict_do_nothing(index_elements=[AsyncTaskRun.idempotency_key])
+        )
+        result = await self._session.execute(statement)
+        task = await self._session.scalar(
+            select(AsyncTaskRun)
+            .where(AsyncTaskRun.idempotency_key == idempotency_key)
+            .with_for_update()
+        )
+        if task is None:
+            raise JobTaskPreconditionError
         return task, result.rowcount == 1
 
     async def claim_dispatch_batch(

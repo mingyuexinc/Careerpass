@@ -320,7 +320,7 @@ G9 作为一个业务 Slice 进入 `missing`。它覆盖简历、求职资料和
 | 执行租约 | 代码和设计已有租约/令牌边界 | 需要验证迟到 Worker 不会写入业务结果或改变终态 |
 | 可观测性 | 有脱敏日志和任务关联设计 | 需要检查真实日志、Prompt、追踪和异常不泄露敏感原值 |
 
-### 5.2 Agent Workflow
+### 5.2 智能体工作流（Agent Workflow）
 
 当前后端 Agent 架构将 Agent 控制面作为条件能力，但当前业务工作流尚未形成实现证据。必须区分：
 
@@ -389,7 +389,7 @@ G1 角色与身份边界
 
 ## 7. 后续工作输入与回退规则
 
-### 7.1 Gap Analysis 的直接输出
+### 7.1 差距分析的直接输出
 
 本文件完成后，应为后续文档提供以下输入：
 
@@ -401,7 +401,8 @@ G1 角色与身份边界
 | `docs/domain/domain-model.md` | 求职目标、解析任务、投递进度和 Agent 编排的合法状态边界；状态作为领域模型的一部分维护 |
 | `docs/data/database-design.md` | 只为已通过范围和方案门禁的实体、约束、索引和迁移设计 |
 | `docs/development/vertical-slice-plan.md` | 按 P0 差距、前置依赖和用户闭环价值排序 |
-| `docs/development/slices/<slice>/slice-spec.md` | 将一个模块差距细化为用户结果、契约、方案、任务和验收 |
+| `docs/development/slices/<slice>/slice-spec.md` | 将一个模块差距细化为业务结果、事实引用、范围和验收 |
+| `docs/development/slices/<slice>/technical-design.md` | 将一个模块差距细化为契约、方案、任务和验证 |
 
 ### 7.2 回退规则
 
@@ -409,7 +410,7 @@ G1 角色与身份边界
 | --- | --- |
 | 前端流程超出当前版本范围 | `backend-delivery-scope.md` 与前端验收流程 |
 | 岗位来源、角色或用户操作不一致 | MVP 范围与能力映射 |
-| API 路径、字段、状态或错误语义冲突 | 对应 Slice 的“接口与数据契约”章节 |
+| API 路径、字段、状态或错误语义冲突 | 对应 Slice 的 `technical-design.md` |
 | 资源所有者、状态拥有者或事务责任冲突 | 领域模型或 Slice 方案 |
 | 外部服务路线不可用或未授权 | `integrations/spikes/` 与技术使能治理 |
 | 任务重复、迟到 Worker 或失败终态不成立 | 对应 Slice 的异步任务契约/技术方案 |

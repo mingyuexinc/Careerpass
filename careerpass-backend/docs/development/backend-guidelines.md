@@ -10,12 +10,12 @@
 - Infrastructure 适配数据库、Redis、Celery、对象存储和外部服务。
 - 新代码不得绕过 Service/Repository 边界，也不得反向依赖上层。
 
-## 2. API 与 Schema
+## 2. 接口与数据结构（API 与 Schema）
 
 - 公开路由使用 /api/v1 前缀；健康检查除外。
 - 请求、响应和内部任务输入使用 Pydantic 结构校验，禁止传递任意字典代替已知契约。
 - 所有业务响应使用 {code, msg, data}；不得使用 message 替代 msg。
-- 具体路径、字段、状态和错误语义只在对应 Slice 的接口与数据契约中定义。
+- 具体路径、字段、状态和错误语义只在对应 Slice 的 `technical-design.md` 中定义。
 
 ## 3. 异常与错误码
 
