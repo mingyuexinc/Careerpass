@@ -25,7 +25,7 @@ Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP
 ### HR
 
 - 角色登录和 HR 工作台
-- 岗位 JD 上传和岗位摘要展示
+- 岗位 JD 上传及逐文件结果状态展示
 - 查看求职 Agent 沟通记录
 - 发送消息并接收系统回复
 - 更新单条投递记录的招聘阶段
