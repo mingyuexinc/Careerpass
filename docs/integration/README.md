@@ -55,9 +55,13 @@ docs/integration/
 ├── integration-contract-template.md
 ├── integration-scenario-template.md
 └── slices/
-    └── slice-02-jd-upload/
+    ├── slice-02-jd-upload/
         ├── integration-contract.md
         └── integration-scenario.md
+    └── slice-03-jd-extraction/
+        ├── integration-contract.md
+        ├── integration-scenario.md
+        └── fields.schema.json
 ```
 
 使用 [`integration-contract-template.md`](integration-contract-template.md) 和 [`integration-scenario-template.md`](integration-scenario-template.md) 创建具体交付文档。

@@ -1,5 +1,11 @@
 # Slice: 用户登录
 
+## 跨端交付绑定
+
+- Integration Contract：[`IC-S01-USER-LOGIN`](../../../../../docs/integration/slices/slice-01-user-login/integration-contract.md) `1.0`
+- Integration Scenario：[`IS-S01-01`](../../../../../docs/integration/slices/slice-01-user-login/integration-scenario.md)
+- 当前跨端交付状态：`integration_delivered`；开发者已完成真实前后端联调，求职者和 HR 登录均通过且未发现其它问题。
+
 ## 1. 目标
 
 用户提交账号和密码后，系统确认其身份并建立本次登录的工作区上下文。
