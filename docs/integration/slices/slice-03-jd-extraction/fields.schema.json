@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://careerpass.local/schemas/s03/parsed-jd-fields-v1.json",
+  "title": "S-03 Parsed Job Description Fields Reference Schema",
+  "description": "S-03 解析生成的 fields 参考模板。它允许保存超过五项核心字段；成功快照中的五项核心字段必须有效；核心字段缺失时解析失败且不创建快照；当前版本不包含大模型摘要、职位同义归一或其他模型语义扩展字段。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": { "$ref": "#/$defs/textField" },
+    "company_name": { "$ref": "#/$defs/textField" },
+    "location": { "$ref": "#/$defs/textField" },
+    "salary_range": { "$ref": "#/$defs/salaryField" },
+    "job_nature": { "$ref": "#/$defs/textField" },
+    "employment_type": { "$ref": "#/$defs/textField" },
+    "interview_mode": { "$ref": "#/$defs/textField" },
+    "summary": { "$ref": "#/$defs/textField" },
+    "responsibilities": { "$ref": "#/$defs/sectionField" },
+    "requirements": { "$ref": "#/$defs/sectionField" },
+    "additional_fields": {
+      "type": "object",
+      "description": "未纳入固定字段的可识别标题；字段名来自受控 Markdown 标题映射，不得携带内部路径或原始异常。",
+      "additionalProperties": { "$ref": "#/$defs/extraField" }
+    }
+  },
+  "required": [
+    "title",
+    "location",
+    "salary_range",
+    "responsibilities",
+    "requirements"
+  ],
+  "$defs": {
+    "textField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw": { "type": "string" },
+        "normalized": { "type": ["string", "null"] },
+        "source_heading": { "type": "string", "minLength": 1 },
+        "source_order": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["raw", "source_heading", "source_order"]
+    },
+    "salaryField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw": { "type": "string" },
+        "min": { "type": ["number", "null"], "minimum": 0 },
+        "max": { "type": ["number", "null"], "minimum": 0 },
+        "currency": { "type": ["string", "null"] },
+        "period": { "type": ["string", "null"] },
+        "source_heading": { "type": "string", "minLength": 1 },
+        "source_order": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["raw", "source_heading", "source_order"]
+    },
+    "sectionItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw": { "type": "string", "minLength": 1 },
+        "normalized": { "type": ["string", "null"] },
+        "source_order": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["raw", "source_order"]
+    },
+    "sectionField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sectionItem" }
+        },
+        "source_heading": { "type": "string", "minLength": 1 },
+        "source_order": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["raw", "items", "source_heading", "source_order"]
+    },
+    "extraField": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw": { "type": "string" },
+        "normalized": { "type": ["string", "null"] },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sectionItem" }
+        },
+        "source_heading": { "type": "string", "minLength": 1 },
+        "source_order": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["raw", "source_heading", "source_order"]
+    }
+  }
+}

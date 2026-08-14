@@ -13,6 +13,7 @@
 | `20260727_0003` | `implemented` | 文件对象、简历、画像、附加资料、异步任务及枚举 |
 | `20260727_0004` | `implemented` | Dispatcher/Worker 投递与执行租约字段 |
 | S-02 Job revision | `planned` | 待审核字段、约束和索引后新增；不得修改已执行 revision |
+| S-03 JD extraction revision | `planned` | 快照表、JD 任务类型/资源类型和失败语义字段由 S-03 新增；不得修改已执行 revision |
 
 ## 2. 已实现表
 
@@ -27,6 +28,7 @@
 | `candidate_profiles` | `id`；`resume_id → resumes` | 结构化画像 | `resume_id` 唯一 |
 | `candidate_documents` | `id`；`candidate_id → candidates` | 资料类型、文件引用 | 不进入解析任务 |
 | `async_task_runs` | `id`；按 `resource_type/resource_id` 关联业务资源 | 任务类型、版本、幂等键、租约、终态 | `idempotency_key`、任务标识按当前迁移约束 |
+| `parsed_job_description_snapshots` | `id`；`job_id → jobs` | `schema_version`、`fields`、`raw_sections`、创建时间 | `job_id` 唯一；成功快照才创建；`fields` 和 `raw_sections` 使用 JSONB；`planned` |
 
 ## 3. S-02 岗位表设计
 
@@ -54,7 +56,7 @@ Job 不新增以下字段：
 | --- | --- | --- | --- |
 | `hr_profiles` | 1 : N | `jobs` | 一个 HR 可拥有多个独立岗位 |
 | `jobs` | 1 : 1 | `stored_file_objects` | 每个 Job 绑定一个 JD 文件 |
-| `jobs` | 1 : 0..1 | S-03 快照表 | 快照表由 S-03 设计，本表不提前创建 |
+| `jobs` | 1 : 0..1 | `parsed_job_description_snapshots` | 每个 Job 至多一个当前有效快照；成功解析且核心字段完整后创建 |
 | `jobs` | 1 : 1 有效任务 | `async_task_runs` | 新 Job 在上传事务内创建/复用 queued 任务；任务字段由 S-03 锁定 |
 
 JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
@@ -77,10 +79,10 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | 枚举/状态 | 当前值 | 归属 | 状态 |
 | --- | --- | --- | --- |
 | `stored_file_object_status_enum` | `writing`、`ready`、`deleting` | StoredFileObject | `implemented` |
-| `parse_status_enum` | `processing`、`succeeded`、`failed` | Resume；岗位解析由 S-03 复用或扩展时另行确认 | `implemented`，岗位用途待 S-03 |
-| `parse_failure_code_enum` | `unsupported_file`、`file_unreadable`、`storage_unavailable`、`parser_timeout`、`schema_validation_failed`、`internal_error` | 解析任务/资源 | `implemented`，岗位适用性待 S-03 |
-| `async_task_type_enum` | `resume_parse` | AsyncTaskRun | `implemented`；JD 任务类型由 S-03 锁定 |
-| `async_task_resource_type_enum` | `resume` | AsyncTaskRun | `implemented`；JD 资源类型由 S-03 锁定 |
+| `parse_status_enum` | `processing`、`succeeded`、`failed` | Resume 和岗位 JD 解析 | `implemented`；岗位匹配资格由 S-03 结果单独表达 |
+| `parse_failure_code_enum` | `unsupported_file`、`file_unreadable`、`storage_unavailable`、`parser_timeout`、`schema_validation_failed`、`internal_error` | 解析任务/资源 | `implemented`；S-03 使用独立 `failure_semantics` 表达临时技术失败、输入不可用和核心字段缺失，核心字段缺失不得映射为 `schema_validation_failed` |
+| `async_task_type_enum` | `resume_parse`、`job_jd_parse` | AsyncTaskRun | `implemented`；S-03 新增值由 S-03 migration 落实 |
+| `async_task_resource_type_enum` | `resume`、`job` | AsyncTaskRun | `implemented`；S-03 新增值由 S-03 migration 落实 |
 | `async_task_run_status_enum` | `queued`、`running`、`succeeded`、`failed` | AsyncTaskRun | `implemented` |
 | Job 业务状态 | 暂不新增通用 `status` | Job | `planned`；删除资格由 S-11/S-08 业务规则判断 |
 
@@ -92,15 +94,15 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | S-02 重复上传 | 查询并返回当前 HR 已有 Job；不新建 Job，不新建解析任务 |
 | 批量上传 | 每个文件独立处理，允许部分成功；批次不要求全成全败 |
 | 文件/事务失败 | 不留下可供 S-03 消费的半成品 Job 输入；未引用临时对象按对象存储清理规则处理 |
-| S-03 解析 | S-03 独立更新解析任务和结构化快照；不回滚已提交的 S-02 Job |
+| S-03 解析 | S-03 独立更新解析任务；成功且五项核心字段有效时创建结构化快照；核心字段缺失、临时技术失败重试耗尽或输入不可用不形成可供 S-08 使用的快照；不回滚已提交的 S-02 Job |
 | Job 删除 | 匹配开始前可删除；匹配已发起后不可删除；具体软删除/对象清理由 S-11 设计 |
-| 内部定位 | `storage_key`、路径、文件正文不进入 API、任务契约、普通日志或追踪 |
+| 内部定位 | 生产任务只携带资源标识；纯内部验证 API 可短暂接收受控 `local_path`，但路径不进入任务持久化、普通响应、日志或追踪 |
 
 ## 6. 未确认表
 
 | 表/对象 | 原因 |
 | --- | --- |
-| JD 结构化快照表 | 由 S-03 负责设计和迁移 |
+| JD 结构化快照表 | 已由 S-03 Slice Design 确认，待 Alembic migration 实现 |
 | `JobGoal`、`Match`、`Application` | 由后续 Slice 负责 |
 | `Conversation`、`Message`、`ProgressEvent` | 由沟通/进度 Slice 负责 |
 
