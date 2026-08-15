@@ -1,5 +1,18 @@
 # Careerpass 后端项目入口规则
 
+## 0. 后端任务强制启动门禁
+
+每个新会话中的后端任务都必须先完成以下门禁，不因任务类型、历史结论或已有计划而省略：
+
+1. 第一次仓库读取必须完整包含 [`docs/development/backend-troubleshooting.md`](docs/development/backend-troubleshooting.md)；如第一次工具调用批量读取多个入口文件，该文档必须包含在同一调用中。
+2. 完成读取后，在首次工作进度中声明匹配的既有案例和复用的诊断路径；没有适用案例时明确记录“未匹配既有案例”。
+3. 门禁完成前，不得制定后端开发结论、判断环境能力、执行依赖诊断或修改代码和文档。
+4. 涉及 Docker、Compose、PostgreSQL、Redis、Dispatcher、Worker 或 Readiness Check 时，必须先从后端根目录执行 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backend-readiness.ps1`，再执行专项检查。
+5. `Get-Command docker` 未发现命令、命令不可识别或执行被拒绝，只能说明当前 Shell 的命令发现或执行权限状态；不得据此断言 Docker CLI 未安装、Docker Engine 未运行或当前环境无法验证。
+6. 预检返回 `execution_denied` 时，Codex 必须使用授权执行上下文重新运行同一脚本。只有授权上下文中的绝对路径 `docker version` 结果，才能支持 Docker Engine 不可连接的结论。
+
+门禁证据必须进入当前任务记录；涉及 Slice 时还必须写入 `technical-design.md` 的 Readiness 证据。治理回归测试见 `tests/unit/test_backend_governance.py`。
+
 ## 1. 项目定位
 
 Careerpass 后端项目负责为正式前端提供可验证的业务能力、领域规则、数据持久化、异步处理和受控外部能力接入。
@@ -174,6 +187,7 @@ slice-<name>/
 | 文档 | 用途 |
 | --- | --- |
 | [`docs/development/backend-guidelines.md`](docs/development/backend-guidelines.md) | 代码分层、命名、异常、测试和实现规范 |
+| [`../docs/integration/slice-acceptance-testing.md`](../docs/integration/slice-acceptance-testing.md) | 无前端展示结果的内部能力 Slice 验收边界、测试分层和 Acceptance Artifact 规范 |
 | [`docs/development/vertical-slice-plan.md`](docs/development/vertical-slice-plan.md) | Slice 候选、依赖、顺序和状态 |
 | [`docs/development/slices/slice-spec-template.md`](docs/development/slices/slice-spec-template.md) | Slice 业务规格模板 |
 | [`docs/development/slices/slice-technical-design-template.md`](docs/development/slices/slice-technical-design-template.md) | Slice 技术设计模板 |
@@ -183,11 +197,11 @@ slice-<name>/
 
 ## 7. 开发前阅读顺序
 
-处理后端开发任务时，按任务需要阅读：
+完成第 0 节强制启动门禁后，按任务需要继续阅读：
 
 1. 先阅读根 `AGENTS.md` 和本文件。
 2. 先阅读 `../docs/business/business-baseline.md` 和 `../docs/business/business-fact-extraction.md`；发现影响当前 Slice 的 `pending` 事实时，不得自行猜测。
-3. 涉及环境、依赖、数据库、Docker、架构、联调或故障排查时，优先阅读 `docs/development/backend-troubleshooting.md`。
+3. 复用启动门禁中匹配的 `docs/development/backend-troubleshooting.md` 诊断路径；问题解决后将可复用结论补充回该文档。
 4. 涉及版本范围和用户流程时，阅读 `docs/product/backend-delivery-scope.md`、`backend-capability-map.md` 和必要的前端产品文档。
 5. 涉及长期技术原则时，阅读 `docs/decisions/backend-development-decisions.md`、`backend-architecture.md` 和 `backend-guidelines.md`。
 6. 涉及领域、状态、归属或数据时，阅读 `docs/domain/domain-model.md`、`docs/data/database-design.md` 和 `docs/product/business-rules.md`。
@@ -199,6 +213,7 @@ slice-<name>/
 
 ### 修改前
 
+- 确认第 0 节强制启动门禁已完成；涉及基础服务时记录统一预检的执行上下文和结果；
 - 先判断任务属于业务范围、Slice 文档、后端代码、迁移、测试还是外部能力验证；
 - 阅读与任务相关的项目范围、前端流程、领域、数据、架构和故障案例事实源；
 - 优先查找并复用现有 Controller、Service、Repository、Model、任务和测试模式；
@@ -221,7 +236,7 @@ slice-<name>/
 
 - 执行与改动匹配的 Ruff、单元测试、接口测试、集成测试或真实外部验证；
 - 验证核心成功路径、非法输入、资源不存在、无权访问、依赖失败、状态迁移、幂等和数据一致性；
-- 前后端联调任务必须验证真实前端可观察结果，不能只验证后端 Mock；
+- 有前端展示结果的联调任务必须验证真实前端可观察结果；无前端展示结果的内部能力 Slice，必须按声明的测试层验证：核心能力使用 Capability Acceptance 的真实输入、核心输出和 Acceptance Artifact，直接持久化、公共基础设施、跨 Slice 交接和完整用户流程分别由对应专项测试负责；不能只验证后端 Mock；
 - `backend_ready` 只能表示后端实现和后端验证通过；只有 Integration Scenario 通过后才能标记 `integration_delivered`；
 - 检查 `slice-spec.md` 仍只包含业务内容，`technical-design.md` 与代码、迁移和测试一致；
 - 检查全局领域、数据、业务规则和外部能力文档是否需要同步；

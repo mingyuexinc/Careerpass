@@ -89,6 +89,6 @@ core fields missing → parse_failed + matching_not_ready，不创建快照
 
 | 日期 | 变化 | 影响 | 回退 Gate | 结论 |
 | --- | --- | --- | --- | --- |
-| 2026-08-14 | 明确 S-03 以 `fields` 作为主要解析交付结果，`raw_sections` 作为保真数据；当前不实现大模型语义解析 | S-03、S-08、fields Schema | S-03 Slice Design / Readiness Check | 待 API 技术设计和真实验证 |
-| 2026-08-14 | 明确当前 S-03 只处理临时技术失败、输入不可用、核心字段缺失三种语义；核心字段缺失以 `parse_failed + matching_not_ready` 表达且不创建快照；结构校验失败不纳入当前 JD 演示分支 | S-03、S-08、fields Schema | S-03 Slice Design / Readiness Check | 待 API 技术设计和真实验证 |
-| 2026-08-14 | 明确内部验证 API 使用本地存储路径提交异步任务并通过查询接口返回成功 `fields`；临时技术失败自动重试，核心字段缺失失败且不创建快照；未删除失败 Job 重建任务，已删除 Job 不复用 | S-02、S-03、S-08 | S-03 Slice Design / Readiness Check | 待 API 技术设计和真实验证 |
+| 2026-08-14 | 明确 S-03 以 `fields` 作为主要解析交付结果，`raw_sections` 作为保真数据；当前不实现大模型语义解析 | S-03、S-08、fields Schema | S-03 Slice Design / Readiness Check | 已由真实 API 和 `IS-S03-01` 核对 |
+| 2026-08-14 | 明确当前 S-03 只处理临时技术失败、输入不可用、核心字段缺失三种语义；核心字段缺失以 `parse_failed + matching_not_ready` 表达且不创建快照；结构校验失败不纳入当前 JD 演示分支 | S-03、S-08、fields Schema | S-03 Slice Design / Readiness Check | 已由迁移、任务状态和真实场景核对 |
+| 2026-08-14 | 明确内部验证 API 使用本地存储路径提交异步任务并通过查询接口返回成功 `fields`；临时技术失败自动重试，核心字段缺失失败且不创建快照；未删除失败 Job 重建任务，已删除 Job 不复用 | S-02、S-03、S-08 | S-03 Slice Design / Readiness Check | S-02/S-03 Contract；真实任务链和 `IS-S03-01` 已通过 |

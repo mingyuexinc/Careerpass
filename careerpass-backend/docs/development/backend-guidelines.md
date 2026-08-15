@@ -40,7 +40,14 @@
 
 ## 6. 测试
 
+同一个交付目标的 Acceptance Test、Factory、Repository、Unit Test 和 Expected Manifest 必须放在 `tests/` 下同一个交付目标测试文件夹中；岗位 JD 等通用真实演示数据继续放在 `tests/fixtures/job_descriptions/`，不得移动；Expected Manifest 不得放在通用岗位数据目录中。运行生成的 `report.md` 和 `actual.json` 不属于测试源文件，统一输出到该交付目标测试文件夹下明确命名的结果目录，并作为开发者重点审阅对象。
+
 - 核心业务规则、资源归属、状态迁移和幂等必须有单元测试。
 - PostgreSQL、Redis、Celery、对象存储和外部服务的真实结论必须由相应集成证据支持。
 - 测试替身只证明本地逻辑，不证明真实依赖可用。
+- 内部能力 Slice 必须按 [`docs/integration/slice-acceptance-testing.md`](../../../docs/integration/slice-acceptance-testing.md) 明确区分 `Capability Acceptance`、`Slice Integration Test`、`Infrastructure Test`、`Cross-Slice Integration Test` 和 `E2E Test`；开发者核心能力自测不得自动扩大为完整工程链路验收。
+- `Capability Acceptance` 使用固定 Fixture 直接验证真实核心业务输入到输出；需要数据库、任务、身份或文件对象的直接集成由 `Slice Integration Test` 单独验证。各层均不得预置被测 Slice 的最终输出。
+- Redis、Celery、Dispatcher、Worker 等公共机制由 `Infrastructure Test` 验证；只有在专项测试声明时才纳入对应测试链路，并不得把其结果冒充核心能力自测结果。
+- Fixture 只构造对应测试层所需的合法前置条件，必须经过受控 Factory、Repository 或正式用例并保留归属、状态机、唯一性和幂等约束。
+- 测试命令必须是稳定的短命令入口，自动创建、清理临时数据并输出非零失败码；验收产物必须脱敏，不得包含凭证、未脱敏原文、完整内部路径或原始模型响应。
 - 当前 pytest 配置要求整体覆盖率不低于 80%。

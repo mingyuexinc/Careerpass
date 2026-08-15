@@ -1,35 +1,47 @@
-# Integration Scenario：IS-S03-01 开发者验证 JD 解析结果
+# Integration Scenario：IS-S03-01 岗位 JD 解析
 
-> 本场景验证 S-03 通过纯内部验证 API，从真实 JD 输入生成结构化 `fields`；不验证前端岗位上传页，也不以预构造 `fields` 代替真实解析。
+> 本场景属于 `internal_capability`。它允许以稳定内部入口、任务结果和 Acceptance Artifact 作为交付目标；不验证前端岗位上传页，也不以预构造 `fields` 代替真实解析。
 
 | 项目 | 内容 |
 | --- | --- |
 | Scenario ID | `IS-S03-01` |
-| 名称 | 开发者调用 JD 解析 API 并核对 `fields` |
+| 名称 | 开发者运行 JD 解析 Capability Acceptance 并核对核心输出 |
 | 关联 Slice | `S-03` |
 | Integration Contract | [`integration-contract.md`](integration-contract.md) `IC-S03-JD-EXTRACTION@0.2` |
-| 交付状态 | `draft` |
+| 场景类型 | `internal_capability` |
+| 执行目录 | 仓库根目录 `Careerpass/` |
+| 内部能力测试层 | `Capability Acceptance`；只验证 JD 解析核心能力 |
+| 开发者核心能力自测命令 | 在仓库根目录执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\careerpass-backend\scripts\test-jd-parse-capability.ps1` |
+| Capability Acceptance Artifact | `careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/<run-id>/report.md` 与 `actual.json` |
+| 交付目标测试代码文件夹 | `careerpass-backend/tests/acceptance/s03_jd_parse/harness/` 与 `unit/` |
+| 交付目标测试结果目录 | `careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/`；开发者重点审阅每次运行的 `report.md` 和 `actual.json` |
+| 通用岗位 JD 数据目录 | `careerpass-backend/tests/fixtures/job_descriptions/`；固定使用 001、002，不得移动 |
+| 交付状态 | `integration_delivered` |
 
 ## 1. 交付目标
 
-开发者准备一份真实或脱敏构造的 Markdown JD，将其放置在受控本地存储根目录内；开发环境可直接使用 [`s03_demo_ai_application_engineer.md`](../../../../careerpass-backend/tests/fixtures/job_descriptions/s03_demo_ai_application_engineer.md)。通过 S-03 纯内部验证 API 提交本地存储路径并查询任务结果，确认成功结果符合 [fields JSON Schema](fields.schema.json)，且字段内容来自实际文件，而不是预置 `fields` Mock。
+本场景的开发者自测目标是 S-03 的核心 JD 解析能力：以固定 JD 文本为输入，执行真实解析逻辑，输出结构化 `fields` 和可人工审阅的结果。Capability Acceptance 不执行登录、S-02 上传、Job/StoredFileObject 前置构造、数据库查询、Redis/Celery、Dispatcher/Worker、S-08 匹配或完整用户流程。
+
+测试代码使用 [`tests/acceptance/s03_jd_parse/harness/`](../../../../careerpass-backend/tests/acceptance/s03_jd_parse/harness/)；固定输入只从 [`tests/fixtures/job_descriptions/`](../../../../careerpass-backend/tests/fixtures/job_descriptions/) 下的 001、002 读取，不移动或复制 JD 数据。Capability Acceptance 结果统一生成到 `careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/<run-id>/`，开发者重点审阅其中的 `report.md` 和 `actual.json`。不得预置 `fields`、快照或成功状态。
 
 ```text
-准备真实 `.md` JD 并取得受控本地存储路径
-→ 调用 S-03 内部解析任务提交 API
-→ 通过 task_id 查询解析结果
-→ 查看 parse_status、matching_status 和 fields
-→ 按 Schema、原文和预期字段核对结果
+运行固定 JD 解析 Capability Acceptance 短命令
+→ 读取 001、002 固定 JD 文本
+→ 执行真实 S-03 核心解析逻辑
+→ 自动断言核心字段、额外字段和原文保真
+→ 生成并审阅 report.md、actual.json
 ```
+
+数据库持久化和正式内部入口属于 `Slice Integration Test`；Redis、Celery、Dispatcher、Worker 属于 `Infrastructure Test`；S-03 与 S-08 的交接属于 `Cross-Slice Integration Test`；登录、上传到匹配属于 `E2E Test`。这些结果可以作为 S03 交付证据，但不纳入本节的核心能力自测。
 
 ## 2. 前置条件与演示数据
 
-- 环境：后端服务、数据库、受控对象存储和 S-03 解析运行环境可用；
-- 身份：开发者使用受控 HR 身份，或使用 Technical Design 明确的内部验证身份；
-- 输入：至少一份包含固定标题和额外固定标题的真实或脱敏构造 Markdown JD；
-- 数据准备：准备受控本地存储根目录内的 JD 文件和本地存储路径；开发环境默认使用 [`careerpass-backend/tests/fixtures/job_descriptions/`](../../../../careerpass-backend/tests/fixtures/job_descriptions/)；
+- 环境：S-03 核心解析运行环境和项目 Python 测试依赖可用；
+- 身份：Capability Acceptance 不需要登录身份；登录接口和 S-02 上传不列入本场景步骤；
+- 输入：固定使用 `tests/fixtures/job_descriptions/` 下的 001、002 两份脱敏构造 Markdown JD；
+- 数据准备：由 Capability Acceptance 直接读取固定 Fixture，不构造 Job、文件对象、任务或快照；
 - 参考：[`fields.schema.json`](fields.schema.json) 和预期字段核对表；
-- 依赖场景：`IS-S02-01` 或等价的可解析 Job 输入已建立。
+- 范围：本节只验证“JD 文本 → 解析结果”；其它工程链路由对应专项测试负责。
 
 ## 3. 演示数据要求
 
@@ -41,32 +53,34 @@
 - 主路径演示数据保证五项核心字段均有效；最小演示只验收成功解析结果；
 - 不得在输入中预先写入 `fields` JSON，也不得把前端 Mock 岗位对象作为解析结果。
 
-## 4. 演示步骤与预期结果
+## 4. 最小演示验证结果
 
-| 步骤 | 操作 | 预期系统结果 | 预期结果核对 |
-| --- | --- | --- | --- |
-| 1 | 准备真实 `.md` JD 并取得受控本地存储路径，调用 S-03 内部 JD 解析任务提交 API，再使用返回的 `task_id` 查询结果，观察 `parse_status`、`matching_status` 和 `fields`，并对照原始 JD、固定标题、额外标题和 S-08 交接要求核对结果 | 主路径成功时返回已校验的 `fields` 和 `matching_ready`，并形成可供 S-08 使用的成功快照 | `data.fields` 符合 [`fields.schema.json`](fields.schema.json)，字段来自真实 JD，职责保留原文/条目，未知标题不导致结果丢失，不出现大模型摘要或职位同义扩展字段，S-08 无需重新读取 Markdown |
+本节是开发者的核心能力自测记录，不是 S03 全链路交付报告。执行位置统一为仓库根目录 `Careerpass/`，完整命令为：
 
-## 5. 最小演示验证结果
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\careerpass-backend\scripts\test-jd-parse-capability.ps1
+```
 
-> 本节只能由开发者在实际调用 API/验证程序后填写。Coding Agent 不得代为生成、补写或推断验证结果和证据。
+该命令读取 001、002 两份固定 JD，直接执行 S-03 解析逻辑，生成 `careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/<run-id>/report.md` 和 `actual.json`，并以自动断言结果作为进程退出码。
 
-| 步骤 | 操作 | 实际结果 | 其它问题 |
-| --- | --- | --- | --- |
-| `<步骤>` | `<开发者填写实际 API/验证操作>` | `<待开发者填写>` | `<待开发者填写>` |
+本节不得要求开发者启动或检查 PostgreSQL、Redis、Dispatcher、Worker，不得手工登录、上传、调用内部 API 或查询数据库。当前包含这些链路的 `test-jd-parse.ps1` 只能归类为 Slice/Infrastructure Integration 证据，不能作为本节的核心能力自测命令。
 
-## 6. 问题与整改
+| 记录编号 | 操作                                                         | 实际结果                                                     | 其它问题 |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ | -------- |
+| 1        | 在仓库根目录执行 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\careerpass-backend\scripts\test-jd-parse-capability.ps1`，读取固定的 001、002 JD 并运行真实解析 | 查看`20260815T071301Z-ad3d5f27`生成两份实际解析结果；岗位名称、公司、地点、薪资、职责、任职要求和额外标题与 Expected 对比通过； | 无       |
 
-> 本节由 Coding Agent 根据“最小演示验证结果”中的“其它问题”逐一填写；未完成开发者演示前不得预填问题或验收结论。
+## 5. 问题与整改
+
+> 本次开发者最小演示的“其它问题”为“无”，不新增问题整改记录。
 
 | 记录编号 | 问题类型 | 原因与分析 | 整改结果 | 验收结果 |
 | --- | --- | --- | --- | --- |
-| `<开发者发现问题后填写>` | `<开发者填写>` | `<开发者填写>` | `<待整改/已完成>` | `<仅开发者填写>` |
+| — | 无 | 本次核心能力自测未发现其它问题 | 不适用 | 开发者已确认 |
 
-## 7. 关闭结论
+## 6. 关闭结论
 
-- API/验证程序真实调用完成：`是 / 否`；
-- `fields` Schema 核对完成：`是 / 否`；
-- 原文、固定标题和额外字段核对完成：`是 / 否`；
-- S-08 交接核对完成：`是 / 否 / 不适用`；
-- 最终结论：`Integration Delivered / integration_blocked`，仅由开发者根据实际证据填写。
+- S-03 Capability Acceptance 短命令：`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\careerpass-backend\scripts\test-jd-parse-capability.ps1`；
+- 本节自动断言：只覆盖 001、002 的真实 `fields`、核心字段、额外字段、原文保真和 Expected / Actual，执行结果为通过；
+- 持久化、任务状态、Redis/Celery、S-08 Handoff 和完整用户流程：分别由对应专项测试记录，不作为本节开发者自测结果；
+- Acceptance Artifact：已生成并由开发者审阅 `careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/20260815T071301Z-ad3d5f27/`；
+- 最终结论：`integration_delivered`，S03 核心 JD 解析开发交付目标已完成。

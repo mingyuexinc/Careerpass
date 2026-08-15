@@ -11,9 +11,11 @@
 | `20260723_0001` | `implemented` | 空基线 |
 | `20260725_0002` | `implemented` | `users`、`candidates` 认证与身份结构 |
 | `20260727_0003` | `implemented` | 文件对象、简历、画像、附加资料、异步任务及枚举 |
+| `20260815_0010` | `implemented` | S-04 工作年限改为带单位的确定性派生值 |
 | `20260727_0004` | `implemented` | Dispatcher/Worker 投递与执行租约字段 |
-| S-02 Job revision | `planned` | 待审核字段、约束和索引后新增；不得修改已执行 revision |
-| S-03 JD extraction revision | `planned` | 快照表、JD 任务类型/资源类型和失败语义字段由 S-03 新增；不得修改已执行 revision |
+| `20260813_0006` | `implemented` | HR-owned `jobs`、岗位文件关联和 `job_jd_parse` 任务枚举值 |
+| `20260815_0007` | `implemented` | S-03 快照表、任务代数和脱敏失败语义字段 |
+| `20260815_0008` | `implemented` | S-03 语义失败与旧解析失败码 CHECK 约束兼容；Dispatcher/Worker 超时失败字段边界 |
 
 ## 2. 已实现表
 
@@ -24,11 +26,11 @@
 | `hr_profiles` | `id`；`user_id → users` | `user_id` | `user_id` 唯一，一对一 |
 | `user_roles` | `id`；`user_id → users` | 角色关联 | 服务端复核角色归属 |
 | `stored_file_objects` | `id` | `storage_key`、`content_sha256`、状态 | `storage_key`、`content_sha256` 唯一；内部定位不进入 API |
-| `resumes` | `id`；`candidate_id → candidates` | 文件引用、解析状态、失败分类 | 只接受 `ready` 文件对象 |
-| `candidate_profiles` | `id`；`resume_id → resumes` | 结构化画像 | `resume_id` 唯一 |
+| `resumes` | `id`；`candidate_id → candidates` | 文件引用、解析状态、失败分类 | 只接受 `ready` 文件对象；同一 Candidate 可有多条记录，内容重复上传复用已有记录 |
+| `candidate_profiles` | `id`；`resume_id → resumes` | 结构化画像 | `resume_id` 唯一；`years_of_experience` 为 `unknown/x个月/x年` |
 | `candidate_documents` | `id`；`candidate_id → candidates` | 资料类型、文件引用 | 不进入解析任务 |
 | `async_task_runs` | `id`；按 `resource_type/resource_id` 关联业务资源 | 任务类型、版本、幂等键、租约、终态 | `idempotency_key`、任务标识按当前迁移约束 |
-| `parsed_job_description_snapshots` | `id`；`job_id → jobs` | `schema_version`、`fields`、`raw_sections`、创建时间 | `job_id` 唯一；成功快照才创建；`fields` 和 `raw_sections` 使用 JSONB；`planned` |
+| `parsed_job_description_snapshots` | `id`；`job_id → jobs` | `schema_version`、`fields`、`raw_sections`、创建时间 | `job_id` 唯一；成功快照才创建；`fields` 和 `raw_sections` 使用 JSONB；`implemented` |
 
 ## 3. S-02 岗位表设计
 
@@ -36,10 +38,10 @@
 
 | 表 | 字段 | 类型/约束方向 | 说明 | 状态 |
 | --- | --- | --- | --- | --- |
-| `jobs` | `id` | UUID，主键 | 岗位资源标识 | `planned` |
-| `jobs` | `hr_profile_id` | UUID，非空，外键 → `hr_profiles.id` | 岗位所有者 | `planned` |
-| `jobs` | `stored_file_object_id` | UUID，非空，外键 → `stored_file_objects.id` | 唯一 JD 文件关联 | `planned` |
-| `jobs` | `created_at` | `TIMESTAMPTZ`，非空 | 创建时间 | `planned` |
+| `jobs` | `id` | UUID，主键 | 岗位资源标识 | `implemented` |
+| `jobs` | `hr_profile_id` | UUID，非空，外键 → `hr_profiles.id` | 岗位所有者 | `implemented` |
+| `jobs` | `stored_file_object_id` | UUID，非空，外键 → `stored_file_objects.id` | 唯一 JD 文件关联 | `implemented` |
+| `jobs` | `created_at` | `TIMESTAMPTZ`，非空 | 创建时间 | `implemented` |
 
 Job 不新增以下字段：
 
@@ -65,12 +67,12 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 
 | 类型 | 建议定义 | 目的 | 状态 |
 | --- | --- | --- | --- |
-| 外键 | `jobs.hr_profile_id → hr_profiles.id` | 保证岗位归属主体存在 | `planned` |
-| 外键 | `jobs.stored_file_object_id → stored_file_objects.id` | 保证 JD 文件关联存在 | `planned` |
-| 非空 | `hr_profile_id`、`stored_file_object_id`、`created_at` | Job 最小完整性 | `planned` |
-| 唯一约束 | `UNIQUE(hr_profile_id, stored_file_object_id)` | 同一 HR 顺序重复上传复用已有 Job | `planned`，待审核 |
-| 查询索引 | `INDEX(hr_profile_id, created_at)` | 查询当前 HR 岗位列表 | `planned`，待审核 |
-| 内容去重 | 使用关联 `StoredFileObject.content_sha256` 做当前 HR 的顺序重复判断 | 不在 Job 重复保存摘要 | `planned`，实现待审核 |
+| 外键 | `jobs.hr_profile_id → hr_profiles.id` | 保证岗位归属主体存在 | `implemented` |
+| 外键 | `jobs.stored_file_object_id → stored_file_objects.id` | 保证 JD 文件关联存在 | `implemented` |
+| 非空 | `hr_profile_id`、`stored_file_object_id`、`created_at` | Job 最小完整性 | `implemented` |
+| 唯一约束 | `UNIQUE(hr_profile_id, stored_file_object_id)`（未删除记录） | 同一 HR 顺序重复上传复用已有 Job | `implemented` |
+| 查询索引 | `INDEX(hr_profile_id, created_at)` | 查询当前 HR 岗位列表 | `implemented` |
+| 内容去重 | 使用关联 `StoredFileObject.content_sha256` 做当前 HR 的顺序重复判断 | 不在 Job 重复保存摘要 | `implemented` |
 
 当前 Demo 不定义：跨 HR 相同内容的业务复用约束、并发重复上传竞态约束和岗位版本约束。
 
@@ -81,8 +83,8 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | `stored_file_object_status_enum` | `writing`、`ready`、`deleting` | StoredFileObject | `implemented` |
 | `parse_status_enum` | `processing`、`succeeded`、`failed` | Resume 和岗位 JD 解析 | `implemented`；岗位匹配资格由 S-03 结果单独表达 |
 | `parse_failure_code_enum` | `unsupported_file`、`file_unreadable`、`storage_unavailable`、`parser_timeout`、`schema_validation_failed`、`internal_error` | 解析任务/资源 | `implemented`；S-03 使用独立 `failure_semantics` 表达临时技术失败、输入不可用和核心字段缺失，核心字段缺失不得映射为 `schema_validation_failed` |
-| `async_task_type_enum` | `resume_parse`、`job_jd_parse` | AsyncTaskRun | `implemented`；S-03 新增值由 S-03 migration 落实 |
-| `async_task_resource_type_enum` | `resume`、`job` | AsyncTaskRun | `implemented`；S-03 新增值由 S-03 migration 落实 |
+| `async_task_type_enum` | `resume_parse`、`job_jd_parse` | AsyncTaskRun | `implemented`；`job_jd_parse` 由 S-02 revision 落实 |
+| `async_task_resource_type_enum` | `resume`、`job` | AsyncTaskRun | `implemented`；`job` 由 S-02 revision 落实 |
 | `async_task_run_status_enum` | `queued`、`running`、`succeeded`、`failed` | AsyncTaskRun | `implemented` |
 | Job 业务状态 | 暂不新增通用 `status` | Job | `planned`；删除资格由 S-11/S-08 业务规则判断 |
 
@@ -102,7 +104,6 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 
 | 表/对象 | 原因 |
 | --- | --- |
-| JD 结构化快照表 | 已由 S-03 Slice Design 确认，待 Alembic migration 实现 |
 | `JobGoal`、`Match`、`Application` | 由后续 Slice 负责 |
 | `Conversation`、`Message`、`ProgressEvent` | 由沟通/进度 Slice 负责 |
 

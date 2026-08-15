@@ -269,7 +269,8 @@ type AsyncState =
 - 求职者其它资料列表和 HR 岗位 JD 上传结果列表统一包裹在 `file-list-scroll` 中，最多展示 4 条，超过后使用纵向滚动条；页面不得通过固定截断数组隐藏已上传资料。
 - HR 可分批上传多份岗位 JD；每次上传结果按文件逐项展示，当前上传页不定义 `currentJob`、岗位版本或删除操作。
 - HR 岗位 JD 的 `FileUpload` 必须启用 `multiple`，页面 Action 使用 `uploadJobs(files)` 一次处理用户选择的全部文件；禁止只取 `files[0]`。
-- 其它求职资料的删除必须经过 `deleteDocument(id)` Action；岗位 JD 删除不属于当前上传页范围。
+- 其它求职资料的删除必须经过 `deleteDocument(id)` Action；岗位 JD 删除不属于当前上传页范围，由 S-11 岗位管理交互负责。
+- S-11 岗位管理交互只在 JD 解析任务进入 `succeeded/failed` 且匹配尚未开始时提供可用删除操作；`queued/running` 或匹配已开始时必须禁用删除并显示原因，成功后从当前可用岗位列表移除。
 - Agent 运行中或已结束时，当前轮次简历替换入口禁用。
 
 ## 12. 路由和访问体验

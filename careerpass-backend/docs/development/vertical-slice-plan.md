@@ -49,7 +49,7 @@ Slice 是实现边界，Integration Scenario 是交付边界，二者不要求�
 | Scope | 本 Slice 解决的业务范围 |
 | Non-goals | 不做、延期或归属其他 Slice 的内容 |
 | 依赖 | 前置业务结果或已确认能力 |
-| 状态 | `pending`、`partial`、`ready` 或 `blocked` |
+| 状态 | `pending`、`partial`、`ready`、`implemented` 或 `blocked` |
 
 单个 Slice 使用 [`slice-spec-template.md`](slices/slice-spec-template.md) 建立 `slice-spec.md`，使用 [`slice-technical-design-template.md`](slices/slice-technical-design-template.md) 建立 `technical-design.md`。前者只记录业务规格，后者记录 API、异步任务、Handoff Contract、数据影响、实现方案和验证证据；两份文档共同按 Slice Select、Slice Design、Readiness Check、Implement、Verify、Close 六阶段推进。
 
@@ -60,9 +60,9 @@ Slice 是实现边界，Integration Scenario 是交付边界，二者不要求�
 | Slice | Trigger | 主要业务结果 | 依赖 | 当前状态 |
 | --- | --- | --- | --- | --- |
 | [S-01 用户登录](slices/slice-01-user-login/slice-spec.md) | 用户提交用户名和密码 | 返回认证结果和最小身份信息 | 无 | `ready` |
-| S-02 岗位 JD 上传 | 受控导入命令或经裁决的岗位输入 | 形成已校验、可供抽取的岗位 JD 输入资源 | S-01；G4 范围 | `pending` |
-| S-03 JD 信息抽取 | S-02 建立可抽取的岗位 JD 输入 | 按固定 Markdown 标题形成以 `fields` 为主要交付结果、可供下游查询的结构化岗位/JD 快照 | S-02（Handoff Contract：可抽取 JD 输入已建立） | `partial` |
-| S-04 简历上传与解析 | 求职者上传 PDF 格式正式简历 | 候选人获得结构化画像及独立的岗位匹配资格判定 | S-01；对象存储；异步解析 | `partial` |
+| S-02 岗位 JD 上传 | 受控导入命令或经裁决的岗位输入 | 形成已校验、可供抽取的岗位 JD 输入资源 | S-01；G4 范围 | `implemented` |
+| S-03 JD 信息抽取 | S-02 建立可抽取的岗位 JD 输入 | 按固定 Markdown 标题形成以 `fields` 为主要交付结果、可供下游查询的结构化岗位/JD 快照 | S-02（Handoff Contract：可抽取 JD 输入已建立） | `implemented` |
+| S-04 简历上传与解析 | 求职者上传 PDF 格式正式简历 | 候选人获得结构化画像及独立的岗位匹配资格判定 | S-01；对象存储；异步解析 | `implemented` |
 | S-05 求职者资料上传 | 求职者上传附加求职资料 | 候选人获得已保存、可在授权沟通中引用的资料资源 | S-01；对象存储 | `partial` |
 | S-06 求职目标创建 | 求职者提交求职目标 | 当前候选人获得一个可用的活跃求职目标快照 | S-03、S-04 | `missing` |
 | S-07 Agent 投递启动 | 求职者点击启动 Agent | 仅在简历解析成功且画像具备匹配资格、求职目标已创建时，Agent 从未启动进入运行中 | S-03、S-04、S-06 | `missing` |
@@ -97,6 +97,8 @@ S-08、S-09、S-10、S-11
 
 S-11 可在对应资源创建后进入 Slice Select，不要求等待全部下游 Slice 完成；但简历、求职资料和岗位 JD 的删除条件、当前使用状态和下游引用处理必须在同一个 Slice Contract 中锁定。实际顺序以前置 Gate、真实能力证据和 Slice Design 结果为准，不按代码目录或技术组件排序。
 
+当前已确认岗位 JD 删除的业务事实，但 S-11 仍为 `missing`，尚未进入 Slice Select、Slice Design、Implement 或 Verify：删除只允许作用于解析任务已进入 `succeeded/failed` 终态且尚未开始匹配的 Job；`queued/running` 或匹配已开始时不可删除；成功后从当前可用岗位列表移除且不保留可供当前业务读取的 S-03 快照。上述事实不构成当前 API 或代码实现，简历和求职资料分支仍待 S-11 Contract 统一裁决。
+
 ### 5.2 变更回退
 
 | 变化 | 回退位置 |
@@ -113,3 +115,5 @@ S-11 可在对应资源创建后进入 Slice Select，不要求等待全部下�
 本文件只确认候选 Slice、总体依赖、交付场景关联和计划规则，不裁决 G4 岗位来源等 Slice 内问题，也不把历史开发包转换为任务清单。
 
 S-01 已完成身份模型裁决：`User` 是统一认证主体，Candidate 与 HR 是可挂载的业务身份，角色关联用于校验登录工作区上下文。具体业务资源授权不属于登录 Slice 的隐含范围。S-01 Readiness 为 `ready`，下一步进入 Implement。
+
+S-04 已完成代码开发、真实解析链路验证、固定 PDF Capability Acceptance 和开发者最小演示验收；`IS-S04-01` 已标记为 `integration_delivered`。S-04 交付结果为 `implemented`，后续 S-06/S-07 只消费其已校验画像和匹配资格。

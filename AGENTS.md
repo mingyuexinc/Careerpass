@@ -20,7 +20,7 @@
 
 项目入口阅读顺序：先阅读本文件，再阅读 [`docs/business/business-baseline.md`](docs/business/business-baseline.md) 和 [`docs/business/business-fact-extraction.md`](docs/business/business-fact-extraction.md)，再按任务进入 `careerpass-frontend/AGENTS.md` 或 `careerpass-backend/AGENTS.md`；进入子工程后，以业务基线和对应 `docs/` 中的事实源为准。
 
-后端疑难问题入口：凡涉及后端环境、依赖、数据库、Docker、架构、联调或故障排查，进入后端任务后必须优先阅读 [`careerpass-backend/docs/development/backend-troubleshooting.md`](careerpass-backend/docs/development/backend-troubleshooting.md)，并先复用其中适用的诊断路径；问题解决后将可复用结论补充回该文档。
+后端任务强制启动门禁：每个新会话中的后端任务，无论是否已知存在故障，第一次仓库读取都必须完整包含 [`careerpass-backend/docs/development/backend-troubleshooting.md`](careerpass-backend/docs/development/backend-troubleshooting.md)，并按 `careerpass-backend/AGENTS.md` 的启动门禁执行。在完成该读取和适用案例匹配前，不得制定开发结论、判断环境能力或修改仓库。
 
 ## 文档内容生成精简规则
 
@@ -57,7 +57,7 @@
 1. **敏感原值与安全凭证不得暴露，诊断信息必须脱敏且最小化**：密码、密码哈希、令牌、未经脱敏的简历原文、联系方式、完整内部文件定位、模型原始响应及含敏感内容的异常堆栈，不得进入日志、LangSmith 追踪或非必要接口响应；不得进入 Prompt 的内容也不得超出任务所需的已脱敏数据。日志与 LangSmith 追踪仅记录用于定位问题的最小脱敏诊断信息，例如关联 ID、处理阶段、状态、失败分类、耗时和重试次数。****
 1. **Agent 的工具调用必须有边界**：工具输入须校验，外部调用须设置超时、重试和错误处理；禁止让模型拼接 SQL、Shell 命令或未经校验的外部请求。
 1. **API 响应必须遵循统一格式 ** - `{code、msg、data}`结构
-1. **疑难问题必须先查案例**：遇到后端环境、依赖、架构、联调或故障排查类疑难问题，先查询 `careerpass-backend/docs/development/backend-troubleshooting.md`；已有案例适用时优先复用其诊断路径，问题解决后将可复用结论补充回该文档。
+1. **后端启动门禁不可跳过**：每个新会话中的后端任务必须先完整读取 `careerpass-backend/docs/development/backend-troubleshooting.md` 并声明适用案例；涉及 Docker、数据库或 Compose 的判断时必须先执行后端统一预检。命令未发现或执行被拒绝只能说明当前 Shell 或权限状态，不得据此断言 Docker CLI、Engine 或服务不可用。
 
 
 

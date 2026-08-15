@@ -142,6 +142,15 @@
 | --- | --- | --- | --- |
 | `<依赖>` | `<用途>` | `<测试、运行验证或事实源>` | `<已确认 / blocked / 不适用>` |
 
+涉及 Docker、Compose、PostgreSQL、Redis、Dispatcher 或 Worker 时，以下启动门禁证据必须填写；缺失时不得将 Readiness Check 或 `backend_ready` 标记为通过。
+
+| 启动门禁证据 | 记录 |
+| --- | --- |
+| 故障案例匹配 | `<案例标题 / 未匹配既有案例>` |
+| 统一预检命令 | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backend-readiness.ps1` |
+| 执行上下文 | `<默认 / 授权>` |
+| 预检状态与时间 | `<结构化状态；YYYY-MM-DD HH:mm 时区>` |
+
 ### 5.2 失败处理
 
 - 输入或业务校验失败：`<处理>`

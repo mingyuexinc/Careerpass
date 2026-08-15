@@ -4,7 +4,7 @@
 
 本文件只指导 AI 如何执行前端优先、Slice 层级的编码工作，不定义业务、架构、接口、数据或环境事实。
 
-AI 必须先读取根 AGENTS.md、`docs/business/business-baseline.md`、`docs/business/business-fact-extraction.md`、目标子工程 AGENTS.md 和当前 Slice 相关事实源，再按以下 Gate 串行工作。
+AI 必须先读取根 AGENTS.md、`docs/business/business-baseline.md`、`docs/business/business-fact-extraction.md`、目标子工程 AGENTS.md 和当前 Slice 相关事实源，再按以下 Gate 串行工作。后端任务还必须先通过 `careerpass-backend/AGENTS.md` 第 0 节的强制启动门禁。
 
 遇到实现细节争议时，使用 `.harness/skills/implementation-decision-autonomy/实现决策自主权.md` 判断是否需要人工确认。开发者负责产品意图、业务边界、输入输出、核心约束和关键技术方向；Coding Agent 在不改变这些内容的前提下自主完成局部实现设计。
 
@@ -23,7 +23,13 @@ AI 必须先读取根 AGENTS.md、`docs/business/business-baseline.md`、`docs/b
 
 ## 2.1 项目级基础服务基线预检
 
-项目级基础服务预检不属于六个 Slice Gate，但必须在首个 Slice Select 前完成；后续 Slice 只有在运行环境、数据库和关键基础服务发生变化时才重新执行。预检至少确认：
+项目级基础服务预检不属于六个 Slice Gate，但必须在首个 Slice Select 前完成；后续 Slice 只有在运行环境、数据库和关键基础服务发生变化时才重新执行。后端 Docker/Compose 预检必须先从 `careerpass-backend` 目录执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backend-readiness.ps1
+```
+
+再继续确认：
 
 - Docker CLI、Docker Engine 和 Compose 可用；
 - PostgreSQL、Redis 及其健康检查通过；
@@ -31,7 +37,7 @@ AI 必须先读取根 AGENTS.md、`docs/business/business-baseline.md`、`docs/b
 - Backend 可启动，`/health/live` 和 `/health/ready` 返回成功；
 - 前端开发服务器可启动并能访问 Backend 代理入口。
 
-预检输出必须记录可复用的命令、结果和阻塞项。预检未通过时，不进入 Slice Implement；若问题只影响某个 Slice 的新增依赖，则在该 Slice 的 Readiness Check 中补充真实证据。
+预检输出必须记录故障案例匹配、命令、默认或授权执行上下文、结构化状态、结果和阻塞项。`cli_not_found` 仅表示已检查的位置未发现 CLI，`execution_denied` 仅表示当前执行上下文受限；两者都不得写成 Docker Engine 不可用。预检未通过时，不进入 Slice Implement；若问题只影响某个 Slice 的新增依赖，则在该 Slice 的 Readiness Check 中补充真实证据。
 
 ## 3. 选择 Slice
 
@@ -80,7 +86,9 @@ Producer Slice 的 Handoff Contract 章节是跨 Slice 交接契约唯一来源�
 
 ## 7. 验证与关闭
 
-Verify 至少覆盖成功路径、非法输入、资源不存在、无权访问、依赖失败、状态迁移、幂等和数据一致性，并执行真实 Integration Scenario。Mock 不能替代真实前端联调或真实外部证据。
+Verify 至少覆盖成功路径、非法输入、资源不存在、无权访问、依赖失败、状态迁移、幂等和数据一致性，并执行与声明测试层匹配的真实 Integration Scenario。有前端展示结果的 Slice 执行真实前端路径；无前端展示结果的内部能力 Slice 的核心自测使用 Capability Acceptance 的稳定入口、实际核心输出和 Acceptance Artifact。持久化、公共基础设施、跨 Slice 交接和完整用户流程由对应专项测试负责。Mock 不能替代其声明测试层的真实证据。
+
+内部能力 Slice 的 Capability Acceptance 必须使用固定 Fixture、自动断言和稳定短命令入口；测试从核心业务输入开始，到核心业务输出结束，不重复执行上游登录/上传流程，也不以手工拼接长命令或手工查询数据库作为验收证据。持久化、Redis/Celery、跨 Slice 交接和完整用户流程由对应专项测试负责。Acceptance Artifact 至少包含脱敏的 `report.md` 和 `actual.json`。
 
 Close 前确认 `slice-spec.md` 仍只包含业务内容，`technical-design.md` 与最终实现一致，Integration Contract 与前后端实现一致，Integration Scenario 已记录自测、问题整改和回归结果，全局事实源已同步、验证可追溯、延期项明确且下游 Handoff 可用；实现没有产生未记录的跨前后端业务事实。
 

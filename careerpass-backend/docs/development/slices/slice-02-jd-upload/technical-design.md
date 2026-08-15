@@ -89,7 +89,7 @@ StoredFileObject 元数据
 | Consumer | S-03 | 已确认 |
 | 交接标识 | `job_id` | 已确认 |
 | 任务记录 | 上传事务内创建/复用 `queued` `AsyncTaskRun` | 已确认 |
-| 任务幂等 | `job_jd_parse:{job_id}:v1`，任务类型 `job_jd_parse`，资源类型 `job` | 已落实 |
+| 任务幂等 | 活动任务按 `job_jd_parse:{job_id}:v1:{generation}` 复用；失败任务递增 `generation` 重建，任务类型 `job_jd_parse`，资源类型 `job` | 已落实 |
 | 任务执行 | 事务提交后由 Dispatcher/Worker 投递和执行 | 已确认 |
 | 直接调用 | S-02 不调用 S-03 Service、Dispatcher 或 Worker | 已确认 |
 | 解析终态 | S-03 持有并更新 | 已确认 |

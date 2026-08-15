@@ -1,8 +1,8 @@
 # Slice：S-03 岗位 JD 信息抽取
 
-> 当前阶段：Slice Design
+> 当前阶段：Close
 >
-> 当前状态：业务裁定已完成；Technical Design、Readiness Check 和实现尚未完成。
+> 当前状态：S03 核心 JD 解析实现、Capability Acceptance 和开发者最小演示验证已完成，`IS-S03-01` 已标记为 `integration_delivered`；其它测试层按各自边界维护专项证据。
 
 ## 1. 目标
 
@@ -37,6 +37,8 @@ S-03 的主要业务交付结果是成功快照中的 `fields`。`raw_sections` 
 - Job 归属和文件读取权限可以由服务端复核；
 - 后端异步任务基础设施和 PostgreSQL 可用。
 
+`Capability Acceptance` 只需要项目测试运行环境和固定 JD 文本，不需要上述 Job、任务和基础设施前置条件；上述资源归属、文件 `ready` 状态、任务约束和幂等规则由 `Slice Integration Test` 通过受控 Fixture、Factory 或 Setup 单独验证，不重复执行登录和 S-02 上传流程。
+
 ## 5. 业务规则
 
 - 依赖 `BF-FLOW-008`、`BF-RULE-014`、`BF-STATE-010`、`BF-STATE-011`、`BF-SCOPE-010`、`BF-SCOPE-012` 和 `BF-SCOPE-014`；
@@ -55,6 +57,7 @@ S-03 的主要业务交付结果是成功快照中的 `fields`。`raw_sections` 
 - 原文分段保留和确定性字段归一化；
 - 异步任务提交、查询、重试、幂等和失败终态；
 - 纯内部验证 API 的任务提交与结果查询；
+- 固定 Fixture、自动前置数据构造、自动断言和 Acceptance Artifact；
 - 向 S-08 交付成功结构化快照。
 
 ### 非目标 / 延期
@@ -77,11 +80,12 @@ S-03 的主要业务交付结果是成功快照中的 `fields`。`raw_sections` 
 
 ## 8. 验收标准
 
-- 开发者可以通过内部验证 API 提交受控本地路径并获得 `task_id`；
-- 开发者可以通过查询 API 观察任务状态，并在成功时获得 `fields`；
-- 成功 `fields` 符合参考 Schema，五项核心字段有效，职责和任职要求保留原文/条目；
+- 开发者可以通过稳定的 Capability Acceptance 短命令输入固定 JD Fixture 并获得自动验收结果；不得要求开发者手工拼接请求或查询数据库；
+- Capability Acceptance 只执行真实解析逻辑并输出核心 `fields`，不自动创建 Job、文件对象、任务或快照；
+- 001、002 的成功 `fields` 符合参考 Schema，五项核心字段有效，职责和任职要求保留原文/条目；
 - 额外固定标题不会导致成功解析结果丢失；
-- 成功结果形成可供 S-08 消费的 `matching_ready` 快照；
+- Slice Integration Test 单独验证成功结果形成可供 S-08 消费的 `matching_ready` 快照；
+- 自动断言按测试层分别覆盖核心字段、直接持久化、任务/基础设施和 Handoff 条件，并生成对应的 `report.md` 与 `actual.json`；
 - 后端自测覆盖临时技术失败自动重试、输入不可用立即失败、核心字段缺失失败且无快照、幂等和重建任务规则；
 - 资源归属、内部路径、敏感内容和统一响应边界符合项目规则；
 - 关联 Integration Scenario 的最小演示成功路径通过真实调用。
@@ -92,8 +96,15 @@ S-03 的主要业务交付结果是成功快照中的 `fields`。`raw_sections` 
 | --- | --- |
 | Integration Scenario | [`IS-S03-01`](../../../../../docs/integration/slices/slice-03-jd-extraction/integration-scenario.md) |
 | Integration Contract | [`IC-S03-JD-EXTRACTION@0.2`](../../../../../docs/integration/slices/slice-03-jd-extraction/integration-contract.md) |
-| 开发者演示目标 | 提交受控本地 Markdown JD 路径，查询异步任务，观察成功 `fields` 和 `matching_ready` 快照 |
-| 场景关闭条件 | 真实成功调用、Schema 核对、原文和额外字段核对、问题整改与回归完成 |
+| 场景类型 | `internal_capability` |
+| 交付目标测试代码文件夹 | [`tests/acceptance/s03_jd_parse/harness/`](../../../tests/acceptance/s03_jd_parse/harness/) 与 [`unit/`](../../../tests/acceptance/s03_jd_parse/unit/) |
+| 交付目标测试结果目录 | `careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/<run-id>/`；开发者重点审阅每次运行的 `report.md` 和 `actual.json` |
+| 通用岗位 JD 数据目录 | [`tests/fixtures/job_descriptions/`](../../../tests/fixtures/job_descriptions/)；固定使用 001、002，不得移动 |
+| 开发者核心能力自测入口 | `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\careerpass-backend\scripts\test-jd-parse-capability.ps1`；输入 001、002，直接观察解析输出 |
+| Slice/Infrastructure 专项入口 | 由对应 Slice Integration Test、Infrastructure Test 提供；不并入核心能力自测 |
+| 验收产物 | `report.md`、`actual.json` 及命令输出的脱敏结果 |
+| 开发者演示目标 | 运行固定核心能力命令，观察 001、002 的真实 `fields` 和人工可审阅产物 |
+| 场景关闭条件 | Capability Acceptance 自动断言通过、产物已生成并由开发者审阅；其它测试层单独关闭 |
 
 ## 9. 开发者需裁决事项
 

@@ -16,7 +16,7 @@
 | UserRole | 关联实体 | User | 记录可用 `candidate` / `hr` 角色 | `implemented` | 当前代码与迁移 |
 | CurrentIdentity | 运行时投影 | 当前请求 | 提供 `user_id`、角色和可选业务身份 ID | `implemented` | 认证依赖；不持久化 |
 | StoredFileObject | 持久化实体 | 业务资源引用 | 保存受控文件元数据和对象存储引用 | `implemented` | 不向公开 API 暴露内部定位 |
-| Resume | 持久化实体 | Candidate | 保存正式简历和解析状态 | `implemented` | 当前代码与迁移 |
+| Resume | 持久化实体 | Candidate | 保存正式简历和解析状态；同一 Candidate 可拥有多份简历 | `implemented` | 当前代码与迁移；S-04 内容幂等规则 |
 | CandidateProfile | 持久化实体 | Resume | 保存成功解析后的结构化候选人画像，并提供独立的岗位匹配资格判定 | `implemented` | `resume_id` 一对一；解析成功不等于具备匹配资格 |
 | CandidateDocument | 持久化实体 | Candidate | 保存附加求职资料，不进入解析状态机 | `implemented` | 当前代码与迁移 |
 | AsyncTaskRun | 持久化实体 | 关联业务资源 | 保存异步任务权威状态、租约、幂等和脱敏失败分类 | `implemented` | 当前已支持简历解析；岗位任务由后续 Slice 扩展 |
@@ -33,7 +33,7 @@
 | User | 1 : N | UserRole | 角色关联必须由服务端复核 |
 | Candidate | 1 : N | Resume | Resume 只能归属于本人 Candidate |
 | Candidate | 1 : N | CandidateDocument | 附加资料只能归属于本人 Candidate |
-| Resume | 1 : 1 | CandidateProfile | 成功解析的 Resume 至多一个画像 |
+| Resume | 1 : 1 | CandidateProfile | 成功解析的 Resume 至多一个画像；画像另行表达匹配资格 |
 | Resume / CandidateDocument | N : 1 | StoredFileObject | 业务资源引用内部文件对象；不公开对象定位 |
 | HrProfile | 1 : N | Job | Job 只能归属于创建它的 HrProfile |
 | Job | 1 : 1 | StoredFileObject | 一份 Job 绑定一个 JD 文件；JD 输入不单独建实体 |
@@ -56,11 +56,11 @@
 | 对象 | 状态/迁移 | 状态拥有者 | 约束 |
 | --- | --- | --- | --- |
 | StoredFileObject | `writing → ready → deleting` | 文件对象/清理流程 | 只有 `ready` 对象可被业务资源读取 |
-| Resume | `processing → succeeded / failed` | S-03 解析流程 | `succeeded` 必须有已校验画像；画像另行判定 `matching_ready / matching_not_ready`；`failed` 只能记录受控 `failure_code` |
+| Resume | `processing → succeeded / failed` | S-04 解析流程 | `succeeded` 必须有已校验画像；画像另行判定 `matching_ready / matching_not_ready`；`failed` 只能记录受控 `failure_code`；相同内容上传复用既有资源 |
 | AsyncTaskRun | `queued → running → succeeded / failed` | Dispatcher/Worker 与任务流程 | `running` 受租约保护；终态不可被迟到回调覆盖 |
-| Job | 创建后作为稳定岗位资源存在 | S-02 创建；S-11 删除 | 新 JD 创建新 Job；不覆盖、不建版本 |
+| Job | 创建后作为稳定岗位资源存在；删除后不再是当前可用岗位 | S-02 创建；S-11 删除 | 新 JD 创建新 Job；不覆盖、不建版本；删除资格受解析终态和匹配发起事实约束 |
 | Job 的 JD 解析状态 | `queued / running / succeeded / failed` 的任务/资源状态 | S-03 | S-02 只创建/复用 queued 任务，不写解析终态；临时技术失败和输入不可用进入 `parse_failed`，核心字段缺失也进入 `parse_failed + matching_not_ready` 且不创建快照 |
-| Job 删除资格 | `未发起匹配 → 可删除`；`已发起匹配 → 不可删除` | S-11 执行，S-08 提供匹配发起事实 | 即使匹配失败或无结果，已发起匹配也不得删除 |
+| Job 删除资格 | 解析任务终态且未发起匹配 → 可删除；`queued/running` 或已发起匹配 → 不可删除 | S-11 执行，S-08 提供匹配发起事实 | 即使匹配失败或无结果，已发起匹配也不得删除；删除成功后不保留可用解析快照 |
 
 ## 5. 解析结果与匹配资格
 
@@ -69,10 +69,12 @@
 | 结果 | 含义 | 后续影响 |
 | --- | --- | --- |
 | `parse_failed` | 文件不可读取、结构化结果无法校验或解析任务进入受控失败终态 | 不形成可用画像，不得创建可启动流程 |
-| `parse_succeeded + matching_not_ready` | 画像已成功解析，但缺少姓名、简历内手机号/邮箱、教育经历，或工作经历与项目经历均缺失 | 前端提示“业务字段缺失”；不得启动 Agent；当前不提示重新上传 |
+| `parse_succeeded + matching_not_ready` | 画像已成功解析，但缺少姓名、简历内手机号/邮箱、教育经历，或工作经历与项目经历均缺失 | 不得启动 Agent；本次简历页不展示匹配资格详情 |
 | `parse_succeeded + matching_ready` | 姓名、简历内手机号/邮箱、教育经历有效，且工作经历或项目经历至少一项有效 | 满足其他条件后可启动 Agent |
 
 年龄属于可选画像信息，不影响匹配资格。`matching_ready` 是业务判定，不等同于 Resume 的解析终态，也不代表具体数据库字段。
+
+CandidateProfile 的工作年限是由非实习工作年月确定性派生的 `unknown`、`x个月` 或 `x年`，不接受 LLM 估算值。
 
 ### 岗位 JD 解析
 

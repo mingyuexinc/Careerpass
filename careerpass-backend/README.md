@@ -31,6 +31,8 @@ docker-compose.integration.yml 提供 PostgreSQL、Redis、迁移、Backend、Wo
 
 宿主机端口为 PostgreSQL 54329、Redis 63790、Backend 8080。容器内部通过 postgres、redis 服务名连接。
 
+Worker 镜像固定安装已验证的 MinerU Bridge，不在任务运行时动态下载。若宿主机访问 MinerU 依赖本地代理，先在未提交的 `.env` 中设置 `CAREERPASS_CONTAINER_PROXY`，地址使用 `host.docker.internal`，不能在容器中沿用宿主机的 `127.0.0.1`。
+
 停止环境：
 
     docker compose -f docker-compose.integration.yml down
