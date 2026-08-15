@@ -19,8 +19,11 @@ from app.infrastructure.database.models import (
     AsyncTaskRun,
     CandidateDocument,
     CandidateProfile,
+    HrProfile,
+    Job,
     Resume,
     StoredFileObject,
+    User,
 )
 from app.infrastructure.storage import LocalObjectStorage
 from app.infrastructure.tasks.celery_app import create_celery_app
@@ -112,7 +115,7 @@ def test_migrations_are_repeatable_and_readiness_is_healthy(
                         text(
                             "SELECT conname FROM pg_constraint WHERE conname IN ("
                             "'ck_stored_file_objects_ck_stored_file_size', "
-                            "'ck_candidate_profiles_ck_candidate_profile_target_titles', "
+                                "'ck_candidate_profiles_ck_candidate_profile_matching_readiness', "
                             "'ck_candidate_profiles_ck_candidate_profile_years', "
                             "'ck_async_task_runs_ck_async_task_run_finished_at', "
                             "'ck_async_task_runs_ck_async_task_run_failure_code') ORDER BY conname"
@@ -121,7 +124,7 @@ def test_migrations_are_repeatable_and_readiness_is_healthy(
                     assert [row.conname for row in constraints] == [
                         "ck_async_task_runs_ck_async_task_run_failure_code",
                         "ck_async_task_runs_ck_async_task_run_finished_at",
-                        "ck_candidate_profiles_ck_candidate_profile_target_titles",
+                            "ck_candidate_profiles_ck_candidate_profile_matching_readiness",
                         "ck_candidate_profiles_ck_candidate_profile_years",
                         "ck_stored_file_objects_ck_stored_file_size",
                     ]
@@ -257,7 +260,9 @@ def test_candidate_preparation_upload_reuses_objects_without_orphans(
                         ),
                         {"candidate_id": candidate_id},
                     )
-                    assert counts.one() == (2, 1, 0)
+                    # S-04 reuses the same candidate-owned Resume for identical PDF
+                    # content, even when the request uses a different idempotency key.
+                    assert counts.one() == (1, 1, 0)
             finally:
                 await database.close()
 
@@ -617,8 +622,10 @@ def test_object_cleanup_removes_only_expired_unreferenced_objects(
                         name=None,
                     )
                     del user
-                    orphan_upload = storage.put(b"orphan")
-                    shared_upload = storage.put(b"shared")
+                    unique_marker = uuid4().hex.encode()
+                    orphan_upload = storage.put(b"orphan-" + unique_marker)
+                    shared_upload = storage.put(b"shared-" + unique_marker)
+                    job_upload = storage.put(b"job-shared-" + unique_marker)
                     async with session.begin():
                         orphan = StoredFileObject(
                             storage_key=orphan_upload.storage_key,
@@ -638,7 +645,16 @@ def test_object_cleanup_removes_only_expired_unreferenced_objects(
                             created_at=old,
                             updated_at=old,
                         )
-                        session.add_all((orphan, shared))
+                        job_shared = StoredFileObject(
+                            storage_key=job_upload.storage_key,
+                            content_sha256=job_upload.content_sha256,
+                            detected_mime_type="text/markdown",
+                            file_size_bytes=job_upload.size_bytes,
+                            status="ready",
+                            created_at=old,
+                            updated_at=old,
+                        )
+                        session.add_all((orphan, shared, job_shared))
                         await session.flush()
                         session.add(
                             CandidateDocument(
@@ -649,14 +665,31 @@ def test_object_cleanup_removes_only_expired_unreferenced_objects(
                                 stored_file_object_id=shared.id,
                             )
                         )
+                        hr_user = User(
+                            username=f"cleanup-hr-{uuid4()}",
+                            password_hash="scrypt$integration-test-only",
+                        )
+                        session.add(hr_user)
+                        await session.flush()
+                        hr_profile = HrProfile(user_id=hr_user.id)
+                        session.add(hr_profile)
+                        await session.flush()
+                        session.add(
+                            Job(
+                                hr_profile_id=hr_profile.id,
+                                stored_file_object_id=job_shared.id,
+                            )
+                        )
                     deleted = await ObjectCleanupService(
                         repository=ObjectStorageRepository(session), storage=storage
                     ).run_once()
                     assert deleted == 1
                     assert await session.get(StoredFileObject, orphan.id) is None
                     assert await session.get(StoredFileObject, shared.id) is not None
+                    assert await session.get(StoredFileObject, job_shared.id) is not None
                     assert not (tmp_path / "objects" / orphan_upload.storage_key).exists()
                     assert (tmp_path / "objects" / shared_upload.storage_key).exists()
+                    assert (tmp_path / "objects" / job_upload.storage_key).exists()
             finally:
                 await database.close()
 

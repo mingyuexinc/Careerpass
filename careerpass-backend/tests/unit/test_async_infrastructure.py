@@ -5,8 +5,10 @@ import asyncio
 from celery import Celery
 
 from app.infrastructure.cache import create_redis_client
+from app.infrastructure.database.models import AsyncTaskRun
 from app.infrastructure.runtime import check_celery_configuration, check_database, check_redis
 from app.infrastructure.tasks import create_celery_app
+from app.repositories.async_task_repository import _mark_timeout_failure
 
 
 def test_redis_client_close_is_idempotent() -> None:
@@ -107,3 +109,16 @@ def test_worker_entrypoint_uses_the_constrained_celery_configuration() -> None:
     assert check_celery_configuration(celery_app) is True
     assert "careerpass.runtime_probe" in celery_app.tasks
     assert "careerpass.resume_parse" in celery_app.tasks
+
+
+def test_timeout_failure_uses_s03_semantics_for_jd_parse_tasks() -> None:
+    jd_task = AsyncTaskRun(task_type="job_jd_parse")
+    resume_task = AsyncTaskRun(task_type="resume_parse")
+
+    _mark_timeout_failure(jd_task)
+    _mark_timeout_failure(resume_task)
+
+    assert jd_task.failure_code is None
+    assert jd_task.failure_semantics == "temporary_technical_failure"
+    assert jd_task.failure_reason == "execution_timeout"
+    assert resume_task.failure_code == "internal_error"

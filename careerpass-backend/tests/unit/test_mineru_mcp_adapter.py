@@ -79,3 +79,55 @@ def test_adapter_accepts_string_and_text_content_results() -> None:
 
     assert asyncio.run(string_adapter.extract_markdown(b"%PDF-1.7\nresume")) == "# Resume"
     assert asyncio.run(content_adapter.extract_markdown(b"%PDF-1.7\nresume")) == "# Resume"
+
+
+def test_adapter_extracts_markdown_from_structured_mineru_result() -> None:
+    adapter = MineruMcpAdapter(
+        tool=RecordingTool(
+            {
+                "status": "success",
+                "results": [
+                    {
+                        "filename": "resume.pdf",
+                        "status": "success",
+                        "content": "# Resume\nExperience",
+                        "truncated": False,
+                    }
+                ],
+            }
+        )
+    )
+
+    assert asyncio.run(adapter.extract_markdown(b"%PDF-1.7\nresume")) == "# Resume\nExperience"
+
+
+def test_adapter_rejects_structured_error_instead_of_treating_it_as_markdown() -> None:
+    adapter = MineruMcpAdapter(
+        tool=RecordingTool(
+            {
+                "status": "error",
+                "results": [
+                    {
+                        "filename": "resume.pdf",
+                        "status": "error",
+                        "error": "SSL unexpected EOF",
+                    }
+                ],
+            }
+        )
+    )
+
+    with pytest.raises(MineruUnavailableError):
+        asyncio.run(adapter.extract_markdown(b"%PDF-1.7\nresume"))
+
+
+def test_adapter_parses_json_text_fallback_from_mcp() -> None:
+    encoded = (
+        '{"status":"success","results":['
+        '{"status":"success","content":"# Resume","truncated":false}]}'
+    )
+    adapter = MineruMcpAdapter(
+        tool=RecordingTool({"content": [{"type": "text", "text": encoded}]})
+    )
+
+    assert asyncio.run(adapter.extract_markdown(b"%PDF-1.7\nresume")) == "# Resume"

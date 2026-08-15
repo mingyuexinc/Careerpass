@@ -130,6 +130,43 @@ def test_resume_upload_returns_processing_and_creates_queued_task(tmp_path: Path
     assert received["resume_id"] == result.resume_id
 
 
+def test_resume_upload_reuses_same_content_without_creating_a_second_task(tmp_path: Path) -> None:
+    resume_id = uuid4()
+
+    class ReusingRepository:
+        @asynccontextmanager
+        async def transaction(self):
+            yield
+
+        async def create_resume(self, **_: object) -> tuple[object, bool, bool]:
+            return SimpleNamespace(id=resume_id, parse_status="succeeded"), True, False
+
+    class FailingTaskRepository:
+        async def create_or_get_queued_resume_task(self, **_: object) -> tuple[object, bool]:
+            raise AssertionError("same-content resume must not create another parse task")
+
+    async def execute() -> object:
+        service = CandidatePreparationService(
+            repository=ReusingRepository(),
+            task_repository=FailingTaskRepository(),
+            storage=LocalObjectStorage(str(tmp_path)),
+        )  # type: ignore[arg-type]
+        return await service.upload_resume(
+            candidate_id=uuid4(),
+            content=b"%PDF-1.7",
+            filename="same-resume.pdf",
+            declared_mime="application/pdf",
+            name=None,
+            idempotency_key=None,
+        )
+
+    result = asyncio.run(execute())
+
+    assert result.resume_id == resume_id
+    assert result.parse_status == "succeeded"
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_resume_upload_cleans_transient_file_when_task_creation_fails(tmp_path: Path) -> None:
     class FailingRepository:
         @asynccontextmanager

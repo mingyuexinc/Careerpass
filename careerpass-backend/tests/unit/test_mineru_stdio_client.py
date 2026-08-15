@@ -33,9 +33,18 @@ class AsyncContext:
 
 
 class FakeSession:
-    def __init__(self, *, tool_names: list[str], content: list[object]) -> None:
+    def __init__(
+        self,
+        *,
+        tool_names: list[str],
+        content: list[object],
+        structured_content: dict[str, object] | None = None,
+        is_error: bool = False,
+    ) -> None:
         self._tool_names = tool_names
         self._content = content
+        self._structured_content = structured_content
+        self._is_error = is_error
         self.arguments: dict[str, object] | None = None
         self.initialized = False
 
@@ -54,7 +63,11 @@ class FakeSession:
     async def call_tool(self, name: str, *, arguments: dict[str, object]) -> object:
         assert name == "parse_documents"
         self.arguments = arguments
-        return SimpleNamespace(content=self._content)
+        return SimpleNamespace(
+            content=self._content,
+            structuredContent=self._structured_content,
+            isError=self._is_error,
+        )
 
 
 class FakeContent:
@@ -65,12 +78,18 @@ class FakeContent:
 
 def test_bridge_environment_contains_runtime_essentials_and_mineru_token(monkeypatch) -> None:
     monkeypatch.setenv("PATH", "safe-path")
+    monkeypatch.setenv("HTTPS_PROXY", "http://controlled-proxy.invalid")
+    monkeypatch.setenv("NO_PROXY", "localhost,127.0.0.1")
     monkeypatch.setenv("MINERU_API_KEY", "ambient-token-must-not-pass-through")
     monkeypatch.setenv("DASHSCOPE_API_KEY", "qwen-token-must-not-pass-through")
 
     environment = _bridge_environment("mineru-child-token")
 
     assert environment["PATH"] == "safe-path"
+    assert environment["HTTPS_PROXY"] == "http://controlled-proxy.invalid"
+    assert environment["NO_PROXY"] == (
+        "localhost,127.0.0.1,cdn-mineru.openxlab.org.cn"
+    )
     assert environment["MINERU_API_TOKEN"] == "mineru-child-token"
     assert environment["ENABLE_LOG"] == "false"
     assert "MINERU_API_KEY" not in environment
@@ -106,6 +125,36 @@ def test_stdio_client_uses_verified_contract_and_suppresses_bridge_stderr(monkey
         "output_dir": "C:/controlled",
     }
     assert len(parameters) == 1
+
+
+def test_stdio_client_prefers_structured_tool_result(monkeypatch) -> None:
+    from app.infrastructure import mineru_mcp_client
+
+    structured = {
+        "status": "success",
+        "results": [{"status": "success", "content": "# Resume"}],
+    }
+    session = FakeSession(
+        tool_names=["parse_documents"],
+        content=[FakeContent()],
+        structured_content=structured,
+    )
+    monkeypatch.setattr(
+        mineru_mcp_client,
+        "stdio_client",
+        lambda value, *, errlog: AsyncContext((object(), object())),
+    )
+    monkeypatch.setattr(mineru_mcp_client, "ClientSession", lambda reader, writer: session)
+
+    result = asyncio.run(
+        MineruStdioClient(
+            command="uvx",
+            command_args=("mineru-open-mcp",),
+            api_token="test-token",
+        ).parse_documents(file_path="C:/controlled/resume.pdf")
+    )
+
+    assert result == structured
 
 
 def test_stdio_client_rejects_missing_parse_tool(monkeypatch) -> None:

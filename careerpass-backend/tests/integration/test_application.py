@@ -35,6 +35,7 @@ def test_root_returns_success_envelope(client: TestClient) -> None:
         "msg": "success",
         "data": {"service": "CareerPass API"},
     }
+    assert response.headers["content-type"] == "application/json; charset=utf-8"
     assert response.headers["X-Request-ID"]
 
 

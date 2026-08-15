@@ -1,0 +1,30 @@
+{
+  "fixtures": [
+    "001-天创机器人-Agent开发工程师.md",
+    "002-豪与杰电子科技-AI应用开发工程师.md"
+  ],
+  "001-天创机器人-Agent开发工程师.md": {
+    "title": "001-天创机器人-Agent开发工程师",
+    "company_name": "天创机器人",
+    "location": "南京",
+    "salary_min": 18000,
+    "salary_max": 35000,
+    "salary_period": "month",
+    "responsibilities_count": 4,
+    "requirements_count": 4,
+    "additional_field_keys": [],
+    "raw_sections_source": "fixture"
+  },
+  "002-豪与杰电子科技-AI应用开发工程师.md": {
+    "title": "002-豪与杰电子科技-AI应用开发工程师",
+    "company_name": "豪与杰电子科技",
+    "location": "南京",
+    "salary_min": 18000,
+    "salary_max": 35000,
+    "salary_period": "month",
+    "responsibilities_count": 7,
+    "requirements_count": 5,
+    "additional_field_keys": ["岗位定位", "加分项"],
+    "raw_sections_source": "fixture"
+  }
+}

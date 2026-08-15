@@ -66,4 +66,16 @@ def test_controlled_resume_reaches_validated_atomic_terminal_state() -> None:
         assert profile.status_code == 200
         data = profile.json()["data"]
         assert data["resume_id"] == resume_id
-        assert data["target_job_titles"]
+        assert data["full_name"]
+        assert data["phone"] or data["email"]
+        assert data["education"]
+        assert data["work_experience_summary"] or data["project_experience_summary"]
+        assert data["years_of_experience"] != "unknown"
+        work_companies = [
+            item["company_name"]
+            for item in data["work_experience_summary"]
+            if item["experience_type"] == "work" and item["company_name"]
+        ]
+        assert len(work_companies) >= 2
+        assert len(work_companies) == len(set(work_companies))
+        assert data["matching_readiness"] == "matching_ready"
