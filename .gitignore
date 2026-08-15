@@ -8,3 +8,6 @@ __pycache__/
 .pytest-basetemp/
 .ruff_cache/
 careerpass-backend/.careerpass-job-jd/
+careerpass-backend/.pytest-tmp/
+careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/
+careerpass-backend/tests/acceptance/s04_resume_parse/delivery-acceptance-results/
