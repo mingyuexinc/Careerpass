@@ -16,6 +16,8 @@ dependencies = [
     "sqlalchemy>=2.0,<2.1",
     "uvicorn>=0.51.0",
     "mcp>=1,<2",
+    "mineru-open-mcp==1.0.21",
+    "pypdf>=6,<7",
 ]
 
 [tool.uv]
@@ -36,6 +38,9 @@ addopts = "-q --cov=app --cov-report=term-missing --cov-fail-under=80"
 markers = [
     "integration: requires PostgreSQL and Redis supplied by the integration compose stack",
     "external_integration: requires explicitly enabled MinerU and Qwen external credentials",
+    "acceptance: S-03 internal capability acceptance harness requiring the integration compose stack",
+    "capability_acceptance: S-03 core JD parsing acceptance using fixed fixture files without shared infrastructure",
+    "s04_capability_acceptance: S-04 core resume parsing acceptance using a fixed PDF fixture",
 ]
 
 [tool.ruff]

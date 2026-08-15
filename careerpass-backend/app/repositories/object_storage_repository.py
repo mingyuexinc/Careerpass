@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import CandidateDocument, Resume, StoredFileObject
+from app.infrastructure.database.models import CandidateDocument, Job, Resume, StoredFileObject
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,12 @@ class ObjectStorageRepository:
             has_document = exists(
                 select(1).where(CandidateDocument.stored_file_object_id == StoredFileObject.id)
             )
+            has_active_job = exists(
+                select(1).where(
+                    Job.stored_file_object_id == StoredFileObject.id,
+                    Job.deleted_at.is_(None),
+                )
+            )
             statement = (
                 select(StoredFileObject)
                 .where(
@@ -42,6 +48,7 @@ class ObjectStorageRepository:
                     StoredFileObject.updated_at < older_than,
                     ~has_resume,
                     ~has_document,
+                    ~has_active_job,
                 )
                 .order_by(StoredFileObject.updated_at, StoredFileObject.id)
                 .with_for_update(skip_locked=True)
@@ -77,6 +84,18 @@ class ObjectStorageRepository:
                 value.status = claim.previous_status
 
     async def _has_reference(self, object_id: UUID) -> bool:
+        active_job_exists = await self._session.scalar(
+            select(
+                exists(
+                    select(1).where(
+                        Job.stored_file_object_id == object_id,
+                        Job.deleted_at.is_(None),
+                    )
+                )
+            )
+        )
+        if active_job_exists:
+            return True
         resume_exists = await self._session.scalar(
             select(exists(select(1).where(Resume.stored_file_object_id == object_id)))
         )

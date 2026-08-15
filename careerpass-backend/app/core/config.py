@@ -47,15 +47,16 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=5, ge=1, le=20)
     redis_url: RedisDsn
     readiness_timeout_seconds: float = Field(default=2, gt=0, le=10)
-    celery_task_time_limit_seconds: int = Field(default=30, ge=1, le=300)
-    celery_task_soft_time_limit_seconds: int = Field(default=25, ge=1, le=299)
+    celery_task_time_limit_seconds: int = Field(default=150, ge=1, le=300)
+    celery_task_soft_time_limit_seconds: int = Field(default=120, ge=1, le=299)
     celery_task_max_retries: int = Field(default=2, ge=0, le=5)
     celery_retry_backoff_max_seconds: int = Field(default=60, ge=1, le=300)
-    celery_execution_lease_seconds: int = Field(default=90, ge=31, le=300)
+    celery_execution_lease_seconds: int = Field(default=180, ge=31, le=300)
     celery_dispatch_lease_seconds: int = Field(default=30, ge=5, le=300)
     celery_dispatcher_poll_seconds: int = Field(default=60, ge=5, le=300)
     celery_dispatcher_batch_size: int = Field(default=20, ge=1, le=100)
     object_storage_root: str = Field(default=".careerpass-objects", min_length=1)
+    s03_jd_root: str = Field(default="tests/fixtures/job_descriptions", min_length=1)
     mineru_api_token: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices("MINERU_API_KEY", "MINERU_API_TOKEN"),

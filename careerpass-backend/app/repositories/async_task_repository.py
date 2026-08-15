@@ -130,22 +130,27 @@ class AsyncTaskRepository:
         if resource.one_or_none() is None:
             raise JobTaskPreconditionError
 
-        idempotency_key = f"job_jd_parse:{job_id}:{task_version}"
-        existing = await self._session.scalar(
-            select(AsyncTaskRun)
-            .where(AsyncTaskRun.idempotency_key == idempotency_key)
-            .with_for_update()
+        existing_tasks = list(
+            (
+                await self._session.scalars(
+                    select(AsyncTaskRun)
+                    .where(
+                        AsyncTaskRun.task_type == "job_jd_parse",
+                        AsyncTaskRun.resource_type == "job",
+                        AsyncTaskRun.resource_id == job_id,
+                        AsyncTaskRun.task_version == task_version,
+                    )
+                    .order_by(AsyncTaskRun.task_generation.desc(), AsyncTaskRun.created_at.desc())
+                    .with_for_update()
+                )
+            ).all()
         )
-        if existing is not None:
-            if (
-                existing.task_type != "job_jd_parse"
-                or existing.resource_type != "job"
-                or existing.resource_id != job_id
-                or existing.task_version != task_version
-            ):
-                raise JobTaskPreconditionError
-            return existing, False
+        latest = existing_tasks[0] if existing_tasks else None
+        if latest is not None and latest.status != "failed":
+            return latest, False
 
+        generation = (latest.task_generation if latest is not None else 0) + 1
+        idempotency_key = f"job_jd_parse:{job_id}:{task_version}:{generation}"
         statement = (
             postgres_insert(AsyncTaskRun)
             .values(
@@ -154,6 +159,7 @@ class AsyncTaskRepository:
                 resource_id=job_id,
                 idempotency_key=idempotency_key,
                 task_version=task_version,
+                task_generation=generation,
                 status="queued",
             )
             .on_conflict_do_nothing(index_elements=[AsyncTaskRun.idempotency_key])
@@ -286,7 +292,7 @@ class AsyncTaskRepository:
             ):
                 return False
             task.status = "failed"
-            task.failure_code = "internal_error"
+            _mark_timeout_failure(task)
             task.finished_at = now
             task.execution_token = None
             task.execution_lease_expires_at = None
@@ -314,7 +320,7 @@ class AsyncTaskRepository:
             tasks = list((await self._session.scalars(statement)).all())
             for task in tasks:
                 task.status = "failed"
-                task.failure_code = "internal_error"
+                _mark_timeout_failure(task)
                 task.finished_at = now
                 task.execution_token = None
                 task.execution_lease_expires_at = None
@@ -336,3 +342,14 @@ def _execution_claimable(task: AsyncTaskRun, now: datetime) -> bool:
         and task.execution_lease_expires_at is not None
         and task.execution_lease_expires_at <= now
     )
+
+
+def _mark_timeout_failure(task: AsyncTaskRun) -> None:
+    """Persist the failure vocabulary owned by the task type."""
+    if task.task_type == "job_jd_parse":
+        task.failure_code = None
+        task.failure_semantics = "temporary_technical_failure"
+        task.failure_reason = "execution_timeout"
+        task.missing_core_fields = None
+        return
+    task.failure_code = "internal_error"

@@ -44,8 +44,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
       OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
+      S03_JD_ROOT: /opt/careerpass/s03-jd
       READINESS_TIMEOUT_SECONDS: "2"
-      CELERY_TASK_TIME_LIMIT_SECONDS: "30"
+      CELERY_TASK_TIME_LIMIT_SECONDS: "150"
+      CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"
+      CELERY_EXECUTION_LEASE_SECONDS: "180"
       JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
     depends_on:
       postgres:
@@ -57,7 +60,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - integration-objects:/var/lib/careerpass/objects
+      - ./.careerpass-job-jd:/var/lib/careerpass/objects
+      - ./tests/fixtures/job_descriptions:/opt/careerpass/s03-jd:ro
 
   worker:
     build: .
@@ -69,8 +73,16 @@ services:
       REDIS_URL: redis://redis:6379/0
       OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
       MINERU_API_KEY: ${MINERU_API_KEY:-}
+      MINERU_MCP_COMMAND: mineru-open-mcp
+      MINERU_MCP_COMMAND_ARGS: "[]"
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
-      CELERY_TASK_TIME_LIMIT_SECONDS: "30"
+      HTTP_PROXY: ${CAREERPASS_CONTAINER_PROXY:-}
+      HTTPS_PROXY: ${CAREERPASS_CONTAINER_PROXY:-}
+      ALL_PROXY: ${CAREERPASS_CONTAINER_PROXY:-}
+      NO_PROXY: ${CAREERPASS_CONTAINER_NO_PROXY:-}
+      CELERY_TASK_TIME_LIMIT_SECONDS: "150"
+      CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"
+      CELERY_EXECUTION_LEASE_SECONDS: "180"
       JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
     depends_on:
       postgres:
@@ -80,7 +92,7 @@ services:
       migrate:
         condition: service_completed_successfully
     volumes:
-      - integration-objects:/var/lib/careerpass/objects
+      - ./.careerpass-job-jd:/var/lib/careerpass/objects
 
   dispatcher:
     build: .
@@ -90,8 +102,10 @@ services:
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
-      CELERY_TASK_TIME_LIMIT_SECONDS: "30"
-      CELERY_DISPATCHER_POLL_SECONDS: "60"
+      CELERY_TASK_TIME_LIMIT_SECONDS: "150"
+      CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"
+      CELERY_EXECUTION_LEASE_SECONDS: "180"
+      CELERY_DISPATCHER_POLL_SECONDS: "5"
       JWT_SECRET_KEY: integration-jwt-secret-key-with-at-least-32-characters
     depends_on:
       postgres:
@@ -100,6 +114,3 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-
-volumes:
-  integration-objects:

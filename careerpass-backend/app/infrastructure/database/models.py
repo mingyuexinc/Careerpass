@@ -252,7 +252,15 @@ class CandidateProfile(Base):
         nullable=False,
         unique=True,
     )
-    target_job_titles: Mapped[list[str]] = mapped_column(ARRAY(String(128)), nullable=False)
+    full_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    matching_readiness: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default=text("'matching_not_ready'")
+    )
+    target_job_titles: Mapped[list[str]] = mapped_column(
+        ARRAY(String(128)), nullable=False, server_default=text("ARRAY[]::varchar[]")
+    )
     skills: Mapped[list[dict[str, object]] | None] = mapped_column(JSONB, nullable=True)
     work_experience_summary: Mapped[list[dict[str, object]] | None] = mapped_column(
         JSONB, nullable=True
@@ -260,7 +268,9 @@ class CandidateProfile(Base):
     project_experience_summary: Mapped[list[dict[str, object]] | None] = mapped_column(
         JSONB, nullable=True
     )
-    years_of_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    years_of_experience: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default=text("'unknown'")
+    )
     education: Mapped[str | None] = mapped_column(String(64), nullable=True)
     expected_location: Mapped[str | None] = mapped_column(String(128), nullable=True)
     expected_salary: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -317,6 +327,9 @@ class AsyncTaskRun(Base):
     task_version: Mapped[str] = mapped_column(
         String(128), nullable=False, server_default=text("'v1'")
     )
+    task_generation: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("1")
+    )
     dispatch_token: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), nullable=True
     )
@@ -325,6 +338,9 @@ class AsyncTaskRun(Base):
     )
     dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failure_code: Mapped[str | None] = mapped_column(PARSE_FAILURE_CODE, nullable=True)
+    failure_semantics: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    missing_core_fields: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     execution_token: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), nullable=True
@@ -333,6 +349,28 @@ class AsyncTaskRun(Base):
         DateTime(timezone=True), nullable=True
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
+class ParsedJobDescriptionSnapshot(Base):
+    """Validated, deterministic JD fields consumed by downstream matching."""
+
+    __tablename__ = "parsed_job_description_snapshots"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    job_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    fields: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    raw_sections: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )

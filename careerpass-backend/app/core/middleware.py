@@ -16,6 +16,13 @@ from app.core.request_context import (
 logger = logging.getLogger("careerpass.request")
 
 
+def _ensure_json_utf8(response: Response) -> None:
+    """Make JSON decoding deterministic for clients without a charset default."""
+    content_type = response.headers.get("content-type", "")
+    if content_type.lower().startswith("application/json") and "charset=" not in content_type.lower():
+        response.headers["content-type"] = f"{content_type}; charset=utf-8"
+
+
 async def request_context_middleware(request: Request, call_next) -> Response:
     """Attach correlation data and log only method, path, status and latency."""
     request_id = resolve_request_id(request.headers.get(REQUEST_ID_HEADER))
@@ -24,6 +31,7 @@ async def request_context_middleware(request: Request, call_next) -> Response:
     started_at = perf_counter()
     try:
         response = await call_next(request)
+        _ensure_json_utf8(response)
         response.headers[REQUEST_ID_HEADER] = request_id
         logger.info(
             "request_completed",

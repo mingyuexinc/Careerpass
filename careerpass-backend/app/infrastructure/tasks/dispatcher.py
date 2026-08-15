@@ -15,8 +15,10 @@ from app.repositories.async_task_repository import AsyncTaskRepository, Dispatch
 
 logger = logging.getLogger(__name__)
 
-_TASK_NAMES = {"resume_parse": "careerpass.resume_parse"}
-_DEFERRED_TASK_TYPES = {"job_jd_parse"}
+_TASK_NAMES = {
+    "resume_parse": "careerpass.resume_parse",
+    "job_jd_parse": "careerpass.job_jd_parse",
+}
 Publication = Callable[[str, UUID, str], None]
 
 
@@ -53,13 +55,6 @@ class TaskDispatcher:
             return await AsyncTaskRepository(session).fail_stalled_tasks()
 
     async def _publish_and_confirm(self, lease: DispatchLease) -> None:
-        if lease.task_type in _DEFERRED_TASK_TYPES:
-            async with self._database.session_factory() as session:
-                await AsyncTaskRepository(session).release_dispatch(
-                    task_run_id=lease.task_run_id,
-                    dispatch_token=lease.dispatch_token,
-                )
-            return
         try:
             task_name = _TASK_NAMES[lease.task_type]
             await asyncio.to_thread(self._publish, task_name, lease.task_run_id, lease.celery_task_id)
