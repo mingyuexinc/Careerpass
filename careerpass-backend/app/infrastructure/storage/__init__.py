@@ -1,5 +1,6 @@
-"""Controlled local object storage implementations."""
+"""Storage adapters."""
 
-from app.infrastructure.storage.local import LocalObjectStorage, StoredUpload
+from app.infrastructure.storage.controlled import ControlledJobDescriptionStorage
+from app.infrastructure.storage.local import LocalObjectStorage
 
-__all__ = ["LocalObjectStorage", "StoredUpload"]
+__all__ = ["ControlledJobDescriptionStorage", "LocalObjectStorage"]
