@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { mockRepository } from "../api/mock/mockRepository";
+import { listResumes, uploadResume as uploadResumeRequest } from "../api/resumeApi";
+import { useAuthStore } from "./auth-store";
 import type { DeliveryProgress, JobGoalInput, WorkspaceSnapshot } from "../domain/types";
 
 interface WorkspaceState extends WorkspaceSnapshot {
@@ -72,7 +74,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   refresh: async () => {
     set({ loading: true, error: null });
     try {
-      set({ ...(await mockRepository.getSnapshot()), loading: false, initialized: true });
+      const snapshot = await mockRepository.getSnapshot();
+      const accessToken = useAuthStore.getState().accessToken;
+      if (accessToken) {
+        const resumes = await listResumes(accessToken);
+        snapshot.resume = resumes[0] ?? null;
+      }
+      set({ ...snapshot, loading: false, initialized: true });
     } catch (error) {
       set({
         loading: false,
@@ -84,8 +92,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     runAction(
       set,
       async () => {
-        await mockRepository.uploadResume(file);
-        return mockRepository.getSnapshot();
+        const accessToken = useAuthStore.getState().accessToken;
+        if (accessToken) {
+          await uploadResumeRequest(file, accessToken);
+        } else {
+          await mockRepository.uploadResume(file);
+        }
+        const snapshot = await mockRepository.getSnapshot();
+        if (accessToken) {
+          const resumes = await listResumes(accessToken);
+          snapshot.resume = resumes[0] ?? null;
+        }
+        return snapshot;
       },
       "resumeLoading",
     ),

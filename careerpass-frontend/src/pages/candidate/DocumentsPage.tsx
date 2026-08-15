@@ -26,7 +26,6 @@ export function DocumentsPage() {
     try {
       await state.uploadResume(file);
       setToast("简历已上传，正在进行解析。");
-      window.setTimeout(() => void state.setParseResult("succeeded"), 700);
     } catch {
       /* Store exposes the controlled error below. */
     }
@@ -71,9 +70,9 @@ export function DocumentsPage() {
           <FileUpload
             label={state.resume ? "重新选择简历" : "上传一份简历"}
             description={
-              resumeLocked ? "当前投递轮次已绑定简历。" : "支持 PDF、DOCX 等常见格式。"
+              resumeLocked ? "当前投递轮次已绑定简历。" : "仅支持文本型 PDF 简历。"
             }
-            accept=".pdf,.doc,.docx"
+            accept=".pdf"
             disabled={resumeLocked || state.resumeLoading}
             onFiles={(files) => void uploadResume(files[0])}
           />
