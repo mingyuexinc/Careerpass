@@ -33,15 +33,18 @@ class CandidatePreparationRepository:
     async def create_resume(
         self, *, candidate_id: UUID, name: str, upload: StoredUpload, idempotency_key: UUID | None
     ) -> tuple[Resume, bool, bool]:
-        existing = await self._resume_by_key(candidate_id, idempotency_key)
-        if existing is not None:
-            resume, file_object = existing
-            if resume.file_name != name or file_object.content_sha256 != upload.content_sha256:
-                raise IdempotencyConflictError
-            return resume, True, False
         file_object, created_file_object = await self._get_or_create_file_object(
             upload, "application/pdf"
         )
+        existing = await self._resume_by_key(candidate_id, idempotency_key)
+        if existing is not None:
+            resume, existing_file_object = existing
+            if existing_file_object.content_sha256 != upload.content_sha256:
+                raise IdempotencyConflictError
+            return resume, True, False
+        existing = await self._resume_by_content(candidate_id, file_object.content_sha256)
+        if existing is not None:
+            return existing, True, False
         resume = Resume(
             candidate_id=candidate_id,
             upload_idempotency_key=idempotency_key,
@@ -156,6 +159,21 @@ class CandidatePreparationRepository:
             )
         )
         return (await self._session.execute(statement)).one_or_none()
+
+    async def _resume_by_content(
+        self, candidate_id: UUID, content_sha256: str
+    ) -> Resume | None:
+        statement = (
+            select(Resume)
+            .join(StoredFileObject, Resume.stored_file_object_id == StoredFileObject.id)
+            .where(
+                Resume.candidate_id == candidate_id,
+                StoredFileObject.content_sha256 == content_sha256,
+            )
+            .order_by(Resume.created_at.asc(), Resume.id.asc())
+            .limit(1)
+        )
+        return await self._session.scalar(statement)
 
     async def _document_by_key(
         self, candidate_id: UUID, key: UUID | None

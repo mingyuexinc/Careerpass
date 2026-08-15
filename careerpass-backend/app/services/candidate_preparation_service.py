@@ -63,22 +63,26 @@ class CandidatePreparationService:
         display_name = _display_name(name, filename, "resume", "pdf")
         try:
             async with self._repository.transaction():
-                resume, _, used_new_file_object = await self._repository.create_resume(
+                resume, reused, used_new_file_object = await self._repository.create_resume(
                     candidate_id=candidate_id,
                     name=display_name,
                     upload=upload,
                     idempotency_key=idempotency_key,
                 )
-                await self._task_repository.create_or_get_queued_resume_task(
-                    candidate_id=candidate_id,
-                    resume_id=resume.id,
-                )
+                if not reused:
+                    await self._task_repository.create_or_get_queued_resume_task(
+                        candidate_id=candidate_id,
+                        resume_id=resume.id,
+                    )
         except Exception:
             self._storage.delete(upload.storage_key)
             raise
         if not used_new_file_object:
             self._storage.delete(upload.storage_key)
-        return ResumeCreated(resume_id=resume.id, parse_status="processing")
+        return ResumeCreated(
+            resume_id=resume.id,
+            parse_status=getattr(resume, "parse_status", "processing"),
+        )
 
     async def upload_document(
         self,

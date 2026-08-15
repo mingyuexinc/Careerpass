@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from uuid import UUID
@@ -10,6 +11,8 @@ from app.infrastructure.mineru_mcp import MineruMcpError
 from app.infrastructure.qwen_profile import QwenProfileError
 from app.repositories.async_task_repository import ExecutionLease
 from app.schemas.document_parsing import ParseFailureCode, ResumeProfileExtractionV1
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -60,12 +63,21 @@ class ResumeParseWorkerService:
             markdown = await self._extract_markdown(content)
             profile = await self._extract_profile(markdown)
         except ResumeStorageUnavailableError as error:
+            _log_stage_failure("storage", error.failure_code, error.retryable)
             return await self._resolve_failure(lease, error.failure_code, error.retryable, retry_count)
         except MineruMcpError as error:
+            _log_stage_failure(
+                f"mineru.{getattr(error, 'diagnostic_stage', 'adapter')}",
+                error.failure_code,
+                error.retryable,
+                diagnostic_kind=getattr(error, "diagnostic_kind", None),
+            )
             return await self._resolve_failure(lease, error.failure_code, error.retryable, retry_count)
         except QwenProfileError as error:
+            _log_stage_failure("qwen", error.failure_code, error.retryable)
             return await self._resolve_failure(lease, error.failure_code, error.retryable, retry_count)
         except Exception:
+            _log_stage_failure("orchestration", "internal_error", True)
             return await self._resolve_failure(lease, "internal_error", True, retry_count)
         return ResumeParseOutcome(action="succeeded" if await self._succeed(lease, profile) else "ignored")
 
@@ -83,3 +95,19 @@ class ResumeParseWorkerService:
         return ResumeParseOutcome(
             action="failed" if await self._fail(lease, failure_code) else "ignored"
         )
+
+
+def _log_stage_failure(
+    stage: str,
+    failure_code: str,
+    retryable: bool,
+    *,
+    diagnostic_kind: str | None = None,
+) -> None:
+    logger.warning(
+        "resume parse stage failed: stage=%s failure_code=%s retryable=%s kind=%s",
+        stage,
+        failure_code,
+        retryable,
+        diagnostic_kind or "classified",
+    )

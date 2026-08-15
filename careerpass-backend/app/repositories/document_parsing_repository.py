@@ -19,6 +19,7 @@ from app.schemas.document_parsing import (
     ParseFailureCode,
     ResumeParseRequestV1,
     ResumeProfileExtractionV1,
+    matching_readiness,
 )
 
 
@@ -113,6 +114,10 @@ class DocumentParsingRepository:
             self._session.add(
                 CandidateProfile(
                     resume_id=resume.id,
+                    full_name=profile.full_name,
+                    phone=profile.phone,
+                    email=profile.email,
+                    matching_readiness=matching_readiness(profile),
                     target_job_titles=profile.target_job_titles,
                     skills=[item.model_dump(mode="json") for item in profile.skills],
                     work_experience_summary=[

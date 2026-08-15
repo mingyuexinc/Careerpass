@@ -22,7 +22,7 @@ ParseFailureCode = Literal[
 
 class ResumeCreated(BaseModel):
     resume_id: UUID
-    parse_status: Literal["processing"] = "processing"
+    parse_status: ParseStatus = "processing"
 
 
 class ResumeListItem(BaseModel):
