@@ -34,10 +34,17 @@ export interface Resume {
 export interface SupportingDocument {
   id: string;
   fileName: string;
-  kind: "certificate" | "portfolio" | "other";
+  fileType: "pdf" | "md" | "jpg" | "png";
   uploadedAt: string;
-  version: number;
-  status: "uploading" | "ready" | "failed";
+  status: "success";
+}
+
+export interface SupportingDocumentUploadResult {
+  fileName: string;
+  status: "ready" | "success" | "failed";
+  result?: "created" | "duplicate" | "failed";
+  document: SupportingDocument | null;
+  failureCode: string | null;
 }
 
 export interface Job {
@@ -58,7 +65,9 @@ export interface JobGoal {
   offerTarget: number;
   title: string;
   filters: string;
+  status?: "active" | "achieved" | "abandoned";
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Application {
@@ -92,6 +101,7 @@ export interface Conversation {
 export interface WorkspaceSnapshot {
   resume: Resume | null;
   supportingDocuments: SupportingDocument[];
+  supportingDocumentUploads: SupportingDocumentUploadResult[];
   jobs: Job[];
   currentJob: Job | null;
   jobGoal: JobGoal | null;

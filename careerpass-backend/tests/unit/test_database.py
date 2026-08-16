@@ -33,8 +33,9 @@ def test_base_metadata_contains_candidate_preparation_models() -> None:
         "resumes",
         "stored_file_objects",
         "hr_profiles",
-            "jobs",
-            "parsed_job_description_snapshots",
+        "jobs",
+        "job_goals",
+        "parsed_job_description_snapshots",
         "user_roles",
         "users",
     }

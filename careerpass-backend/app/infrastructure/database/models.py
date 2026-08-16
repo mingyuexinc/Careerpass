@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
@@ -110,6 +110,34 @@ class Candidate(Base):
         server_default=text("CURRENT_TIMESTAMP"),
     )
     user: Mapped[User] = relationship(back_populates="candidate", lazy="raise")
+
+
+class JobGoal(Base):
+    """Candidate-owned current job goal configured before Agent startup."""
+
+    __tablename__ = "job_goals"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    candidate_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("candidates.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    offer_target: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    filters: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'active'")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
 
 
 class HrProfile(Base):
