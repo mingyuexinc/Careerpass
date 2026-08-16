@@ -26,6 +26,8 @@
 
 docker-compose.integration.yml 提供 PostgreSQL、Redis、迁移、Backend、Worker 和 Dispatcher：
 
+联调环境可通过 `DEBUG_RESET_ENABLED=true` 开启 S-DBG 当前账号数据恢复；生产环境必须保持关闭。
+
     docker compose -f docker-compose.integration.yml up -d --build
     docker compose -f docker-compose.integration.yml ps
 

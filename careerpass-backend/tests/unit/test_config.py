@@ -28,6 +28,16 @@ def test_settings_accept_production_without_debug() -> None:
 
     assert settings.app_env is AppEnvironment.PRODUCTION
 
+
+def test_settings_reject_debug_reset_in_production() -> None:
+    with pytest.raises(ValidationError, match="DEBUG_RESET_ENABLED"):
+        Settings(
+            app_env=AppEnvironment.PRODUCTION,
+            debug=False,
+            debug_reset_enabled=True,
+            _env_file=None,
+        )
+
 def test_settings_reject_invalid_environment() -> None:
     with pytest.raises(ValidationError):
         Settings(app_env="preview", _env_file=None)

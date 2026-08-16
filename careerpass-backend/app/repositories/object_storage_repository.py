@@ -44,7 +44,7 @@ class ObjectStorageRepository:
             statement = (
                 select(StoredFileObject)
                 .where(
-                    StoredFileObject.status.in_(("writing", "ready")),
+                    StoredFileObject.status.in_(("writing", "ready", "deleting")),
                     StoredFileObject.updated_at < older_than,
                     ~has_resume,
                     ~has_document,

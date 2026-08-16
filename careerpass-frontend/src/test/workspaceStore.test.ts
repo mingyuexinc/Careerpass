@@ -1,4 +1,5 @@
 import { useWorkspaceStore } from "../stores/workspace-store";
+import { useAuthStore } from "../stores/auth-store";
 
 describe("workspace upload loading scopes", () => {
   beforeEach(async () => {
@@ -38,5 +39,27 @@ describe("workspace upload loading scopes", () => {
 
     expect(useWorkspaceStore.getState().resumeLoading).toBe(false);
     expect(useWorkspaceStore.getState().supportingDocumentsLoading).toBe(false);
+  });
+
+  it("does not call candidate APIs while refreshing an authenticated HR workspace", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    useAuthStore.setState({
+      user: {
+        id: "hr-001",
+        role: "hr",
+        displayName: "Demo HR",
+        title: "HR 工作台",
+      },
+      accessToken: "hr-token",
+      error: null,
+      submitting: false,
+    });
+
+    await useWorkspaceStore.getState().refresh();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(useWorkspaceStore.getState().initialized).toBe(true);
+    useAuthStore.getState().signOut();
+    fetchMock.mockRestore();
   });
 });

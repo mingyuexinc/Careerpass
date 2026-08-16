@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     app_name: str = Field(default="CareerPass API", min_length=1)
     app_env: AppEnvironment = AppEnvironment.DEVELOPMENT
     debug: bool = False
+    debug_reset_enabled: bool = False
     log_level: LogLevel = LogLevel.INFO
     database_url: PostgresDsn
     database_pool_size: int = Field(default=5, ge=1, le=20)
@@ -85,6 +86,8 @@ class Settings(BaseSettings):
     def reject_production_debug(self) -> "Settings":
         if self.app_env is AppEnvironment.PRODUCTION and self.debug:
             raise ValueError("DEBUG must be false when APP_ENV is production")
+        if self.app_env is AppEnvironment.PRODUCTION and self.debug_reset_enabled:
+            raise ValueError("DEBUG_RESET_ENABLED must be false when APP_ENV is production")
         if self.celery_task_soft_time_limit_seconds >= self.celery_task_time_limit_seconds:
             raise ValueError("CELERY_TASK_SOFT_TIME_LIMIT_SECONDS must be below the hard limit")
         return self

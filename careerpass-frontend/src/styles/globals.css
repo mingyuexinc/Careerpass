@@ -84,6 +84,36 @@ p {
   align-items: center;
   gap: 8px;
 }
+.debug-reset-panel {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 18px;
+  border-color: #f0d7c8;
+  background: #fffaf6;
+}
+.debug-reset-panel h2 {
+  margin-bottom: 6px;
+}
+.debug-reset-panel .page-subtitle {
+  max-width: 720px;
+  margin-bottom: 0;
+}
+.debug-reset-panel .button {
+  flex: 0 0 auto;
+}
+.debug-reset-error {
+  margin: 10px 0 0;
+  color: var(--color-danger);
+  font-size: 13px;
+}
+@media (max-width: 540px) {
+  .debug-reset-panel {
+    display: grid;
+    align-items: start;
+  }
+}
 
 .auth-layout {
   display: grid;
@@ -1117,6 +1147,13 @@ select:focus {
   color: white;
   box-shadow: var(--shadow);
   font-size: 13px;
+  line-height: 1.5;
+}
+.toast-error {
+  background: #9b2f3b;
+}
+.toast-info {
+  background: #315f8f;
 }
 .toast button {
   border: 0;

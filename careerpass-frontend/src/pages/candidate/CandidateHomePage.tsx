@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/PageHeader";
+import { DebugResetPanel } from "../../components/DebugResetPanel";
 import {
   LoadingState,
   StatusBadge,
@@ -164,6 +165,7 @@ export function CandidateHomePage() {
         </p>
         <span className="muted-text">当前已有 {applications.length} 条投递记录。</span>
       </section>
+      <DebugResetPanel />
     </div>
   );
 }
