@@ -12,7 +12,6 @@ from app.core.exceptions import AppException
 from app.core.identity import CurrentIdentity
 from app.repositories.async_task_repository import ResumeTaskPreconditionError
 from app.repositories.candidate_preparation_repository import IdempotencyConflictError
-from app.schemas.candidate_preparation import DocumentType
 from app.schemas.response import success_response
 from app.services.candidate_preparation_service import (
     CandidatePreparationService,
@@ -75,37 +74,26 @@ async def list_resumes(
     return success_response(value.model_dump(mode="json", exclude_none=True))
 
 
-@candidate_preparation_router.post("/candidate_documents", status_code=status.HTTP_201_CREATED)
+@candidate_preparation_router.post("/candidate_documents", status_code=status.HTTP_200_OK)
 async def upload_candidate_document(
     identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
     service: Annotated[CandidatePreparationService, Depends(get_candidate_preparation_service)],
-    file: Annotated[UploadFile, File()],
-    candidate_document_type: Annotated[DocumentType, Form()],
-    name: Annotated[str | None, Form()] = None,
+    files: Annotated[list[UploadFile], File()],
     idempotency_key: Annotated[UUID | None, Header(alias="Idempotency-Key")] = None,
 ) -> dict[str, object]:
-    try:
-        value = await service.upload_document(
-            candidate_id=identity.candidate_id,
-            content=await file.read(),
-            filename=file.filename,
-            declared_mime=file.content_type,
-            name=name,
-            document_type=candidate_document_type,
-            idempotency_key=idempotency_key,
+    if not files:
+        raise AppException(
+            status_code=400, code=ErrorCode.VALIDATION_ERROR, message="at least one file is required"
         )
-    except InvalidUploadError:
-        raise AppException(
-            status_code=400, code=ErrorCode.VALIDATION_ERROR, message="invalid upload"
-        ) from None
-    except IdempotencyConflictError:
-        raise AppException(
-            status_code=409, code=ErrorCode.CONFLICT, message="idempotency key conflict"
-        ) from None
+    value = await service.upload_documents(
+        candidate_id=identity.candidate_id,
+        uploads=[(await file.read(), file.filename, file.content_type) for file in files],
+        idempotency_key=idempotency_key,
+    )
     return success_response(
         value.model_dump(mode="json"),
-        msg="上传成功",
-        code=ErrorCode.UPLOAD_SUCCEEDED,
+        msg="其它资料已就绪。",
+        code=ErrorCode.SUCCESS,
     )
 
 
@@ -115,13 +103,10 @@ async def list_candidate_documents(
     service: Annotated[CandidatePreparationService, Depends(get_candidate_preparation_service)],
     page: int = 1,
     page_size: int = 20,
-    candidate_document_type: DocumentType | None = None,
 ) -> dict[str, object]:
     if page < 1 or not 1 <= page_size <= 100:
         raise AppException(
             status_code=400, code=ErrorCode.VALIDATION_ERROR, message="invalid pagination"
         )
-    value = await service.list_documents(
-        identity.candidate_id, page, page_size, candidate_document_type
-    )
+    value = await service.list_documents(identity.candidate_id, page, page_size)
     return success_response(value.model_dump(mode="json"))

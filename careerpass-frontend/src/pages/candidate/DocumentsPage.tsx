@@ -7,6 +7,7 @@ import {
   LoadingState,
   StatusBadge,
   Toast,
+  type ToastTone,
 } from "../../components/ui";
 import { agentStatusMeta, resumeStatusMeta } from "../../domain/mappings";
 import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
@@ -15,7 +16,11 @@ import { useWorkspaceStore } from "../../stores/workspace-store";
 export function DocumentsPage() {
   useWorkspaceRefresh();
   const state = useWorkspaceStore((store) => store);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    tone: ToastTone;
+  } | null>(null);
+  const [documentUploadRequestFailed, setDocumentUploadRequestFailed] = useState(false);
   if (!state.initialized) return <LoadingState />;
   const resumeLocked =
     state.agentStatus === "running" || state.agentStatus === "finished";
@@ -25,27 +30,37 @@ export function DocumentsPage() {
   async function uploadResume(file: File) {
     try {
       await state.uploadResume(file);
-      setToast("简历已上传，正在进行解析。");
+      setToast({ message: "简历已上传，正在进行解析。", tone: "success" });
     } catch {
       /* Store exposes the controlled error below. */
     }
   }
   async function uploadDocuments(files: File[]) {
+    setToast(null);
+    setDocumentUploadRequestFailed(false);
     try {
-      await state.uploadDocuments(files);
-      setToast("其它资料已就绪。");
+      const results = await state.uploadDocuments(files);
+      const failedUploads = results.filter((item) => item.status === "failed");
+      useWorkspaceStore.setState({ supportingDocumentUploads: [] });
+      if (failedUploads.length === 0) {
+        setToast({ message: "其它资料已就绪。", tone: "success" });
+        return;
+      }
+      const failedFileNames = failedUploads.map((item) => item.fileName).join("、");
+      const message =
+        failedUploads.length === 1
+          ? `${failedFileNames} 上传失败：请检查文件格式或大小。`
+          : `${failedUploads.length} 个文件上传失败：${failedFileNames}。请检查文件格式或大小。`;
+      setToast({ message, tone: "error" });
     } catch {
+      useWorkspaceStore.setState({ supportingDocumentUploads: [] });
+      setDocumentUploadRequestFailed(true);
       /* controlled by store */
     }
   }
-  async function removeDocument(id: string) {
-    try {
-      await state.deleteDocument(id);
-      setToast("求职资料已删除。");
-    } catch {
-      /* controlled by store */
-    }
-  }
+  const pendingUploads = state.supportingDocumentUploads.filter(
+    (item) => item.status === "ready",
+  );
   return (
     <div className="page-view">
       <PageHeader
@@ -54,7 +69,10 @@ export function DocumentsPage() {
         description="上传简历和补充资料，系统将处理文件并更新资料状态。"
       />
       {state.error ? (
-        <ErrorState description={state.error} onRetry={state.clearError} />
+        <ErrorState
+          description={state.error}
+          onRetry={documentUploadRequestFailed ? undefined : state.clearError}
+        />
       ) : null}
       <section className="upload-grid">
         <article className="panel upload-panel">
@@ -88,35 +106,41 @@ export function DocumentsPage() {
           <div className="panel-heading">
             <div>
               <h2>其它求职资料</h2>
-              <p className="muted-text">证书、作品集等资料只保存就绪状态。</p>
+              <p className="muted-text">PDF、Markdown、JPG、PNG 资料只保存上传结果。</p>
             </div>
             <StatusBadge tone="neutral">
               {state.supportingDocuments.length
-                ? `${state.supportingDocuments.length} 份已就绪`
+                ? `${state.supportingDocuments.length} 份已保存`
                 : "可选"}
             </StatusBadge>
           </div>
           <FileUpload
             label="上传其它资料"
-            description="可以一次选择多份文件，后续分批追加。"
-            accept=".pdf,.doc,.docx,.png,.jpg"
+            description="支持 PDF、Markdown、JPG、PNG，单文件不超过 10MB。"
+            accept=".pdf,.md,.jpg,.png"
             multiple
             disabled={state.supportingDocumentsLoading}
             disabledLabel="正在处理…"
             onFiles={(files) => void uploadDocuments(files)}
           />
+          {pendingUploads.length ? (
+            <LoadingState
+              title="正在上传其它资料"
+              description={`正在处理：${pendingUploads.map((item) => item.fileName).join("、")}`}
+            />
+          ) : null}
           {state.supportingDocuments.length ? (
-            <div className="file-list-scroll" aria-label="其它求职资料列表" role="region">
+            <div
+              className="file-list-scroll"
+              aria-label="其它求职资料成功上传列表"
+              role="region"
+            >
               <div className="file-list">
                 {state.supportingDocuments.map((document) => (
                   <FileInfoCard
                     key={document.id}
                     fileName={document.fileName}
-                    version={document.version}
                     uploadedAt={document.uploadedAt}
-                    deleteLabel={document.fileName}
-                    deleteDisabled={state.supportingDocumentsLoading}
-                    onDelete={() => void removeDocument(document.id)}
                   />
                 ))}
               </div>
@@ -137,7 +161,9 @@ export function DocumentsPage() {
           </p>
         </div>
       </section>
-      {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
+      {toast ? (
+        <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />
+      ) : null}
     </div>
   );
 }

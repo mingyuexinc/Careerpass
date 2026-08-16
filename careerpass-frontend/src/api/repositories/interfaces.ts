@@ -8,6 +8,7 @@ import type {
   JobGoalInput,
   Resume,
   SupportingDocument,
+  SupportingDocumentUploadResult,
 } from "../../domain/types";
 
 export interface ResumeRepository {
@@ -18,8 +19,7 @@ export interface ResumeRepository {
 
 export interface SupportingDocumentRepository {
   listDocuments(): Promise<SupportingDocument[]>;
-  uploadDocuments(files: File[]): Promise<SupportingDocument[]>;
-  deleteDocument(id: string): Promise<SupportingDocument[]>;
+  uploadDocuments(files: File[]): Promise<SupportingDocumentUploadResult[]>;
 }
 
 export interface JobRepository {

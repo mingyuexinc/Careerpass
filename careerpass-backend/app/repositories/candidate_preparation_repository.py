@@ -61,7 +61,6 @@ class CandidatePreparationRepository:
         *,
         candidate_id: UUID,
         name: str,
-        document_type: str,
         file_type: str,
         detected_mime_type: str,
         upload: StoredUpload,
@@ -73,18 +72,22 @@ class CandidatePreparationRepository:
                 document, file_object = existing
                 if (
                     document.document_name != name
-                    or document.document_type != document_type
                     or file_object.content_sha256 != upload.content_sha256
                 ):
                     raise IdempotencyConflictError
                 return document, True, False
+            existing_by_content = await self._document_by_content(
+                candidate_id, upload.content_sha256
+            )
+            if existing_by_content is not None:
+                return existing_by_content, True, False
             file_object, created_file_object = await self._get_or_create_file_object(
                 upload, detected_mime_type
             )
             document = CandidateDocument(
                 candidate_id=candidate_id,
                 upload_idempotency_key=idempotency_key,
-                document_type=document_type,
+                document_type="other",
                 document_name=name,
                 file_type=file_type,
                 stored_file_object_id=file_object.id,
@@ -109,11 +112,9 @@ class CandidatePreparationRepository:
         return list((await self._session.scalars(statement)).all()), int(count or 0)
 
     async def list_documents(
-        self, candidate_id: UUID, page: int, page_size: int, document_type: str | None
+        self, candidate_id: UUID, page: int, page_size: int
     ) -> tuple[list[CandidateDocument], int]:
         where = [CandidateDocument.candidate_id == candidate_id]
-        if document_type is not None:
-            where.append(CandidateDocument.document_type == document_type)
         count = await self._session.scalar(
             select(func.count()).select_from(CandidateDocument).where(*where)
         )
@@ -192,3 +193,21 @@ class CandidatePreparationRepository:
             )
         )
         return (await self._session.execute(statement)).one_or_none()
+
+    async def _document_by_content(
+        self, candidate_id: UUID, content_sha256: str
+    ) -> CandidateDocument | None:
+        statement = (
+            select(CandidateDocument)
+            .join(
+                StoredFileObject,
+                CandidateDocument.stored_file_object_id == StoredFileObject.id,
+            )
+            .where(
+                CandidateDocument.candidate_id == candidate_id,
+                StoredFileObject.content_sha256 == content_sha256,
+            )
+            .order_by(CandidateDocument.created_at.asc(), CandidateDocument.id.asc())
+            .limit(1)
+        )
+        return await self._session.scalar(statement)

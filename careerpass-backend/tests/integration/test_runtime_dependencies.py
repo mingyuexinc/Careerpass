@@ -336,12 +336,23 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
             }
             created_document = client.post(
                 "/api/v1/candidate_documents",
-                files={"file": ("certificate.md", b"# Certificate", "text/markdown")},
-                data={"candidate_document_type": "certificate", "name": "certificate.md"},
+                files=[
+                    ("files", ("certificate.md", b"# Certificate", "text/markdown")),
+                    ("files", ("portfolio.pdf", b"%PDF-1.7\nPortfolio", "application/pdf")),
+                    ("files", ("unsupported.docx", b"not supported", "application/octet-stream")),
+                ],
                 headers=document_headers,
             )
+            duplicate_document = client.post(
+                "/api/v1/candidate_documents",
+                files=[("files", ("renamed.pdf", b"%PDF-1.7\nPortfolio", "application/pdf"))],
+                headers={
+                    "Authorization": first_headers["Authorization"],
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
             own_documents = client.get(
-                "/api/v1/candidate_documents?candidate_document_type=certificate",
+                "/api/v1/candidate_documents",
                 headers={"Authorization": first_headers["Authorization"]},
             )
             other_documents = client.get("/api/v1/candidate_documents", headers=second_headers)
@@ -368,17 +379,34 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
         assert other_resumes.status_code == 200
         assert other_resumes.json()["data"]["list"] == []
 
-        assert created_document.status_code == 201
-        assert created_document.json() == {
-            "code": 201,
-            "msg": "上传成功",
-            "data": {"candidate_document_id": created_document.json()["data"]["candidate_document_id"]},
-        }
-        assert own_documents.json()["data"]["total"] == 1
-        document_item = own_documents.json()["data"]["list"][0]
-        assert document_item["type"] == "certificate"
-        assert "storage_key" not in document_item
-        assert "content" not in document_item
+        assert created_document.status_code == 200
+        created_results = created_document.json()["data"]["results"]
+        assert created_document.json()["code"] == 200
+        assert created_document.json()["msg"] == "其它资料已就绪。"
+        assert [result["result"] for result in created_results] == [
+            "created",
+            "created",
+            "failed",
+        ]
+        assert [result["upload_status"] for result in created_results] == [
+            "success",
+            "success",
+            "failed",
+        ]
+        assert created_results[2]["failure_code"] == "unsupported_file"
+        assert all(result["candidate_document_id"] for result in created_results[:2])
+        assert duplicate_document.status_code == 200
+        duplicate_result = duplicate_document.json()["data"]["results"][0]
+        assert duplicate_result["result"] == "duplicate"
+        assert duplicate_result["upload_status"] == "success"
+        assert duplicate_result["candidate_document_id"] == created_results[1]["candidate_document_id"]
+        assert own_documents.json()["data"]["total"] == 2
+        assert {item["file_type"] for item in own_documents.json()["data"]["list"]} == {"md", "pdf"}
+        for document_item in own_documents.json()["data"]["list"]:
+            assert document_item["upload_status"] == "success"
+            assert "version" not in document_item
+            assert "storage_key" not in document_item
+            assert "content" not in document_item
         assert other_documents.json()["data"]["list"] == []
         assert unavailable_profile.status_code == 404
         assert unavailable_profile.json()["code"] == 404

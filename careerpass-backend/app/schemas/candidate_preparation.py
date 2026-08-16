@@ -8,14 +8,22 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-DocumentType = Literal["certificate", "strategy", "other"]
 ParseStatus = Literal["processing", "succeeded", "failed"]
+UploadStatus = Literal["ready", "success", "failed"]
+DocumentUploadResult = Literal["created", "duplicate", "failed"]
 ParseFailureCode = Literal[
     "unsupported_file",
     "file_unreadable",
     "storage_unavailable",
     "parser_timeout",
     "schema_validation_failed",
+    "internal_error",
+]
+DocumentFailureCode = Literal[
+    "empty_file",
+    "unsupported_file",
+    "file_too_large",
+    "storage_unavailable",
     "internal_error",
 ]
 
@@ -41,14 +49,25 @@ class ResumeListResponse(BaseModel):
     page_size: int
 
 
-class CandidateDocumentCreated(BaseModel):
-    candidate_document_id: UUID
+class CandidateDocumentUploadResult(BaseModel):
+    file_name: str
+    result: DocumentUploadResult
+    candidate_document_id: UUID | None = None
+    file_type: Literal["pdf", "md", "jpg", "png"] | None = None
+    upload_status: UploadStatus
+    uploaded_at: datetime | None = None
+    failure_code: DocumentFailureCode | None = None
+
+
+class CandidateDocumentUploadResponse(BaseModel):
+    results: list[CandidateDocumentUploadResult]
 
 
 class CandidateDocumentListItem(BaseModel):
     candidate_document_id: UUID
     name: str
-    type: DocumentType
+    file_type: Literal["pdf", "md", "jpg", "png"]
+    upload_status: Literal["success"] = "success"
     created_at: datetime
 
 

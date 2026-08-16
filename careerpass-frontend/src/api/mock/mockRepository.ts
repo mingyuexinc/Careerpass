@@ -8,7 +8,9 @@ import type {
   JobGoalInput,
   Resume,
   SupportingDocument,
+  SupportingDocumentUploadResult,
 } from "../../domain/types";
+import { createReadyDocumentResult, getDocumentFileType } from "../candidateDocumentApi";
 import { getOfferCount, isValidDeliveryTransition } from "../../domain/mappings";
 import { applicationFixtures } from "./fixtures/applications";
 import { conversationFixtures } from "./fixtures/conversations";
@@ -27,8 +29,33 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function contentFingerprint(bytes: Uint8Array): string {
+  let hash = 2166136261;
+  for (const byte of bytes) {
+    hash ^= byte;
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${bytes.length}:${hash >>> 0}`;
+}
+
+async function readFileBytes(file: File): Promise<Uint8Array> {
+  if (typeof file.arrayBuffer === "function") {
+    return new Uint8Array(await file.arrayBuffer());
+  }
+  if (typeof FileReader !== "undefined") {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+      reader.onerror = () => reject(reader.error ?? new Error("无法读取文件。"));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  return new TextEncoder().encode(await file.text());
+}
+
 class MockRepository implements WorkspaceRepository {
   private snapshot: WorkspaceSnapshot = createInitialSnapshot();
+  private documentFingerprints = new Map<string, string>();
 
   async getSnapshot(): Promise<WorkspaceSnapshot> {
     await delay(80);
@@ -38,6 +65,7 @@ class MockRepository implements WorkspaceRepository {
   async resetData(): Promise<WorkspaceSnapshot> {
     await delay(120);
     this.snapshot = createInitialSnapshot();
+    this.documentFingerprints.clear();
     return clone(this.snapshot);
   }
 
@@ -78,45 +106,77 @@ class MockRepository implements WorkspaceRepository {
     return clone(this.snapshot.supportingDocuments);
   }
 
-  async uploadDocuments(files: File[]): Promise<SupportingDocument[]> {
+  async uploadDocuments(files: File[]): Promise<SupportingDocumentUploadResult[]> {
+    const readyResults = files.map(createReadyDocumentResult);
+    this.snapshot.supportingDocumentUploads = readyResults;
     await delay(360);
-    const versions = new Map<string, number>();
-    this.snapshot.supportingDocuments.forEach((document) => {
-      versions.set(
-        document.fileName,
-        Math.max(versions.get(document.fileName) ?? 0, document.version),
-      );
-    });
-    const uploaded = files.map((file, index): SupportingDocument => {
-      const fileName = file.name || `supporting-document-${index + 1}.pdf`;
-      const version = (versions.get(fileName) ?? 0) + 1;
-      versions.set(fileName, version);
-      return {
-        id: `document-${Date.now()}-${index}`,
-        fileName,
-        kind: "other",
-        uploadedAt: now(),
-        version,
-        status: "ready",
-      };
-    });
-    this.snapshot.supportingDocuments = [
-      ...this.snapshot.supportingDocuments,
-      ...uploaded,
-    ];
-    return clone(uploaded);
-  }
-
-  async deleteDocument(id: string): Promise<SupportingDocument[]> {
-    await delay(220);
-    const exists = this.snapshot.supportingDocuments.some(
-      (document) => document.id === id,
+    const results = await Promise.all(
+      files.map(async (file, index) => {
+        const fileName = file.name || `supporting-document-${index + 1}.pdf`;
+        const extension = fileName.split(".").at(-1)?.toLowerCase();
+        const allowed =
+          extension === "pdf" ||
+          extension === "md" ||
+          extension === "jpg" ||
+          extension === "png";
+        if (!allowed || file.size === 0) {
+          return {
+            fileName,
+            status: "failed",
+            result: "failed",
+            document: null,
+            failureCode: file.size === 0 ? "empty_file" : "unsupported_file",
+          } satisfies SupportingDocumentUploadResult;
+        }
+        if (file.size > 10_000_000) {
+          return {
+            fileName,
+            status: "failed",
+            result: "failed",
+            document: null,
+            failureCode: "file_too_large",
+          } satisfies SupportingDocumentUploadResult;
+        }
+        const bytes = await readFileBytes(file);
+        const fingerprint = contentFingerprint(bytes);
+        const existingId = this.documentFingerprints.get(fingerprint);
+        if (existingId) {
+          const existing = this.snapshot.supportingDocuments.find(
+            (item) => item.id === existingId,
+          );
+          if (existing) {
+            return {
+              fileName,
+              status: "success",
+              result: "duplicate",
+              document: clone(existing),
+              failureCode: null,
+            } satisfies SupportingDocumentUploadResult;
+          }
+        }
+        const document: SupportingDocument = {
+          id: `document-${Date.now()}-${index}`,
+          fileName,
+          fileType: getDocumentFileType(fileName),
+          uploadedAt: now(),
+          status: "success",
+        };
+        this.documentFingerprints.set(fingerprint, document.id);
+        this.snapshot.supportingDocuments = [
+          ...this.snapshot.supportingDocuments,
+          document,
+        ];
+        return {
+          fileName,
+          status: "success",
+          result: "created",
+          document: clone(document),
+          failureCode: null,
+        } satisfies SupportingDocumentUploadResult;
+      }),
     );
-    if (!exists) throw new Error("没有找到对应的求职资料。");
-    this.snapshot.supportingDocuments = this.snapshot.supportingDocuments.filter(
-      (document) => document.id !== id,
-    );
-    return clone(this.snapshot.supportingDocuments);
+    this.snapshot.supportingDocumentUploads = results;
+    return clone(results);
   }
 
   async getCurrentJob(): Promise<Job | null> {
@@ -169,7 +229,9 @@ class MockRepository implements WorkspaceRepository {
     const goal: JobGoal = {
       id: this.snapshot.jobGoal?.id ?? `goal-${Date.now()}`,
       ...input,
+      status: this.snapshot.jobGoal?.status ?? "active",
       createdAt: this.snapshot.jobGoal?.createdAt ?? now(),
+      updatedAt: now(),
     };
     this.snapshot.jobGoal = goal;
     if (

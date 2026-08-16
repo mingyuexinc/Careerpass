@@ -7,6 +7,7 @@ export function createInitialSnapshot(): WorkspaceSnapshot {
   return {
     resume: null,
     supportingDocuments: [],
+    supportingDocumentUploads: [],
     jobs: [],
     currentJob: null,
     jobGoal: null,
@@ -30,6 +31,7 @@ export function createRunningSnapshot(): WorkspaceSnapshot {
       version: 1,
     },
     supportingDocuments: [],
+    supportingDocumentUploads: [],
     jobs: [job],
     currentJob: job,
     jobGoal: {
@@ -37,7 +39,9 @@ export function createRunningSnapshot(): WorkspaceSnapshot {
       offerTarget: 1,
       title: "前端工程师",
       filters: "优先 AI 应用和数据产品，不考虑长期出差岗位。",
+      status: "active",
       createdAt: "2026-08-08T08:55:00+08:00",
+      updatedAt: "2026-08-08T08:55:00+08:00",
     },
     agentStatus: "running",
     round: 1,

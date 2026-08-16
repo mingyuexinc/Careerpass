@@ -14,6 +14,7 @@ from app.services.candidate_preparation_service import (
     CandidatePreparationService,
     InvalidUploadError,
     _display_name,
+    _validate_document_upload,
     _validate_upload,
 )
 
@@ -200,10 +201,12 @@ def test_resume_upload_cleans_transient_file_when_task_creation_fails(tmp_path: 
     assert list(tmp_path.iterdir()) == []
 
 
-def test_document_upload_reuses_object_and_returns_created_id(tmp_path: Path) -> None:
+def test_document_upload_reuses_object_and_returns_created_result(tmp_path: Path) -> None:
     class Repository:
         async def create_document(self, **_: object) -> tuple[object, bool, bool]:
-            return SimpleNamespace(id=uuid4()), False, False
+            return SimpleNamespace(
+                id=uuid4(), file_type="md", created_at=datetime.now(UTC)
+            ), False, False
 
     async def execute() -> object:
         service = CandidatePreparationService(
@@ -211,18 +214,17 @@ def test_document_upload_reuses_object_and_returns_created_id(tmp_path: Path) ->
             task_repository=object(),
             storage=LocalObjectStorage(str(tmp_path)),
         )  # type: ignore[arg-type]
-        return await service.upload_document(
+        result = await service.upload_documents(
             candidate_id=uuid4(),
-            content=b"# notes",
-            filename="notes.md",
-            declared_mime="text/markdown",
-            name="notes",
-            document_type="other",
+            uploads=[(b"# notes", "notes.md", "text/markdown")],
             idempotency_key=None,
         )
+        return result.results[0]
 
     result = asyncio.run(execute())
     assert result.candidate_document_id is not None
+    assert result.result == "created"
+    assert result.upload_status == "success"
     assert list(tmp_path.iterdir()) == []
 
 
@@ -237,19 +239,61 @@ def test_document_upload_cleans_transient_file_when_repository_fails(tmp_path: P
             task_repository=object(),
             storage=LocalObjectStorage(str(tmp_path)),
         )  # type: ignore[arg-type]
-        with pytest.raises(RuntimeError, match="document creation failed"):
-            await service.upload_document(
-                candidate_id=uuid4(),
-                content=b"# notes",
-                filename="notes.md",
-                declared_mime="text/markdown",
-                name=None,
-                document_type="other",
-                idempotency_key=None,
-            )
+        result = await service.upload_documents(
+            candidate_id=uuid4(),
+            uploads=[(b"# notes", "notes.md", "text/markdown")],
+            idempotency_key=None,
+        )
+        assert result.results[0].result == "failed"
+        assert result.results[0].failure_code == "internal_error"
 
     asyncio.run(execute())
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("filename", "mime", "content", "file_type"),
+    [
+        ("portfolio.pdf", "application/pdf", b"%PDF-1.7", "pdf"),
+        ("portfolio.md", "text/markdown", b"# Portfolio", "md"),
+        ("portfolio.jpg", "image/jpeg", b"\xff\xd8\xff\xe0", "jpg"),
+        ("portfolio.png", "image/png", b"\x89PNG\r\n\x1a\n", "png"),
+    ],
+)
+def test_document_upload_validation_accepts_supported_formats(
+    filename: str, mime: str, content: bytes, file_type: str
+) -> None:
+    value = _validate_document_upload(content, filename, mime)
+
+    assert value.file_type == file_type
+
+
+def test_document_upload_returns_storage_failure_without_persisting_a_record() -> None:
+    class FailingStorage:
+        def put(self, _: bytes) -> object:
+            raise OSError("storage unavailable")
+
+    class Repository:
+        async def create_document(self, **_: object) -> tuple[object, bool, bool]:
+            raise AssertionError("storage failure must happen before repository access")
+
+    async def execute() -> object:
+        service = CandidatePreparationService(
+            repository=Repository(),
+            task_repository=object(),
+            storage=FailingStorage(),  # type: ignore[arg-type]
+        )  # type: ignore[arg-type]
+        result = await service.upload_documents(
+            candidate_id=uuid4(),
+            uploads=[(b"# notes", "notes.md", "text/markdown")],
+            idempotency_key=None,
+        )
+        return result.results[0]
+
+    result = asyncio.run(execute())
+
+    assert result.result == "failed"
+    assert result.failure_code == "storage_unavailable"
 
 
 def test_list_methods_map_repository_rows_to_safe_responses() -> None:
@@ -262,7 +306,7 @@ def test_list_methods_map_repository_rows_to_safe_responses() -> None:
         created_at=created_at,
     )
     document = SimpleNamespace(
-        id=uuid4(), document_name="notes.md", document_type="other", created_at=created_at
+        id=uuid4(), document_name="notes.md", file_type="md", created_at=created_at
     )
 
     class Repository:
@@ -280,7 +324,7 @@ def test_list_methods_map_repository_rows_to_safe_responses() -> None:
         )  # type: ignore[arg-type]
         return (
             await service.list_resumes(uuid4(), 1, 20),
-            await service.list_documents(uuid4(), 1, 20, "other"),
+            await service.list_documents(uuid4(), 1, 20),
         )
 
     resumes, documents = asyncio.run(execute())
@@ -289,6 +333,8 @@ def test_list_methods_map_repository_rows_to_safe_responses() -> None:
     assert resumes.list[0].parse_status == "processing"
     assert documents.total == 1
     assert documents.list[0].name == "notes.md"
+    assert documents.list[0].file_type == "md"
+    assert documents.list[0].upload_status == "success"
 
 
 @pytest.mark.parametrize(

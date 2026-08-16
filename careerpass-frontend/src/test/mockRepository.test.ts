@@ -32,22 +32,54 @@ describe("mock repository workspace lifecycle", () => {
     expect(failed.parseStatus).toBe("failed");
   });
 
-  it("increments supporting document versions for the same file name", async () => {
-    const file = new File(["portfolio"], "portfolio.pdf", { type: "application/pdf" });
-    const firstUpload = await mockRepository.uploadDocuments([file]);
-    const secondUpload = await mockRepository.uploadDocuments([file]);
-    expect(firstUpload[0].version).toBe(1);
-    expect(secondUpload[0].version).toBe(2);
+  it("supports the four S05 document formats without a version field", async () => {
+    const uploaded = await mockRepository.uploadDocuments([
+      new File(["%PDF-1.7"], "portfolio.pdf"),
+      new File(["# Portfolio"], "portfolio.md"),
+      new File([new Uint8Array([0xff, 0xd8, 0xff])], "portfolio.jpg"),
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "portfolio.png"),
+    ]);
+
+    expect(uploaded).toHaveLength(4);
+    expect(uploaded.every((item) => item.status === "success")).toBe(true);
+    expect(uploaded.map((item) => item.document?.fileType)).toEqual([
+      "pdf",
+      "md",
+      "jpg",
+      "png",
+    ]);
+    expect(uploaded.every((item) => item.document && !("version" in item.document))).toBe(
+      true,
+    );
   });
 
-  it("deletes a supporting document from the repository", async () => {
-    const uploaded = await mockRepository.uploadDocuments([
-      new File(["certificate"], "certificate.pdf"),
+  it("returns a duplicate result for the same content even when the name changes", async () => {
+    const firstUpload = await mockRepository.uploadDocuments([
       new File(["portfolio"], "portfolio.pdf"),
     ]);
-    const remaining = await mockRepository.deleteDocument(uploaded[0].id);
-    expect(remaining).toHaveLength(1);
-    expect(remaining[0].fileName).toBe("portfolio.pdf");
+    const secondUpload = await mockRepository.uploadDocuments([
+      new File(["portfolio"], "portfolio.md"),
+    ]);
+
+    expect(firstUpload[0].result).toBe("created");
+    expect(secondUpload[0].result).toBe("duplicate");
+    expect(secondUpload[0].document?.id).toBe(firstUpload[0].document?.id);
+    expect((await mockRepository.getSnapshot()).supportingDocuments).toHaveLength(1);
+  });
+
+  it("keeps successful files when a batch contains failures", async () => {
+    const results = await mockRepository.uploadDocuments([
+      new File(["portfolio"], "portfolio.pdf"),
+      new File(["not supported"], "portfolio.docx"),
+      new File([], "empty.md"),
+    ]);
+
+    expect(results.map((item) => item.status)).toEqual(["success", "failed", "failed"]);
+    expect(results.slice(1).map((item) => item.failureCode)).toEqual([
+      "unsupported_file",
+      "empty_file",
+    ]);
+    expect((await mockRepository.getSnapshot()).supportingDocuments).toHaveLength(1);
   });
 
   it("keeps job file metadata and increments its replacement version", async () => {

@@ -1,6 +1,6 @@
 interface FileInfoCardProps {
   fileName: string;
-  version: number;
+  version?: number;
   uploadedAt: string;
   iconLabel?: string;
   primaryText?: string;
@@ -48,7 +48,8 @@ export function FileInfoCard({
           {displayText}
         </strong>
         <span className="file-info-meta">
-          版本 {version} · 上传于 {formatUploadTime(uploadedAt)}
+          {version === undefined ? "上传于" : `版本 ${version} · 上传于`}{" "}
+          {formatUploadTime(uploadedAt)}
         </span>
       </div>
       {onDelete ? (
