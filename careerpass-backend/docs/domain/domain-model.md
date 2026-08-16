@@ -18,11 +18,12 @@
 | StoredFileObject | 持久化实体 | 业务资源引用 | 保存受控文件元数据和对象存储引用 | `implemented` | 不向公开 API 暴露内部定位 |
 | Resume | 持久化实体 | Candidate | 保存正式简历和解析状态；同一 Candidate 可拥有多份简历 | `implemented` | 当前代码与迁移；S-04 内容幂等规则 |
 | CandidateProfile | 持久化实体 | Resume | 保存成功解析后的结构化候选人画像，并提供独立的岗位匹配资格判定 | `implemented` | `resume_id` 一对一；解析成功不等于具备匹配资格 |
-| CandidateDocument | 持久化实体 | Candidate | 保存附加求职资料，不进入解析状态机 | `implemented` | 当前代码与迁移 |
+| CandidateDocument | 持久化实体 | Candidate | 保存附加求职资料，不进入解析状态机；上传业务状态由 S-05 负责 | `implemented` | 当前代码与迁移；业务状态以业务基线为准 |
 | AsyncTaskRun | 持久化实体 | 关联业务资源 | 保存异步任务权威状态、租约、幂等和脱敏失败分类 | `implemented` | 当前已支持简历解析；岗位任务由后续 Slice 扩展 |
 | Job | 持久化实体 | HrProfile | 表示一份独立岗位，关联一个 JD 文件并作为 S-03 输入锚点 | `slice-confirmed` | S-02 已确认，代码/迁移待实现 |
 | ParsedJobDescriptionSnapshot | 持久化实体 | Job | 保存 S-03 按固定 Markdown 标题解析并校验后的岗位结构化事实和展示字段 | `slice-confirmed` | 一份 Markdown 文件对应一个 Job；仅成功且五项核心字段有效时创建；不由 S-02 创建 |
-| JobGoal / Match / Application / Conversation / Message / ProgressEvent | 持久化实体 | 待对应业务主体确认 | 求职目标、匹配、投递、沟通和事件 | `not confirmed` | 不提前写入当前事实源 |
+| JobGoal | 持久化实体 | Candidate | 保存一个不绑定简历的当前求职目标；由 S-06 创建/更新，供 S-07 读取 | `implemented` | S-06 Slice Design、代码与迁移 |
+| Match / Application / Conversation / Message / ProgressEvent | 持久化实体 | 待对应业务主体确认 | 匹配、投递、沟通和事件 | `not confirmed` | 由后续 Slice 负责 |
 
 ## 2. 关系与归属
 
@@ -33,6 +34,7 @@
 | User | 1 : N | UserRole | 角色关联必须由服务端复核 |
 | Candidate | 1 : N | Resume | Resume 只能归属于本人 Candidate |
 | Candidate | 1 : N | CandidateDocument | 附加资料只能归属于本人 Candidate |
+| Candidate | 1 : 1 | JobGoal | 当前版本每个 Candidate 只有一个当前目标；目标不绑定 Resume |
 | Resume | 1 : 1 | CandidateProfile | 成功解析的 Resume 至多一个画像；画像另行表达匹配资格 |
 | Resume / CandidateDocument | N : 1 | StoredFileObject | 业务资源引用内部文件对象；不公开对象定位 |
 | HrProfile | 1 : N | Job | Job 只能归属于创建它的 HrProfile |
@@ -57,10 +59,12 @@
 | --- | --- | --- | --- |
 | StoredFileObject | `writing → ready → deleting` | 文件对象/清理流程 | 只有 `ready` 对象可被业务资源读取 |
 | Resume | `processing → succeeded / failed` | S-04 解析流程 | `succeeded` 必须有已校验画像；画像另行判定 `matching_ready / matching_not_ready`；`failed` 只能记录受控 `failure_code`；相同内容上传复用既有资源 |
+| CandidateDocument | `ready → success / failed`（业务投影） | S-05 上传流程 | `ready` 和 `failed` 为上传过程的瞬时业务结果，不写入 CandidateDocument；仅 `success` 资料形成持久化记录；删除由 S-11 负责 |
 | AsyncTaskRun | `queued → running → succeeded / failed` | Dispatcher/Worker 与任务流程 | `running` 受租约保护；终态不可被迟到回调覆盖 |
 | Job | 创建后作为稳定岗位资源存在；删除后不再是当前可用岗位 | S-02 创建；S-11 删除 | 新 JD 创建新 Job；不覆盖、不建版本；删除资格受解析终态和匹配发起事实约束 |
 | Job 的 JD 解析状态 | `queued / running / succeeded / failed` 的任务/资源状态 | S-03 | S-02 只创建/复用 queued 任务，不写解析终态；临时技术失败和输入不可用进入 `parse_failed`，核心字段缺失也进入 `parse_failed + matching_not_ready` 且不创建快照 |
 | Job 删除资格 | 解析任务终态且未发起匹配 → 可删除；`queued/running` 或已发起匹配 → 不可删除 | S-11 执行，S-08 提供匹配发起事实 | 即使匹配失败或无结果，已发起匹配也不得删除；删除成功后不保留可用解析快照 |
+| JobGoal | `active` 可由 S-06 创建/更新；`achieved` / `abandoned` 不可由 S-06 修改 | S-06 创建/更新；S-07/后续流程负责运行与达成 | 目标只保存用户输入，不绑定简历，不启动 Agent |
 
 ## 5. 解析结果与匹配资格
 

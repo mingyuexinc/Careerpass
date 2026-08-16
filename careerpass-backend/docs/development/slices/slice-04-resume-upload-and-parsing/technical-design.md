@@ -11,7 +11,7 @@
 | 任务 | `resume_parse`，PostgreSQL `AsyncTaskRun` 为权威状态 |
 | 解析链路 | 受控文本 PDF → 原生嵌入文本提取（无文本时 MinerU 回退）→ Qwen 结构化画像 → Pydantic/业务校验 |
 | 前端 | 真实 HTTP 上传和 Resume 状态查询；不消费画像响应 |
-| 下游 | S-06/S-07 只消费已校验画像及匹配资格，不由 S-04 创建目标或启动 Agent |
+| 下游 | S-07 消费已校验画像及匹配资格并在启动时绑定当前简历；S-06 不依赖 S-04，不由 S-04 创建目标或启动 Agent |
 
 ## 2. API 边界
 
@@ -106,4 +106,4 @@ Acceptance Artifact 至少包含 `report.md` 和 `actual.json`；不写入完整
 - 固定 PDF Capability Acceptance 已由开发者运行并裁定通过，结果为 `parse_succeeded + matching_ready`；必需字段、工作年限派生和两段正式工作公司区分断言均通过。
 - 真实解析交付链路的代码、任务状态、画像持久化和外部解析调用验证已完成；前端只消费上传和解析状态，不消费画像或匹配资格详情。
 - 当前仅保留成功验收产物：`careerpass-backend/tests/acceptance/s04_resume_parse/delivery-acceptance-results/20260815T155611Z-fc83327a`。此前最终判定失败的产物已按开发者裁定删除。
-- S-04 关闭状态为 `integration_delivered`；后续 S-06/S-07 只接收已校验画像和匹配资格，不扩大本 Slice 范围。
+- S-04 关闭状态为 `integration_delivered`；后续 S-07 接收已校验画像和匹配资格，S-06 不依赖 S-04；不扩大本 Slice 范围。

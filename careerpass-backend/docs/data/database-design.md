@@ -16,6 +16,7 @@
 | `20260813_0006` | `implemented` | HR-owned `jobs`、岗位文件关联和 `job_jd_parse` 任务枚举值 |
 | `20260815_0007` | `implemented` | S-03 快照表、任务代数和脱敏失败语义字段 |
 | `20260815_0008` | `implemented` | S-03 语义失败与旧解析失败码 CHECK 约束兼容；Dispatcher/Worker 超时失败字段边界 |
+| `20260816_0011` | `implemented` | S-06 `job_goals` 当前求职目标、Candidate 唯一约束和字段 CHECK 约束 |
 
 ## 2. 已实现表
 
@@ -28,9 +29,10 @@
 | `stored_file_objects` | `id` | `storage_key`、`content_sha256`、状态 | `storage_key`、`content_sha256` 唯一；内部定位不进入 API |
 | `resumes` | `id`；`candidate_id → candidates` | 文件引用、解析状态、失败分类 | 只接受 `ready` 文件对象；同一 Candidate 可有多条记录，内容重复上传复用已有记录 |
 | `candidate_profiles` | `id`；`resume_id → resumes` | 结构化画像 | `resume_id` 唯一；`years_of_experience` 为 `unknown/x个月/x年` |
-| `candidate_documents` | `id`；`candidate_id → candidates` | 资料类型、文件引用 | 不进入解析任务 |
+| `candidate_documents` | `id`；`candidate_id → candidates`；`stored_file_object_id → stored_file_objects` | `document_type` 固定为 `other`、`document_name`、`file_type`、文件引用和上传幂等键 | 仅保存成功资料；不进入解析任务；失败文件不落库 |
 | `async_task_runs` | `id`；按 `resource_type/resource_id` 关联业务资源 | 任务类型、版本、幂等键、租约、终态 | `idempotency_key`、任务标识按当前迁移约束 |
 | `parsed_job_description_snapshots` | `id`；`job_id → jobs` | `schema_version`、`fields`、`raw_sections`、创建时间 | `job_id` 唯一；成功快照才创建；`fields` 和 `raw_sections` 使用 JSONB；`implemented` |
+| `job_goals` | `id`；`candidate_id → candidates` | `offer_target`、`title`、`filters`、`status`、时间字段 | `candidate_id` 唯一；Offer 数量 1–10；状态为 `active/achieved/abandoned`；不含 Resume 外键；`implemented` |
 
 ## 3. S-02 岗位表设计
 
@@ -104,7 +106,7 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 
 | 表/对象 | 原因 |
 | --- | --- |
-| `JobGoal`、`Match`、`Application` | 由后续 Slice 负责 |
+| `Match`、`Application` | 由后续 Slice 负责 |
 | `Conversation`、`Message`、`ProgressEvent` | 由沟通/进度 Slice 负责 |
 
 ## 7. 变更规则

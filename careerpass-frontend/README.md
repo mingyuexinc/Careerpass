@@ -8,6 +8,7 @@ Careerpass 前端是基于 TypeScript、React 和 Vite 构建的求职 Agent MVP
 - 正式运行代码位于 `src/`。
 - HTML 原型、原型 Mock 数据和参考图片位于 `prototypes/`，不作为正式运行入口。
 - 用户登录 Slice 已接入真实后端认证 API；除登录外，其余当前版本流程仍主要由 Mock Repository 驱动。
+- S-06 求职目标和 S-DBG 调试恢复已接入真实后端 API；其他尚未联调的流程继续使用 Mock Repository。
 - 当前数据只保存在浏览器内存中，刷新页面后恢复初始状态。
 
 ## 功能范围
@@ -80,6 +81,8 @@ npm run dev
 ```
 
 开发服务器启动后，在浏览器访问终端输出的本地地址。
+
+Vite 开发模式默认显示 S-DBG 调试恢复入口；如需在非开发模式的联调前端显示，设置未提交的环境变量 `VITE_DEBUG_RESET_ENABLED=true`。生产环境必须保持关闭。
 
 ## 前后端联调前置检查
 

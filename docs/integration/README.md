@@ -9,6 +9,8 @@
 
 对于没有前端页面直接展示结果的内部能力 Slice，Integration Scenario 的交付目标可以是稳定内部入口、任务结果和 Acceptance Artifact；但场景必须先声明验证层。核心业务结果由 `Capability Acceptance` 验证，直接持久化由 `Slice Integration Test` 验证，Redis/Celery 等公共机制由 `Infrastructure Test` 验证，两个 Slice 的衔接由 `Cross-Slice Integration Test` 验证，完整用户流程由 `E2E Test` 验证。这不要求核心能力自测重复执行登录、上传等上游流程。统一测试边界、分层、自动断言和验收产物见 [`slice-acceptance-testing.md`](slice-acceptance-testing.md)。
 
+S-DBG 是开发/联调环境的当前账号级数据恢复能力，不等同于全库重置；其 Integration Scenario 的“4. 演示验证结果”必须由开发者实际填写。
+
 本目录不替代以下事实源：
 
 - 跨前后端业务语义以 [`../business/business-baseline.md`](../business/business-baseline.md) 为准；
