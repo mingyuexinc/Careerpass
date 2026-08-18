@@ -14,7 +14,7 @@
 
 ## 2. 固定输入
 
-复用：`careerpass-backend/tests/fixtures/candidate_preparation/resumes/resume_1.pdf`。
+复用：`careerpass-backend/tests/fixtures/candidate_preparation/resumes/resume_01.pdf`。
 
 固定 PDF 不能包含预置画像、快照或成功状态；Capability Acceptance 必须运行真实解析和业务校验。
 
@@ -46,7 +46,7 @@ if (-not ((Test-Path Env:QWEN_API_KEY) -or (Test-Path Env:DASHSCOPE_API_KEY))) {
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\careerpass-backend\scripts\test-resume-parse-capability.ps1
 ```
 
-脚本固定读取 `careerpass-backend/tests/fixtures/candidate_preparation/resumes/resume_1.pdf`，调用真实 PDF 文本提取和画像结构化链路，并生成验收产物。测试通过后查看最近一次产物：
+脚本固定读取 `careerpass-backend/tests/fixtures/candidate_preparation/resumes/resume_01.pdf`，调用真实 PDF 文本提取和画像结构化链路，并生成验收产物。测试通过后查看最近一次产物：
 
 ```powershell
 $artifactRoot = Join-Path (Get-Location) 'careerpass-backend/tests/acceptance/s04_resume_parse/delivery-acceptance-results'

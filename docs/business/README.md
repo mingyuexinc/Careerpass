@@ -6,5 +6,6 @@
 
 - [`business-baseline.md`](business-baseline.md)：当前已确认的业务事实及事实编号；
 - [`business-fact-extraction.md`](business-fact-extraction.md)：从前端文档提取、审核、更新和供 Slice 使用业务事实的机制。
+- [`matching/matching-algorithm-v0.1.md`](matching/matching-algorithm-v0.1.md)：S-08 岗位匹配算法 v0.1 的业务规则与版本边界。
 
 前端文档是业务事实的主要候选来源，后端文档是实现和技术事实来源。本目录发布后，前后端 Slice 不再分别从大量前端文档中重新猜测已经确认的业务语义。

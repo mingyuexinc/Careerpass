@@ -23,7 +23,11 @@
 | Job | 持久化实体 | HrProfile | 表示一份独立岗位，关联一个 JD 文件并作为 S-03 输入锚点 | `slice-confirmed` | S-02 已确认，代码/迁移待实现 |
 | ParsedJobDescriptionSnapshot | 持久化实体 | Job | 保存 S-03 按固定 Markdown 标题解析并校验后的岗位结构化事实和展示字段 | `slice-confirmed` | 一份 Markdown 文件对应一个 Job；仅成功且五项核心字段有效时创建；不由 S-02 创建 |
 | JobGoal | 持久化实体 | Candidate | 保存一个不绑定简历的当前求职目标；由 S-06 创建/更新，供 S-07 读取 | `implemented` | S-06 Slice Design、代码与迁移 |
-| Match / Application / Conversation / Message / ProgressEvent | 持久化实体 | 待对应业务主体确认 | 匹配、投递、沟通和事件 | `not confirmed` | 由后续 Slice 负责 |
+| AgentRunContext | 持久化实体 | Candidate | 保存本轮 Agent 的目标快照、启动时绑定简历/画像和运行状态 | `slice-confirmed` | S-07 Slice Design；代码与迁移待实现 |
+| Match | 持久化实体 | Candidate、Job、AgentRunContext | 保存本轮岗位筛选的独立结果、算法版本、输入快照、评分、状态和推荐理由 | `slice-confirmed` | S-08 Technical Design；`UNIQUE(run_id, job_id)` |
+| Application | 持久化实体 | Candidate、Job、Match、AgentRunContext | 保存通过投递筛选后的系统内投递记录，初始为 `submitted` | `slice-confirmed` | S-08 Technical Design；一条 Application 只能关联一条 Match |
+| ProgressEvent | 持久化实体 | Application | 记录 Application 创建和后续合法状态变化 | `slice-confirmed` | S-08 创建初始 `application_created` 事件；S-09 负责后续状态推进 |
+| Conversation / Message | 持久化实体 | 待对应业务主体确认 | 沟通记录和消息 | `not confirmed` | 由后续 Slice 负责；S-08 不创建 |
 
 ## 2. 关系与归属
 
@@ -36,11 +40,18 @@
 | Candidate | 1 : N | CandidateDocument | 附加资料只能归属于本人 Candidate |
 | Candidate | 1 : 1 | JobGoal | 当前版本每个 Candidate 只有一个当前目标；目标不绑定 Resume |
 | Resume | 1 : 1 | CandidateProfile | 成功解析的 Resume 至多一个画像；画像另行表达匹配资格 |
+| Candidate | 1 : N | AgentRunContext | 运行上下文只能归属于本人 Candidate；当前目标与运行上下文组合唯一 |
+| JobGoal | 1 : N | AgentRunContext | 运行上下文保存启动时目标快照；当前版本同一 Candidate/JobGoal 不创建第二个运行 |
+| Resume / CandidateProfile | 1 : N | AgentRunContext | 运行上下文绑定启动时有效的简历和其已校验画像 |
 | Resume / CandidateDocument | N : 1 | StoredFileObject | 业务资源引用内部文件对象；不公开对象定位 |
 | HrProfile | 1 : N | Job | Job 只能归属于创建它的 HrProfile |
 | Job | 1 : 1 | StoredFileObject | 一份 Job 绑定一个 JD 文件；JD 输入不单独建实体 |
 | Job | 1 : 0..1 | ParsedJobDescriptionSnapshot | 快照仅由 S-03 成功解析且五项核心字段有效后创建 |
 | Job | 1 : 1 有效任务 | AsyncTaskRun | 新 Job 在上传事务内创建/复用 queued 解析任务；具体任务契约由 S-03 锁定 |
+| AgentRunContext | 1 : N | Match | 一轮运行对每个可用 Job 最多保存一条 Match；`run_id + job_id` 唯一 |
+| Match | 1 : 0..1 | Application | 仅 `matched` 结果创建 Application；创建后 Match 状态为 `application_created` |
+| AgentRunContext | 1 : N | Application | 一轮运行对每个 Job 最多创建一条 Application；Application 必须关联同一轮 Match |
+| Application | 1 : N | ProgressEvent | Application 创建和后续合法状态变化写入事件；事件不替代当前状态 |
 
 ## 3. 身份与资源授权
 
@@ -65,6 +76,10 @@
 | Job 的 JD 解析状态 | `queued / running / succeeded / failed` 的任务/资源状态 | S-03 | S-02 只创建/复用 queued 任务，不写解析终态；临时技术失败和输入不可用进入 `parse_failed`，核心字段缺失也进入 `parse_failed + matching_not_ready` 且不创建快照 |
 | Job 删除资格 | 解析任务终态且未发起匹配 → 可删除；`queued/running` 或已发起匹配 → 不可删除 | S-11 执行，S-08 提供匹配发起事实 | 即使匹配失败或无结果，已发起匹配也不得删除；删除成功后不保留可用解析快照 |
 | JobGoal | `active` 可由 S-06 创建/更新；`achieved` / `abandoned` 不可由 S-06 修改 | S-06 创建/更新；S-07/后续流程负责运行与达成 | 目标只保存用户输入，不绑定简历，不启动 Agent |
+| AgentRunContext | `running → finished`；S-07 只创建 `running` | S-07 创建和幂等复用；后续流程结束运行 | 同一 Candidate/JobGoal 重复启动返回既有上下文；运行中或结束后不能开启新运行 |
+| Match | `filtered_out`、`not_matched`、`matched`、`application_created` | S-08 | 同一 `run_id + job_id` 只保存一条；未形成 Application 的 Match 不进入 Candidate 进度页 |
+| Application | `submitted →` 后续招聘阶段 | S-08 创建；S-09 推进 | 初始创建必须关联 `matched` Match；状态变化必须通过状态机和 ProgressEvent |
+| ProgressEvent | `application_created` 及后续合法事件 | Application 状态拥有者 | 事件追加保存，不得伪造前状态或绕过状态机 |
 
 ## 5. 解析结果与匹配资格
 

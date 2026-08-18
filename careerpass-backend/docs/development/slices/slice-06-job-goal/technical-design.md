@@ -78,6 +78,8 @@
 
 S-06 仅创建或更新 `active` 目标。目标为 `achieved` 或 `abandoned` 时拒绝修改；Agent 运行中的冻结由 S-07 的运行上下文状态负责，S-06 不伪造该状态。
 
+S-07 实现 AgentRunContext 后，S-06 的 `PUT /api/v1/job_goals/current` 必须通过 Repository 查询当前 Candidate 是否已有 `running` 或 `finished` 运行上下文；存在时返回既定 `409 / PRECONDITION_NOT_MET`。前端禁用编辑只改善交互，不能替代该服务端校验。S-07 的回归验证必须覆盖 S-06 的目标更新拒绝路径。
+
 事务边界为一次 `GET/PUT` 请求内的 Repository 事务；数据库唯一约束和 Service 状态检查共同保证重复保存不产生第二个当前目标。
 
 ## 4. 分层实现
@@ -101,7 +103,7 @@ JobGoalPage → jobGoalApi → API Controller → JobGoalService → JobGoalRepo
 
 ## 6. 交接契约
 
-`JOB-GOAL-HANDOFF@0.1`：S-07 通过 `GET /api/v1/job_goals/current` 获取当前 Candidate 的 `active` 目标；目标数据不含简历绑定。S-07 在自己的启动事务中读取目标、当前简历、画像和可用 JD，并创建运行上下文。
+`JOB-GOAL-HANDOFF@0.1`：S-07 通过 `GET /api/v1/job_goals/current` 获取当前 Candidate 的 `active` 目标；目标数据不含简历绑定。S-07 在自己的启动事务中读取目标、当前简历和画像，并创建运行上下文；S-08 负责在匹配前读取和校验可用结构化 JD。
 
 ## 7. 实现级验证与开发者交付
 

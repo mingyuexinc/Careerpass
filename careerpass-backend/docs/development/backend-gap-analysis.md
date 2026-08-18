@@ -102,8 +102,8 @@ G1 认证与用户初始化
 | G3 简历解析与画像 | MinerU 提取、Qwen 结构化、校验、原子画像写入、任务终态 | `implemented` | S-04 代码、迁移、单元测试、真实解析链路和固定 PDF Capability Acceptance；`IS-S04-01` 已交付 | S-04 已完成当前开发交付；更广泛的资料删除和下游匹配能力不属于 G3/S-04 | S-06 求职目标、S-07 Agent 启动 |
 | G4 岗位 JD 解析与入库 | HR 或受控流程提供岗位 JD、形成可用岗位输入 | `implemented` | S-02 Job 上传、S-03 Parser、快照迁移、内部验证 API、Capability Acceptance、真实 Compose 拓扑和 `IS-S03-01` | 当前版本关键缺口已关闭；正式前端接入仍属后续 F1 | S-02/S-03 岗位 JD Slice |
 | G5 求职目标 | 当前活跃目标、过滤条件、合法状态迁移、下游目标读取 | `implemented` | S-06 API、Repository、Service、Schema、迁移、单元/API 测试和真实前端场景 | 启动条件、运行冻结和启动时简历绑定归属 S-07 | S-07 Agent 启动 |
-| G6 岗位匹配 | 画像/JD/目标快照、过滤评分、结果追踪和查询 | `missing` | 当前后端文档描述目标；当前代码未发现实现 | 缺少输入快照、匹配批次/结果、异步追踪和可解释结果实现 | G6 Slice |
-| G7 投递与进度 | 系统内投递记录、合法状态迁移、Progress Event、双方视图 | `missing` | 当前后端文档描述目标；当前代码未发现实现 | 缺少 Application、事件审计、候选人/HR 归属查询和状态更新实现 | G7 Slice |
+| G6 岗位匹配 | 画像/JD/目标快照、过滤评分、结果追踪和查询 | `implemented` | S-08 Match/Application/ProgressEvent 模型、`20260817_0013` 迁移、v0.1 算法、同步服务和 Candidate 查询 API 已实现；非 acceptance 回归及本地 API/数据库冒烟通过 | 完整混合结果验收仍缺结构化 JD 快照和前端浏览器联调 | `IS-S08-01` Integration Verify |
+| G7 投递与进度 | 系统内投递记录、合法状态迁移、Progress Event、双方视图 | `partial` | S-08 已实现 submitted Application、初始 ProgressEvent 和 Candidate 投影；S-09 后续状态机及 HR 视图仍未实现 | 缺少 HR 投递查询、状态推进和后续事件 | G7/S-09 Slice |
 | G8 AI 求职沟通 | 授权会话、消息、结构化回复草稿/模拟回复、审计 | `missing` | 当前后端文档描述目标；当前代码未发现实现 | 缺少会话/消息领域实现、工作流注册、授权闸门和受控模型调用 | G8 Slice |
 | G9 业务资料删除 | 简历、求职资料和岗位 JD 的受控删除 | `missing` | 当前前端流程、交付范围和能力映射已确认目标；当前代码未发现公开业务删除接口 | 三类资源的删除条件、引用影响、状态处理和对象清理边界未实现 | S-11 业务资料删除 |
 | F1 前端闭环验收 | 正式前端通过锁定契约完成完整受控流程 | `blocked` | 前端 Mock 页面已完成 | 后端 G4–G9 尚未形成真实可调用能力；角色、状态和契约仍未锁定 | 所有 G1–G9 完成后 |
@@ -225,9 +225,9 @@ G4 的业务和技术设计已由 S-02/S-03 文档锁定；代码、迁移、本
 | 当前代码未发现 Job Goal API/Service/Repository | `closed` | S-06 已实现候选人归属的 GET/PUT API、Service 和 Repository。 | S-06 代码、API 测试和真实接口验证 |
 | 目标字段与前端操作未完成 Contract 锁定 | `closed` | Contract 已锁定 snake_case 字段、统一响应、字段校验和错误语义。 | `IC-S06-JOB-GOAL@0.1`、Schema 测试 |
 | 目标状态机未实现 | `closed for S-06` | S-06 已实现 active 创建/更新、终态拒绝和 Candidate 唯一约束；Agent 运行状态由 S-07 负责。 | 迁移 CHECK/UNIQUE、Service 测试 |
-| 启动条件实现责任未落地 | `high` | S-06 只保存目标；S-07 必须统一校验目标、当前简历解析终态、画像匹配资格和可用结构化 JD，并在启动时绑定当前简历。 | S-06/S-07 Slice 方案和边界测试 |
+| 启动条件实现责任未落地 | `design_ready` | S-07 已锁定启动 API、运行上下文、当前简历/画像绑定、幂等和交接边界；代码、迁移、S-06 冻结回归和真实场景仍待实现。可用结构化 JD 检查归属 S-08。 | S-07 技术设计、`IC-S07-AGENT-START@0.1`、`AGENT-RUNNING-HANDOFF@0.1`；待实现和场景验证 |
 
-G5 仅依赖 G1 身份；G3 画像和 G4 已解析岗位输入由 S-07 启动 Agent 时校验。G5 不反向触发资料解析或岗位导入。
+G5 仅依赖 G1 身份；G3 画像由 S-07 启动 Agent 时校验，G4 已解析岗位输入由 S-08 在匹配前校验。G5 不反向触发资料解析或岗位导入。
 
 ### 4.6 G6：岗位匹配
 
@@ -239,10 +239,10 @@ G5 仅依赖 G1 身份；G3 画像和 G4 已解析岗位输入由 S-07 启动 Ag
 
 | 差距 | 严重性 | 说明 | 关闭证据 |
 | --- | --- | --- | --- |
-| 当前代码未发现 Match Run/Match Result 实现 | `critical` | 当前数据库和 API 未证明匹配批次、结果、版本或失败终态存在。 | G6 Slice 代码、迁移和接口测试 |
-| 输入快照和算法版本缺失 | `high` | 匹配不得直接读取会变化的上游内部对象；必须锁定画像/JD/目标快照和 `algorithm_version`。 | MatchInput/快照契约和持久化测试 |
-| R0 业务规则和解释输出未实现 | `high` | 过滤条件、评分、推荐解释和结果展示范围仍需在 S-08 锁定；当前 Demo 已确认具备匹配资格的简历至少产生一条结果，不实现空结果分支。 | G6 业务规则、Schema 和验收样本 |
-| 异步匹配任务未与通用任务机制接入 | `medium` | 若匹配进入异步路径，必须单独声明任务类型、幂等键、状态和重试边界。 | Async Contract 和真实任务验证 |
+| S-08 实现与真实运行证据未完全闭合 | `high` | Match/Application/ProgressEvent、迁移、v0.1 算法、同步编排、查询 API 和前端接入已完成；本地 API/数据库冒烟和 `no_match` 投影已通过，但完整混合结果未回填。 | `IS-S08-01` 真实演示和回归 |
+| 输入快照和算法版本缺失 | `high` | Technical Design 已锁定画像/JD/目标业务语义快照和 `algorithm_version`；实现不得直接读取原文或未锁定的上游对象。 | 快照持久化测试和安全检查 |
+| R0 业务规则和解释输出未实现 | `closed for implementation` | 过滤、评分、推荐理由、展示范围、零投递结束语义和 v0.1 参数已有代码与单元测试。 | `test_matching_algorithm_v0_1.py`、前端类型/测试 |
+| S-08 同步匹配执行尚未完成验证 | `open` | S-07 提交后同步筛选、幂等和投递记录代码已实现；真实 API 已恢复并完成 `finished/no_match` 冒烟，但当前集成库没有结构化 JD 快照，无法完成匹配结果分支验证。 | `IS-S08-01` 补齐结构化 JD 后的真实验证 |
 
 R1–R4 不得因为旧文档提及 Pinecone、Embedding 或重排序就自动进入当前差距关闭范围。
 

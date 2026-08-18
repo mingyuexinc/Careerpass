@@ -174,7 +174,9 @@ careerpass-frontend/
 | `/register` | 注册页 | 公共 | 无，非主流程 |
 | `/candidate` | 求职者欢迎页 | 求职者 | 已登录且角色为求职者 |
 | `/candidate/documents` | 求职资料上传页 | 求职者 | 已登录且角色为求职者 |
-| `/candidate/job-goal` | 求职任务配置页 | 求职者 | 已登录且角色为求职者 |
+| `/candidate/job-goal` | 求职目标模块（重定向到创建页） | 求职者 | 已登录且角色为求职者 |
+| `/candidate/job-goal/create` | 求职目标创建页 | 求职者 | 已登录且角色为求职者 |
+| `/candidate/job-goal/view` | 求职目标查看页 | 求职者 | 已登录且角色为求职者 |
 | `/candidate/progress` | 求职进度看板 | 求职者 | 已登录且角色为求职者 |
 | `/hr` | HR 欢迎页 | HR | 已登录且角色为 HR |
 | `/hr/jobs` | 岗位上传页 | HR | 已登录且角色为 HR |
@@ -258,10 +260,10 @@ flowchart LR
 | 上传简历 | 选择了文件且当前允许替换 | 简历进入上传中或解析中 |
 | 完成解析 | 简历处于解析中 | 简历进入成功或失败 |
 | 创建求职目标 | 用户已登录且表单数据有效 | 当前目标创建或更新；不绑定简历 |
-| 启动 Agent | 目标存在、当前简历解析成功且画像、岗位条件满足 | S-07 绑定当前简历，Agent 进入运行中 |
+| 启动 Agent | 目标存在、当前简历解析成功且画像条件满足；岗位条件由 S-08 在匹配前检查 | S-07 提交运行上下文，S-08 同步完成匹配和投递；Agent 进入运行中或按结束条件进入已结束 |
 | 修改投递状态 | 投递记录存在且目标状态合法 | 当前投递记录状态更新 |
 | 发送消息 | 会话存在且输入非空 | 消息追加，Agent 回复中 |
-| Offer 达标 | Offer 数量达到目标 | Agent 进入已结束 |
+| Offer 达标或本轮无投递 | Offer 数量达到目标，或全部可用岗位筛选完成且 Application 数量为 0 | Agent 进入已结束 |
 
 ## 8. Mock 数据架构
 
@@ -301,6 +303,8 @@ interface ConversationRepository {
 }
 ```
 
+S-08 真实接入时，Candidate 进度页的 `ApplicationRepository.list()` 对应 `GET /api/v1/applications/current`。该查询只返回当前 Candidate 的 Application，不提供 Match 查询；每条 Application 携带 `matchScore` 和 `recommendationReason`。启动 Agent 仍使用既有启动接口，S-08 由后端同步执行，前端不提交匹配命令或轮询匹配任务。
+
 以上为架构示例，正式实现时以业务页面实际需要的最小接口为准。
 
 ### 8.3 Mock 行为
@@ -313,6 +317,15 @@ interface ConversationRepository {
 | 重复提交 | 操作进行中拒绝重复执行 |
 | 数据重置 | `resetData()` 恢复所有 Fixture 的初始快照 |
 | 数据隔离 | 求职者和 HR 的页面通过角色状态读取不同视图 |
+
+### 8.4 S-08 数据读取边界
+
+| 场景 | 前端数据来源 | 页面行为 |
+| --- | --- | --- |
+| 启动 Agent | 既有 Agent 启动接口 | 不展示匹配中间过程 |
+| 有投递记录 | `GET /api/v1/applications/current` | 展示 Application、匹配得分和推荐理由 |
+| Match 未形成 Application | 不向前端提供 Match 查询 | 进度页不展示 |
+| 全部岗位筛选完成且 Application 为 0 | Application 查询返回 `finished/no_match` | 展示“当前没有可供匹配的岗位” |
 
 ### 8.4 Fixture 组织
 
@@ -407,6 +420,8 @@ sequenceDiagram
 - 上传和解析状态由业务层管理。
 - 页面不读取或展示真实简历原文。
 - Agent 运行中或已结束时，当前轮次的简历替换操作不可用。
+
+S-07 任务页的前端数据流、状态矩阵和安全展示字段以 [`development/slice-07-agent-start.md`](development/slice-07-agent-start.md) 为准；启动 Action 只更新运行上下文状态，不在本地创建匹配或投递结果。
 - 失败状态必须提供重新上传或重试路径。
 
 ## 11. 错误和反馈处理
@@ -418,7 +433,7 @@ sequenceDiagram
 | 表单错误 | 目标 Offer 数量为空 | 在字段附近展示校验提示 |
 | 前置条件错误 | 简历未解析成功 | 禁用启动按钮并展示原因 |
 | 操作失败 | 上传失败、消息发送失败 | 展示失败反馈并允许重试 |
-| 空数据 | 没有投递记录、没有会话 | 展示业务空状态 |
+| 空数据 | 本轮全部可用岗位筛选完成且没有投递记录、没有会话 | 展示业务空状态；进度页显示“当前没有可供匹配的岗位” |
 | 访问错误 | 角色不匹配、页面不存在 | 跳转或展示统一错误页面 |
 | 未知错误 | 未分类的 Mock 异常 | 展示通用失败反馈，不展示内部细节 |
 

@@ -166,6 +166,7 @@ Careerpass 前端项目负责将已完成的 HTML 原型转化为基于 TypeScri
 | --- | --- |
 | [`docs/design/design-guidelines.md`](docs/design/design-guidelines.md) | 视觉风格、设计令牌、布局、组件和可访问性规范 |
 | [`docs/development/local-data-spec.md`](docs/development/local-data-spec.md) | 本地数据、状态变化、场景数据集和恢复规则 |
+| [`docs/development/slice-07-agent-start.md`](docs/development/slice-07-agent-start.md) | S-07 任务页双栏布局、状态矩阵和编码前检查清单 |
 | [`docs/development/frontend-guidelines.md`](docs/development/frontend-guidelines.md) | 文件组织、命名、组件、状态、测试和 AI/Codex 修改规范 |
 
 ## 7. 开发前阅读顺序

@@ -17,6 +17,8 @@
 | `20260815_0007` | `implemented` | S-03 快照表、任务代数和脱敏失败语义字段 |
 | `20260815_0008` | `implemented` | S-03 语义失败与旧解析失败码 CHECK 约束兼容；Dispatcher/Worker 超时失败字段边界 |
 | `20260816_0011` | `implemented` | S-06 `job_goals` 当前求职目标、Candidate 唯一约束和字段 CHECK 约束 |
+| `20260817_0012` | `implemented` | AgentRunContext 运行上下文、当前目标/简历/画像绑定、状态和幂等唯一约束 |
+| `20260817_0013` | `implemented` | Match、Application、ProgressEvent、算法版本、评分快照和 `run_id + job_id` 幂等约束 |
 
 ## 2. 已实现表
 
@@ -33,6 +35,7 @@
 | `async_task_runs` | `id`；按 `resource_type/resource_id` 关联业务资源 | 任务类型、版本、幂等键、租约、终态 | `idempotency_key`、任务标识按当前迁移约束 |
 | `parsed_job_description_snapshots` | `id`；`job_id → jobs` | `schema_version`、`fields`、`raw_sections`、创建时间 | `job_id` 唯一；成功快照才创建；`fields` 和 `raw_sections` 使用 JSONB；`implemented` |
 | `job_goals` | `id`；`candidate_id → candidates` | `offer_target`、`title`、`filters`、`status`、时间字段 | `candidate_id` 唯一；Offer 数量 1–10；状态为 `active/achieved/abandoned`；不含 Resume 外键；`implemented` |
+| `agent_run_contexts` | `id`；`candidate_id → candidates`；`job_goal_id → job_goals`；`resume_id → resumes`；`candidate_profile_id → candidate_profiles` | 目标快照、简历/画像绑定、`status`、结束原因、启动/结束时间 | `UNIQUE(candidate_id, job_goal_id)`；Candidate 归属；`running/finished`；`implemented` |
 
 ## 3. S-02 岗位表设计
 
@@ -88,6 +91,7 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | `async_task_type_enum` | `resume_parse`、`job_jd_parse` | AsyncTaskRun | `implemented`；`job_jd_parse` 由 S-02 revision 落实 |
 | `async_task_resource_type_enum` | `resume`、`job` | AsyncTaskRun | `implemented`；`job` 由 S-02 revision 落实 |
 | `async_task_run_status_enum` | `queued`、`running`、`succeeded`、`failed` | AsyncTaskRun | `implemented` |
+| AgentRunContext 状态 | `running`、`finished` | AgentRunContext | `implemented`；S-08 可写入 `finished/no_match` |
 | Job 业务状态 | 暂不新增通用 `status` | Job | `planned`；删除资格由 S-11/S-08 业务规则判断 |
 
 ## 5. 事务与数据边界
@@ -101,13 +105,26 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | S-03 解析 | S-03 独立更新解析任务；成功且五项核心字段有效时创建结构化快照；核心字段缺失、临时技术失败重试耗尽或输入不可用不形成可供 S-08 使用的快照；不回滚已提交的 S-02 Job |
 | Job 删除 | 匹配开始前可删除；匹配已发起后不可删除；具体软删除/对象清理由 S-11 设计 |
 | 内部定位 | 生产任务只携带资源标识；纯内部验证 API 可短暂接收受控 `local_path`，但路径不进入任务持久化、普通响应、日志或追踪 |
+| S-07 启动 | 目标快照、当前简历和画像绑定、运行状态和唯一约束在同一事务内提交；不检查 JD，不创建匹配/投递记录 |
 
-## 6. 未确认表
+## 6. 后续 Slice 表设计
 
 | 表/对象 | 原因 |
 | --- | --- |
-| `Match`、`Application` | 由后续 Slice 负责 |
-| `Conversation`、`Message`、`ProgressEvent` | 由沟通/进度 Slice 负责 |
+| `Match` | S-08 独立保存岗位筛选结果、算法版本、已脱敏输入快照、三维分数、总分、状态、推荐理由和原因码；`UNIQUE(run_id, job_id)`；`slice-confirmed` |
+| `Application` | S-08 为通过投递筛选的 Match 创建；绑定 Candidate、Job、AgentRun 和 Match，初始状态为 `submitted`；`UNIQUE(run_id, job_id)`；`slice-confirmed` |
+| `ProgressEvent` | S-08 创建 Application 时写入 `application_created` 初始事件；后续状态事件由 S-09/S-10 使用；`slice-confirmed` |
+| `Conversation`、`Message` | 由沟通 Slice 负责 |
+
+### 6.1 S-08 计划表
+
+| 表 | 核心字段 | 约束/索引 | 业务用途 |
+| --- | --- | --- | --- |
+| `matches` | `run_id`、`candidate_id`、`job_id`、`algorithm_version`、`input_snapshot`、状态、三维得分、总分、推荐理由、原因码、时间字段 | 外键归属；`UNIQUE(run_id, job_id)`；按 Candidate/Run/Job 查询 | 独立保存每个岗位的筛选结果 |
+| `applications` | `run_id`、`match_id`、`candidate_id`、`job_id`、状态、投递时间、时间字段 | `match_id` 唯一；`UNIQUE(run_id, job_id)`；状态由合法迁移控制 | 保存通过筛选的系统内投递记录 |
+| `progress_events` | Application、事件类型、前状态、后状态、操作者主体、时间和脱敏载荷 | 按 Application/时间查询；不得保存原文和凭证 | 保存 Application 创建及后续状态事件 |
+
+S-08 只保存已解析业务语义快照，不保存 JD/简历原文、文件路径、联系方式或模型原始响应。具体类型、枚举和索引由 `20260817_0013` 和 S-08 Technical Design 实现。
 
 ## 7. 变更规则
 
