@@ -27,6 +27,8 @@ class JobGoalService:
         self, *, candidate_id: UUID, value: JobGoalInput
     ) -> JobGoalResponse:
         async with self._repository.transaction():
+            if await self._repository.has_locked_run(candidate_id=candidate_id):
+                raise JobGoalLockedError
             existing = await self._repository.get_current(candidate_id=candidate_id)
             if existing is not None and existing.status != "active":
                 raise JobGoalLockedError

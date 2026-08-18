@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import JobGoal
+from app.infrastructure.database.models import AgentRunContext, JobGoal
 
 
 class JobGoalRepository:
@@ -24,6 +24,18 @@ class JobGoalRepository:
     async def get_current(self, *, candidate_id: UUID) -> JobGoal | None:
         return await self._session.scalar(
             select(JobGoal).where(JobGoal.candidate_id == candidate_id)
+        )
+
+    async def has_locked_run(self, *, candidate_id: UUID) -> bool:
+        return bool(
+            await self._session.scalar(
+                select(AgentRunContext.id)
+                .where(
+                    AgentRunContext.candidate_id == candidate_id,
+                    AgentRunContext.status.in_(("running", "finished")),
+                )
+                .limit(1)
+            )
         )
 
     async def save_current(
