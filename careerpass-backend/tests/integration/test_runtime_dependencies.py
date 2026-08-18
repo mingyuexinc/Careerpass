@@ -116,7 +116,7 @@ def test_migrations_are_repeatable_and_readiness_is_healthy(
                             "SELECT conname FROM pg_constraint WHERE conname IN ("
                             "'ck_stored_file_objects_ck_stored_file_size', "
                                 "'ck_candidate_profiles_ck_candidate_profile_matching_readiness', "
-                            "'ck_candidate_profiles_ck_candidate_profile_years', "
+                                "'ck_candidate_profiles_ck_candidate_profile_experience_duration', "
                             "'ck_async_task_runs_ck_async_task_run_finished_at', "
                             "'ck_async_task_runs_ck_async_task_run_failure_code') ORDER BY conname"
                         )
@@ -124,8 +124,8 @@ def test_migrations_are_repeatable_and_readiness_is_healthy(
                     assert [row.conname for row in constraints] == [
                         "ck_async_task_runs_ck_async_task_run_failure_code",
                         "ck_async_task_runs_ck_async_task_run_finished_at",
-                            "ck_candidate_profiles_ck_candidate_profile_matching_readiness",
-                        "ck_candidate_profiles_ck_candidate_profile_years",
+                        "ck_candidate_profiles_ck_candidate_profile_experience_duration",
+                        "ck_candidate_profiles_ck_candidate_profile_matching_readiness",
                         "ck_stored_file_objects_ck_stored_file_size",
                     ]
 
@@ -240,7 +240,8 @@ def test_candidate_preparation_upload_reuses_objects_without_orphans(
             )
             object_storage_root = app.state.object_storage._root
 
-        assert first.status_code == replay.status_code == second.status_code == 201
+        assert first.status_code == replay.status_code == 201
+        assert second.status_code == 409
         assert first.json()["data"]["resume_id"] == replay.json()["data"]["resume_id"]
         assert len(list(object_storage_root.iterdir())) == 1
 
@@ -543,6 +544,13 @@ def test_resume_parse_terminal_states_are_atomic_and_lease_guarded(
                 json={"username": f"terminal-{uuid4()}", "password": "StrongPassword123!"},
             )
             headers = {"Authorization": f"Bearer {registration.json()['data']['access_token']}"}
+            failure_registration = client.post(
+                "/api/v1/auth/register",
+                json={"username": f"terminal-failure-{uuid4()}", "password": "StrongPassword123!"},
+            )
+            failure_headers = {
+                "Authorization": f"Bearer {failure_registration.json()['data']['access_token']}"
+            }
             success_upload = client.post(
                 "/api/v1/resumes",
                 files={"file": ("success.pdf", b"%PDF-1.7\nsuccess", "application/pdf")},
@@ -551,7 +559,7 @@ def test_resume_parse_terminal_states_are_atomic_and_lease_guarded(
             failure_upload = client.post(
                 "/api/v1/resumes",
                 files={"file": ("failure.pdf", b"%PDF-1.7\nfailure", "application/pdf")},
-                headers={**headers, "Idempotency-Key": str(uuid4())},
+                headers={**failure_headers, "Idempotency-Key": str(uuid4())},
             )
         assert success_upload.status_code == failure_upload.status_code == 201
         success_resume_id = UUID(success_upload.json()["data"]["resume_id"])

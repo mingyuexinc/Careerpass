@@ -2,6 +2,8 @@
 
 from fastapi import APIRouter
 
+from app.api.v1.agent_runs import agent_run_router
+from app.api.v1.applications import applications_router
 from app.api.v1.auth import auth_router
 from app.api.v1.candidate_preparation import candidate_preparation_router
 from app.api.v1.debug_reset import debug_reset_router
@@ -15,6 +17,8 @@ from app.schemas.response import success_response
 
 api_router = APIRouter()
 api_router.include_router(auth_router, prefix="/api/v1")
+api_router.include_router(agent_run_router, prefix="/api/v1")
+api_router.include_router(applications_router, prefix="/api/v1")
 api_router.include_router(candidate_preparation_router, prefix="/api/v1")
 api_router.include_router(document_parsing_router, prefix="/api/v1")
 api_router.include_router(debug_reset_router, prefix="/api/v1")

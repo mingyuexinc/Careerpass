@@ -26,6 +26,7 @@ def test_database_close_is_idempotent() -> None:
 
 def test_base_metadata_contains_candidate_preparation_models() -> None:
     assert set(Base.metadata.tables) == {
+        "agent_run_contexts",
         "async_task_runs",
         "candidate_documents",
         "candidate_profiles",
@@ -36,6 +37,9 @@ def test_base_metadata_contains_candidate_preparation_models() -> None:
         "jobs",
         "job_goals",
         "parsed_job_description_snapshots",
+        "matches",
+        "applications",
+        "progress_events",
         "user_roles",
         "users",
     }

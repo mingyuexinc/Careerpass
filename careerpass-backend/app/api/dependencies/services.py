@@ -7,6 +7,7 @@ from fastapi import Depends, Request
 
 from app.core.config import Settings, get_settings
 from app.infrastructure.storage.controlled import ControlledJobDescriptionStorage
+from app.repositories.agent_run_repository import AgentRunRepository
 from app.repositories.async_task_repository import AsyncTaskRepository
 from app.repositories.candidate_preparation_repository import CandidatePreparationRepository
 from app.repositories.debug_reset_repository import DebugResetRepository
@@ -15,8 +16,10 @@ from app.repositories.identity_repository import IdentityRepository
 from app.repositories.job_description_repository import JobDescriptionRepository
 from app.repositories.job_goal_repository import JobGoalRepository
 from app.repositories.job_upload_repository import JobUploadRepository
+from app.repositories.matching_repository import MatchingRepository
 from app.repositories.object_storage_repository import ObjectStorageRepository
 from app.repositories.user_repository import UserRepository
+from app.services.agent_run_service import AgentRunService
 from app.services.candidate_preparation_service import CandidatePreparationService
 from app.services.debug_reset_service import DebugResetService
 from app.services.document_parsing_service import DocumentParsingService
@@ -25,6 +28,7 @@ from app.services.job_goal_service import JobGoalService
 from app.services.job_upload_service import JobUploadService
 from app.services.login_service import LoginService
 from app.services.registration_service import RegistrationService
+from app.services.matching_service import MatchingService
 
 
 async def get_registration_service(
@@ -97,6 +101,21 @@ async def get_job_goal_service(request: Request) -> AsyncIterator[JobGoalService
     """Build the request-scoped S-06 job-goal service."""
     async with request.app.state.database.session_factory() as session:
         yield JobGoalService(repository=JobGoalRepository(session))
+
+
+async def get_agent_run_service(request: Request) -> AsyncIterator[AgentRunService]:
+    """Build the request-scoped S-07 startup service."""
+    async with request.app.state.database.session_factory() as session:
+        yield AgentRunService(
+            repository=AgentRunRepository(session),
+            matching_service=MatchingService(repository=MatchingRepository(session)),
+        )
+
+
+async def get_matching_service(request: Request) -> AsyncIterator[MatchingService]:
+    """Build the request-scoped S-08 query service."""
+    async with request.app.state.database.session_factory() as session:
+        yield MatchingService(repository=MatchingRepository(session))
 
 
 async def get_debug_reset_service(

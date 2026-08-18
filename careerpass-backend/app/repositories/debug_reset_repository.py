@@ -14,13 +14,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.identity import CurrentIdentity
 from app.infrastructure.database.models import (
     AsyncTaskRun,
+    AgentRunContext,
+    Application,
     Candidate,
     CandidateDocument,
     CandidateProfile,
     HrProfile,
     Job,
     JobGoal,
+    Match,
     ParsedJobDescriptionSnapshot,
+    ProgressEvent,
     Resume,
     StoredFileObject,
 )
@@ -88,6 +92,48 @@ class DebugResetRepository:
         )
         resume_ids = tuple(value.id for value in resumes)
         await self._assert_no_active_tasks(resource_type="resume", resource_ids=resume_ids)
+
+        # Agent runs and their system-side results belong to the candidate's
+        # development account. Remove them before deleting the resume/profile/
+        # goal they reference; those foreign keys intentionally use RESTRICT.
+        runs = list(
+            (
+                await self._session.scalars(
+                    select(AgentRunContext).where(
+                        AgentRunContext.candidate_id == candidate_id
+                    )
+                )
+            ).all()
+        )
+        progress_events = list(
+            (
+                await self._session.scalars(
+                    select(ProgressEvent).where(ProgressEvent.candidate_id == candidate_id)
+                )
+            ).all()
+        )
+        applications = list(
+            (
+                await self._session.scalars(
+                    select(Application).where(Application.candidate_id == candidate_id)
+                )
+            ).all()
+        )
+        matches = list(
+            (
+                await self._session.scalars(
+                    select(Match).where(Match.candidate_id == candidate_id)
+                )
+            ).all()
+        )
+        for event in progress_events:
+            await self._session.delete(event)
+        for application in applications:
+            await self._session.delete(application)
+        for match in matches:
+            await self._session.delete(match)
+        for run in runs:
+            await self._session.delete(run)
 
         file_ids = {value.stored_file_object_id for value in resumes}
         file_ids.update(value.stored_file_object_id for value in documents)
