@@ -63,7 +63,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         title: response.user.active_role === "candidate" ? "求职者工作台" : "HR 工作台",
       };
       persistSession({ user: authenticatedUser, accessToken: response.access_token });
-      set({ user: authenticatedUser, accessToken: response.access_token, submitting: false });
+      set({
+        user: authenticatedUser,
+        accessToken: response.access_token,
+        submitting: false,
+      });
       return authenticatedUser;
     } catch (error) {
       const message = error instanceof Error ? error.message : "登录失败，请稍后重试";

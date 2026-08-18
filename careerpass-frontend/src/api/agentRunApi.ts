@@ -45,7 +45,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 export async function getCurrentAgentRun(accessToken: string): Promise<AgentRunStatus> {
-  const response = await fetch(`${apiBaseUrl}/agent_runs/current`, { headers: headers(accessToken) });
+  const response = await fetch(`${apiBaseUrl}/agent_runs/current`, {
+    headers: headers(accessToken),
+  });
   const data = await parseResponse<AgentRunStatusResponse>(response);
   return {
     state: data.state,
@@ -54,7 +56,9 @@ export async function getCurrentAgentRun(accessToken: string): Promise<AgentRunS
   };
 }
 
-export async function startCurrentAgentRun(accessToken: string): Promise<AgentRunSummary> {
+export async function startCurrentAgentRun(
+  accessToken: string,
+): Promise<AgentRunSummary> {
   const response = await fetch(`${apiBaseUrl}/agent_runs/current/start`, {
     method: "POST",
     headers: { ...headers(accessToken), "Content-Type": "application/json" },

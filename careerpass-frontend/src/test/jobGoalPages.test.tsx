@@ -57,7 +57,9 @@ describe("S-07 job goal page split", () => {
   it("redirects the legacy route to the creation subpage", async () => {
     renderGoalRoute("/candidate/job-goal");
 
-    expect(await screen.findByRole("heading", { name: "求职目标配置" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "求职目标配置" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "求职目标创建" })).toHaveClass("is-active");
     expect(screen.getByRole("link", { name: "求职目标查看" })).toBeInTheDocument();
   });
@@ -69,13 +71,19 @@ describe("S-07 job goal page split", () => {
     expect(screen.getByRole("heading", { name: "启动条件" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "启动求职 Agent" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "启动求职 Agent" })).toHaveTextContent("→");
-    expect(screen.queryByRole("heading", { name: "已创建的求职目标" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "已创建的求职目标" }),
+    ).not.toBeInTheDocument();
 
     cleanup();
     renderGoalRoute("/candidate/job-goal/view");
     expect(screen.getByRole("heading", { name: "已创建的求职目标" })).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: "目标岗位名称" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /创建求职目标|保存修改|启动求职 Agent/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "目标岗位名称" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /创建求职目标|保存修改|启动求职 Agent/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the current goal as one read-only list row", () => {
@@ -147,7 +155,9 @@ describe("S-07 job goal page split", () => {
     fireEvent.click(screen.getByRole("button", { name: "启动求职 Agent" }));
 
     await waitFor(() =>
-      expect(screen.getByText("求职目标已锁定，请前往求职进度查看本轮投递结果。")).toBeInTheDocument(),
+      expect(
+        screen.getByText("求职目标已锁定，请前往求职进度查看本轮投递结果。"),
+      ).toBeInTheDocument(),
     );
     expect(document.querySelector(".agent-state")).toHaveClass("running");
     expect(startAgent).toHaveBeenCalledTimes(1);

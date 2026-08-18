@@ -106,26 +106,32 @@ describe("workspace upload loading scopes", () => {
       agentStatus: "not_started",
       agentRunCanStart: false,
     });
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-      const url = String(input);
-      if (url.endsWith("/job_goals/current") && init?.method === "PUT") {
-        return new Response(
-          JSON.stringify({ code: 200, msg: "job goal saved", data: { goal: goalResponse } }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      if (url.endsWith("/agent_runs/current")) {
-        return new Response(
-          JSON.stringify({
-            code: 200,
-            msg: "success",
-            data: { state: "not_started", can_start: true, run: null },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        );
-      }
-      throw new Error(`unexpected request: ${url}`);
-    });
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+        if (url.endsWith("/job_goals/current") && init?.method === "PUT") {
+          return new Response(
+            JSON.stringify({
+              code: 200,
+              msg: "job goal saved",
+              data: { goal: goalResponse },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (url.endsWith("/agent_runs/current")) {
+          return new Response(
+            JSON.stringify({
+              code: 200,
+              msg: "success",
+              data: { state: "not_started", can_start: true, run: null },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw new Error(`unexpected request: ${url}`);
+      });
 
     await useWorkspaceStore.getState().saveGoal({
       offerTarget: 1,

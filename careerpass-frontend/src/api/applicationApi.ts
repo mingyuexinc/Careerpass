@@ -30,7 +30,9 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return payload.data;
 }
 
-export async function listCurrentApplications(accessToken: string): Promise<Application[]> {
+export async function listCurrentApplications(
+  accessToken: string,
+): Promise<Application[]> {
   const response = await fetch(`${apiBaseUrl}/applications/current`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });

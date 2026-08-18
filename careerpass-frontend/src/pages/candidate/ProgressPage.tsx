@@ -72,7 +72,8 @@ export function ProgressPage() {
             <div>
               <h2>目标 Offer 达成进度</h2>
               <p>
-                {state.agentStatus === "finished" && state.agentRun?.finishReason === "no_match"
+                {state.agentStatus === "finished" &&
+                state.agentRun?.finishReason === "no_match"
                   ? "本轮岗位已筛选完成，暂未产生投递结果。"
                   : state.agentStatus === "finished"
                     ? "目标已达成，系统已判定 Agent 运行结束。"

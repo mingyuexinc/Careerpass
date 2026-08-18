@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, ErrorState, LoadingState, StatusBadge, Toast } from "../../components/ui";
+import {
+  Button,
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+  Toast,
+} from "../../components/ui";
 import { agentStatusMeta } from "../../domain/mappings";
 import { useWorkspaceStore } from "../../stores/workspace-store";
 
@@ -51,14 +57,20 @@ export function JobGoalCreatePage() {
 
   return (
     <div className="job-goal-create-page">
-      {state.error ? <ErrorState description={state.error} onRetry={state.clearError} /> : null}
+      {state.error ? (
+        <ErrorState description={state.error} onRetry={state.clearError} />
+      ) : null}
       <article className="panel job-goal-form-panel">
         <div className="panel-heading">
           <div>
             <h2>求职目标配置</h2>
             <p className="muted-text">当前版本每位用户维护一个求职目标。</p>
           </div>
-          {state.jobGoal ? <StatusBadge tone="success">已保存</StatusBadge> : <StatusBadge>待创建</StatusBadge>}
+          {state.jobGoal ? (
+            <StatusBadge tone="success">已保存</StatusBadge>
+          ) : (
+            <StatusBadge>待创建</StatusBadge>
+          )}
         </div>
         <div className="form-grid">
           <label>

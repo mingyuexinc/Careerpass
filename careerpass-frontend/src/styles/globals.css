@@ -468,7 +468,10 @@ select:focus {
   font-size: 14px;
   font-weight: 800;
   text-align: center;
-  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 .job-goal-section-nav a:hover,
 .job-goal-section-nav a.is-active {

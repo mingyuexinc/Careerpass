@@ -123,7 +123,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         snapshot.jobGoal = await getCurrentJobGoal(accessToken);
         const agentRunStatus = await getCurrentAgentRun(accessToken);
         snapshot.applications = await listCurrentApplications(accessToken);
-        snapshot.agentStatus = agentRunStatus.run?.status ??
+        snapshot.agentStatus =
+          agentRunStatus.run?.status ??
           (agentRunStatus.canStart ? "ready" : "not_started");
         set({
           ...snapshot,
@@ -232,7 +233,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     runAction(set, async () => {
       await mockRepository.deleteJob(id);
       return mockRepository.getSnapshot();
-  }),
+    }),
   saveGoal: async (input) => {
     if (useWorkspaceStore.getState().savingGoal) return;
     const accessToken = useAuthStore.getState().accessToken;
@@ -262,7 +263,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         set({
           agentRun: agentRunStatus.run,
           agentRunCanStart: agentRunStatus.canStart,
-          agentStatus: agentRunStatus.run?.status ??
+          agentStatus:
+            agentRunStatus.run?.status ??
             (agentRunStatus.canStart ? "ready" : "not_started"),
         });
       } else {
