@@ -26,7 +26,7 @@ def test_controlled_resume_reaches_validated_atomic_terminal_state() -> None:
         / "fixtures"
         / "candidate_preparation"
         / "resumes"
-        / "resume_1.pdf"
+        / "resume_01.pdf"
     )
     api_base_url = os.getenv("EXTERNAL_PIPELINE_API_BASE_URL", "http://localhost:8080")
     username = f"external-pipeline-{uuid4()}"

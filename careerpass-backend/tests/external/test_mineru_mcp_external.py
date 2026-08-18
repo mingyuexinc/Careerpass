@@ -26,7 +26,7 @@ def test_controlled_resume_is_parsed_by_mineru_stdio_bridge(tmp_path: Path) -> N
         / "fixtures"
         / "candidate_preparation"
         / "resumes"
-        / "resume_1.pdf"
+        / "resume_01.pdf"
     )
     client = MineruStdioClient(
         command=settings.mineru_mcp_command,

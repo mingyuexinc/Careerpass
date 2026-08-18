@@ -219,8 +219,11 @@ def _request_payload(
                 "content": (
                     "Extract only explicit facts from the supplied resume Markdown. "
                     "Return JSON only, matching ResumeProfileExtractionV1. "
-                    "Extract full_name, phone, email, education, work experience, and project "
-                    "experience wherever they are explicitly present. Preserve each work or "
+                    "Extract full_name, phone, email, education, skills, work experience, and "
+                    "project experience wherever they are explicitly present. The top-level "
+                    "skills list must include explicit skills or technology lists from the resume; "
+                    "project technologies are also preserved and consolidated by the application. "
+                    "Do not infer a skill merely from a job title or a vague responsibility. Preserve each work or "
                     "project entry as a separate structured item; do not collapse the entire "
                     "resume into one vague summary. Inspect the entire Markdown before answering, "
                     "including contact details near the header and education or project sections "

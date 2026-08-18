@@ -19,7 +19,7 @@ from app.parsers.resume_pdf import compose_resume_extraction_source, extract_nat
 from app.schemas.document_parsing import ResumeProfileExtractionV1, matching_readiness
 
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
-FIXTURE_PATH = PROJECT_ROOT / "careerpass-backend/tests/fixtures/candidate_preparation/resumes/resume_1.pdf"
+FIXTURE_PATH = PROJECT_ROOT / "careerpass-backend/tests/fixtures/candidate_preparation/resumes/resume_01.pdf"
 
 
 @pytest.mark.capability_acceptance

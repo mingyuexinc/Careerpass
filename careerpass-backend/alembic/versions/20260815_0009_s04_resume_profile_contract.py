@@ -44,6 +44,13 @@ def downgrade() -> None:
     op.drop_constraint(
         "ck_candidate_profile_matching_readiness", "candidate_profiles", type_="check"
     )
+    # The pre-S-04 schema required at least one target title. Normalize newer
+    # empty arrays before restoring that legacy constraint so downgrade remains
+    # repeatable on profiles created by the current parser contract.
+    op.execute(
+        "UPDATE candidate_profiles SET target_job_titles = ARRAY['unknown']::varchar[] "
+        "WHERE target_job_titles IS NULL OR cardinality(target_job_titles) < 1"
+    )
     op.create_check_constraint(
         "ck_candidate_profile_target_titles",
         "candidate_profiles",

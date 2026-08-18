@@ -139,6 +139,21 @@ class ResumeProfileExtractionV1(BaseModel):
         return value
 
     @model_validator(mode="after")
+    def consolidate_explicit_skills(self) -> "ResumeProfileExtractionV1":
+        """Expose project technology facts in the profile-level skill field."""
+        skills = list(self.skills)
+        existing = {skill.name.casefold().strip() for skill in skills}
+        for project in self.project_experience_summary:
+            for technology in project.technologies:
+                normalized = technology.casefold().strip()
+                if normalized and normalized not in existing:
+                    skills.append(Skill(name=technology.strip()))
+                    existing.add(normalized)
+        if len(skills) == len(self.skills):
+            return self
+        return self.model_copy(update={"skills": skills})
+
+    @model_validator(mode="after")
     def reject_completely_empty_extraction(self) -> "ResumeProfileExtractionV1":
         scalar_facts = (
             self.full_name,

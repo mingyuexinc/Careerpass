@@ -59,6 +59,9 @@ def test_resume_upload_removes_transient_file_when_content_object_is_reused(
     tmp_path: Path,
 ) -> None:
     class ReusingRepository:
+        async def has_other_resume(self, **_: object) -> bool:
+            return False
+
         async def create_resume(self, **_: object) -> tuple[object, bool, bool]:
             return type("Resume", (), {"id": uuid4()})(), False, False
 
@@ -92,6 +95,9 @@ def test_resume_upload_removes_transient_file_when_content_object_is_reused(
 
 def test_resume_upload_returns_processing_and_creates_queued_task(tmp_path: Path) -> None:
     class RecordingRepository:
+        async def has_other_resume(self, **_: object) -> bool:
+            return False
+
         @asynccontextmanager
         async def transaction(self):
             yield
@@ -135,6 +141,9 @@ def test_resume_upload_reuses_same_content_without_creating_a_second_task(tmp_pa
     resume_id = uuid4()
 
     class ReusingRepository:
+        async def has_other_resume(self, **_: object) -> bool:
+            return False
+
         @asynccontextmanager
         async def transaction(self):
             yield
@@ -170,6 +179,9 @@ def test_resume_upload_reuses_same_content_without_creating_a_second_task(tmp_pa
 
 def test_resume_upload_cleans_transient_file_when_task_creation_fails(tmp_path: Path) -> None:
     class FailingRepository:
+        async def has_other_resume(self, **_: object) -> bool:
+            return False
+
         @asynccontextmanager
         async def transaction(self):
             yield

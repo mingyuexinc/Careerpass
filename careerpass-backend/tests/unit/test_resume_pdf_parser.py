@@ -9,16 +9,17 @@ from app.parsers.resume_pdf import (
 )
 
 
-def test_fixed_text_pdf_preserves_both_work_companies() -> None:
+def test_fixed_text_pdf_preserves_resume_technical_facts() -> None:
     fixture = (
         Path(__file__).resolve().parents[1]
-        / "fixtures/candidate_preparation/resumes/resume_1.pdf"
+        / "fixtures/candidate_preparation/resumes/resume_01.pdf"
     )
 
     text = extract_native_pdf_text(fixture.read_bytes())
 
-    assert "成都天衍未来科技有限公司" in text
-    assert "中兴通讯股份有限公司" in text
+    assert "FastAPI" in text
+    assert "LangChain" in text
+    assert "PostgreSQL" in text
 
 
 def test_composed_source_keeps_canonical_text_separate_from_mineru_context() -> None:

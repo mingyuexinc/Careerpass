@@ -38,6 +38,20 @@ def downgrade() -> None:
     op.drop_constraint(
         "ck_candidate_profile_experience_duration", "candidate_profiles", type_="check"
     )
+    # PostgreSQL cannot cast the text default while changing the column type.
+    # Remove it first, then restore the nullable integer shape below.
+    op.alter_column(
+        "candidate_profiles",
+        "years_of_experience",
+        existing_type=sa.String(32),
+        server_default=None,
+    )
+    op.alter_column(
+        "candidate_profiles",
+        "years_of_experience",
+        existing_type=sa.String(32),
+        nullable=True,
+    )
     op.alter_column(
         "candidate_profiles",
         "years_of_experience",

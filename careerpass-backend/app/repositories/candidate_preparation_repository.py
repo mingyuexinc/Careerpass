@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import AbstractAsyncContextManager
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
@@ -29,6 +29,17 @@ class CandidatePreparationRepository:
     def transaction(self) -> AbstractAsyncContextManager[None]:
         """Expose the caller-owned transaction boundary without exposing the session."""
         return self._session.begin()
+
+    async def has_other_resume(self, *, candidate_id: UUID, idempotency_key: UUID | None) -> bool:
+        statement = select(Resume.id).where(Resume.candidate_id == candidate_id)
+        if idempotency_key is not None:
+            statement = statement.where(
+                or_(
+                    Resume.upload_idempotency_key.is_(None),
+                    Resume.upload_idempotency_key != idempotency_key,
+                )
+            )
+        return (await self._session.scalar(statement.limit(1))) is not None
 
     async def create_resume(
         self, *, candidate_id: UUID, name: str, upload: StoredUpload, idempotency_key: UUID | None

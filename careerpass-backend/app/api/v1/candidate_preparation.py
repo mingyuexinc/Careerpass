@@ -16,6 +16,7 @@ from app.schemas.response import success_response
 from app.services.candidate_preparation_service import (
     CandidatePreparationService,
     InvalidUploadError,
+    ResumeAlreadyExistsError,
 )
 
 candidate_preparation_router = APIRouter(tags=["candidate-preparation"])
@@ -41,6 +42,12 @@ async def upload_resume(
     except InvalidUploadError:
         raise AppException(
             status_code=400, code=ErrorCode.VALIDATION_ERROR, message="invalid upload"
+        ) from None
+    except ResumeAlreadyExistsError:
+        raise AppException(
+            status_code=409,
+            code=ErrorCode.PRECONDITION_NOT_MET,
+            message="a resume already exists for this candidate",
         ) from None
     except IdempotencyConflictError:
         raise AppException(
