@@ -24,6 +24,7 @@ export function DocumentsPage() {
   if (!state.initialized) return <LoadingState />;
   const resumeLocked =
     state.agentStatus === "running" || state.agentStatus === "finished";
+  const resumeExists = Boolean(state.resume);
   const resumeStatus = state.resume
     ? resumeStatusMeta[state.resume.parseStatus]
     : resumeStatusMeta.not_uploaded;
@@ -86,12 +87,12 @@ export function DocumentsPage() {
             ) : null}
           </div>
           <FileUpload
-            label={state.resume ? "重新选择简历" : "上传一份简历"}
+            label={state.resume ? "已上传一份简历" : "上传一份简历"}
             description={
               resumeLocked ? "当前投递轮次已绑定简历。" : "仅支持文本型 PDF 简历。"
             }
             accept=".pdf"
-            disabled={resumeLocked || state.resumeLoading}
+            disabled={resumeLocked || resumeExists || state.resumeLoading}
             onFiles={(files) => void uploadResume(files[0])}
           />
           {state.resume ? (
@@ -157,7 +158,9 @@ export function DocumentsPage() {
           <p>
             {resumeLocked
               ? "当前轮次已经绑定这份简历，历史投递记录会继续保留。"
-              : "在 Agent 启动前，你可以重新上传简历并重新解析。"}
+              : resumeExists
+                ? "当前版本暂只支持一份简历，已有简历可继续查看解析状态。"
+                : "上传并解析一份简历后，才能创建求职目标。"}
           </p>
         </div>
       </section>

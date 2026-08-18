@@ -30,12 +30,35 @@ describe("S-DBG reset API", () => {
 
   it("maps an active-task conflict to a user-safe message", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ code: 409, msg: "internal", data: null }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({
+          code: 409,
+          msg: "reset is unavailable while account tasks are running",
+          data: null,
+        }),
+        {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
 
     await expect(resetCurrentAccount("token")).rejects.toThrow("任务处理中");
+  });
+
+  it("does not describe dependent data as an active task", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 409,
+          msg: "account reset is blocked by dependent data",
+          data: null,
+        }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(resetCurrentAccount("token")).rejects.toThrow("历史联调数据");
+    await expect(resetCurrentAccount("token")).rejects.not.toThrow("任务处理中");
   });
 });

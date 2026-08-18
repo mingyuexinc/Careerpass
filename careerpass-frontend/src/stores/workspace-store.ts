@@ -8,8 +8,11 @@ import {
 } from "../api/candidateDocumentApi";
 import { useAuthStore } from "./auth-store";
 import { getCurrentJobGoal, saveCurrentJobGoal } from "../api/jobGoalApi";
+import { getCurrentAgentRun, startCurrentAgentRun } from "../api/agentRunApi";
+import { listCurrentApplications } from "../api/applicationApi";
 import type {
   DeliveryProgress,
+  AgentRunSummary,
   JobGoalInput,
   SupportingDocumentUploadResult,
   WorkspaceSnapshot,
@@ -35,6 +38,25 @@ interface WorkspaceState extends WorkspaceSnapshot {
   resetData: () => Promise<void>;
   clearLocalState: () => Promise<void>;
   clearError: () => void;
+  agentRun: AgentRunSummary | null;
+  agentRunCanStart: boolean;
+  savingGoal: boolean;
+  startingAgent: boolean;
+}
+
+function toWorkspaceSnapshot(state: WorkspaceState): WorkspaceSnapshot {
+  return {
+    resume: state.resume,
+    supportingDocuments: state.supportingDocuments,
+    supportingDocumentUploads: state.supportingDocumentUploads,
+    jobs: state.jobs,
+    currentJob: state.currentJob,
+    jobGoal: state.jobGoal,
+    agentStatus: state.agentStatus,
+    round: state.round,
+    applications: state.applications,
+    conversations: state.conversations,
+  };
 }
 
 const emptySnapshot: WorkspaceSnapshot = {
@@ -83,10 +105,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   resumeLoading: false,
   supportingDocumentsLoading: false,
   error: null,
+  agentRun: null,
+  agentRunCanStart: false,
+  savingGoal: false,
+  startingAgent: false,
   refresh: async () => {
     set({ loading: true, error: null });
     try {
-      const snapshot = await mockRepository.getSnapshot();
+      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
       snapshot.supportingDocumentUploads = [];
       const accessToken = useAuthStore.getState().accessToken;
       const activeRole = useAuthStore.getState().user?.role;
@@ -95,9 +121,26 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         snapshot.resume = resumes[0] ?? null;
         snapshot.supportingDocuments = await listCandidateDocuments(accessToken);
         snapshot.jobGoal = await getCurrentJobGoal(accessToken);
-        snapshot.supportingDocumentUploads = [];
+        const agentRunStatus = await getCurrentAgentRun(accessToken);
+        snapshot.applications = await listCurrentApplications(accessToken);
+        snapshot.agentStatus = agentRunStatus.run?.status ??
+          (agentRunStatus.canStart ? "ready" : "not_started");
+        set({
+          ...snapshot,
+          agentRun: agentRunStatus.run,
+          agentRunCanStart: agentRunStatus.canStart,
+          loading: false,
+          initialized: true,
+        });
+        return;
       }
-      set({ ...snapshot, loading: false, initialized: true });
+      set({
+        ...snapshot,
+        agentRun: null,
+        agentRunCanStart: snapshot.agentStatus === "ready",
+        loading: false,
+        initialized: true,
+      });
     } catch (error) {
       set({
         loading: false,
@@ -115,7 +158,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         } else {
           await mockRepository.uploadResume(file);
         }
-        const snapshot = await mockRepository.getSnapshot();
+        const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
         if (accessToken) {
           const resumes = await listResumes(accessToken);
           snapshot.resume = resumes[0] ?? null;
@@ -144,7 +187,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       const accessToken = useAuthStore.getState().accessToken;
       if (accessToken) {
         const results = await uploadCandidateDocuments(files, accessToken);
-        const snapshot = await mockRepository.getSnapshot();
+        const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
         snapshot.supportingDocuments = await listCandidateDocuments(accessToken);
         snapshot.supportingDocumentUploads = results;
         set({
@@ -189,29 +232,78 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     runAction(set, async () => {
       await mockRepository.deleteJob(id);
       return mockRepository.getSnapshot();
-    }),
-  saveGoal: async (input) =>
-    runAction(set, async () => {
-      if (
-        !Number.isInteger(input.offerTarget) ||
-        input.offerTarget < 1 ||
-        input.offerTarget > 10 ||
-        !input.title.trim()
-      )
-        throw new Error("请填写有效的目标 Offer 数量和岗位名称。");
-      const normalizedInput = {
-        ...input,
-        title: input.title.trim(),
-        filters: input.filters.trim(),
-      };
+  }),
+  saveGoal: async (input) => {
+    if (useWorkspaceStore.getState().savingGoal) return;
+    const accessToken = useAuthStore.getState().accessToken;
+    set({ savingGoal: true });
+    try {
+      await runAction(set, async () => {
+        if (
+          !Number.isInteger(input.offerTarget) ||
+          input.offerTarget < 1 ||
+          input.offerTarget > 10 ||
+          !input.title.trim()
+        )
+          throw new Error("请填写有效的目标 Offer 数量和岗位名称。");
+        const normalizedInput = {
+          ...input,
+          title: input.title.trim(),
+          filters: input.filters.trim(),
+        };
+        const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+        snapshot.jobGoal = accessToken
+          ? await saveCurrentJobGoal(normalizedInput, accessToken)
+          : await mockRepository.saveGoal(normalizedInput);
+        return snapshot;
+      });
+      if (accessToken) {
+        const agentRunStatus = await getCurrentAgentRun(accessToken);
+        set({
+          agentRun: agentRunStatus.run,
+          agentRunCanStart: agentRunStatus.canStart,
+          agentStatus: agentRunStatus.run?.status ??
+            (agentRunStatus.canStart ? "ready" : "not_started"),
+        });
+      } else {
+        const current = useWorkspaceStore.getState();
+        set({ agentRunCanStart: current.agentStatus === "ready" });
+      }
+    } finally {
+      set({ savingGoal: false });
+    }
+  },
+  startAgent: async () => {
+    const current = useWorkspaceStore.getState();
+    if (current.startingAgent || current.savingGoal) return;
+    set({ loading: true, error: null });
+    set({ startingAgent: true });
+    try {
       const accessToken = useAuthStore.getState().accessToken;
-      const snapshot = await mockRepository.getSnapshot();
-      snapshot.jobGoal = accessToken
-        ? await saveCurrentJobGoal(normalizedInput, accessToken)
-        : await mockRepository.saveGoal(normalizedInput);
-      return snapshot;
-    }),
-  startAgent: async () => runAction(set, () => mockRepository.startAgent()),
+      const run = accessToken
+        ? await startCurrentAgentRun(accessToken)
+        : await mockRepository.startAgent();
+      const applications = accessToken
+        ? await listCurrentApplications(accessToken)
+        : (await mockRepository.getSnapshot()).applications;
+      set({
+        agentRun: run,
+        agentRunCanStart: false,
+        agentStatus: run.status,
+        applications,
+        loading: false,
+        startingAgent: false,
+        initialized: true,
+      });
+    } catch (error) {
+      set({
+        loading: false,
+        startingAgent: false,
+        error: error instanceof Error ? error.message : "启动失败，请稍后重试。",
+      });
+      throw error;
+    }
+  },
   updateApplicationStatus: async (id, status) =>
     runAction(set, async () => {
       await mockRepository.updateApplicationStatus(id, status);
@@ -231,6 +323,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       resumeLoading: false,
       supportingDocumentsLoading: false,
       error: null,
+      agentRun: null,
+      agentRunCanStart: false,
+      savingGoal: false,
+      startingAgent: false,
     });
   },
   clearError: () => set({ error: null }),

@@ -27,7 +27,7 @@ export const agentStatusMeta: Record<
   },
   running: {
     label: "Agent 运行中",
-    description: "Agent 正在推进岗位匹配、投递和沟通。",
+    description: "求职 Agent 已启动，正在准备首轮匹配。",
     tone: "info",
   },
   finished: {

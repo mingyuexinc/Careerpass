@@ -6,6 +6,8 @@ import { RegisterPage } from "../pages/auth/RegisterPage";
 import { CandidateHomePage } from "../pages/candidate/CandidateHomePage";
 import { DocumentsPage } from "../pages/candidate/DocumentsPage";
 import { JobGoalPage } from "../pages/candidate/JobGoalPage";
+import { JobGoalCreatePage } from "../pages/candidate/JobGoalCreatePage";
+import { JobGoalViewPage } from "../pages/candidate/JobGoalViewPage";
 import { ProgressPage } from "../pages/candidate/ProgressPage";
 import { HrHomePage } from "../pages/hr/HrHomePage";
 import { JobsPage } from "../pages/hr/JobsPage";
@@ -26,7 +28,15 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <CandidateHomePage /> },
       { path: "documents", element: <DocumentsPage /> },
-      { path: "job-goal", element: <JobGoalPage /> },
+      {
+        path: "job-goal",
+        element: <JobGoalPage />,
+        children: [
+          { index: true, element: <Navigate to="create" replace /> },
+          { path: "create", element: <JobGoalCreatePage /> },
+          { path: "view", element: <JobGoalViewPage /> },
+        ],
+      },
       { path: "progress", element: <ProgressPage /> },
       { path: "*", element: <Navigate to="/candidate" replace /> },
     ],

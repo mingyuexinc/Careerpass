@@ -13,9 +13,43 @@ interface AuthState {
   signOut: () => void;
 }
 
+const AUTH_SESSION_KEY = "careerpass.auth.session";
+
+interface PersistedAuthSession {
+  user: UserProfile;
+  accessToken: string;
+}
+
+function readPersistedSession(): PersistedAuthSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_SESSION_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw) as Partial<PersistedAuthSession>;
+    if (!session.accessToken || !session.user || !session.user.id || !session.user.role) {
+      return null;
+    }
+    return session as PersistedAuthSession;
+  } catch {
+    return null;
+  }
+}
+
+function persistSession(session: PersistedAuthSession): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+}
+
+function clearPersistedSession(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(AUTH_SESSION_KEY);
+}
+
+const persistedSession = readPersistedSession();
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  accessToken: null,
+  user: persistedSession?.user ?? null,
+  accessToken: persistedSession?.accessToken ?? null,
   error: null,
   submitting: false,
   login: async (username, password, role) => {
@@ -28,6 +62,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         displayName: response.user.name ?? response.user.username ?? username,
         title: response.user.active_role === "candidate" ? "求职者工作台" : "HR 工作台",
       };
+      persistSession({ user: authenticatedUser, accessToken: response.access_token });
       set({ user: authenticatedUser, accessToken: response.access_token, submitting: false });
       return authenticatedUser;
     } catch (error) {
@@ -38,5 +73,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   signIn: (role) =>
     set({ user: userFixtures.find((item) => item.role === role) ?? null, error: null }),
-  signOut: () => set({ user: null, accessToken: null, error: null, submitting: false }),
+  signOut: () => {
+    clearPersistedSession();
+    set({ user: null, accessToken: null, error: null, submitting: false });
+  },
 }));

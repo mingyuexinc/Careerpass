@@ -41,12 +41,14 @@ export function ProgressPage() {
       {!state.applications.length ? (
         <EmptyState
           title={
-            state.agentStatus === "not_started" ? "求职进程尚未开始" : "暂无投递记录"
+            state.agentStatus === "not_started"
+              ? "求职进程尚未开始"
+              : "当前没有可供匹配的岗位"
           }
           description={
             state.agentStatus === "not_started"
               ? "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"
-              : "当前投递轮次没有可以展示的岗位进度。"
+              : "本轮岗位均已筛选完成，暂未产生投递记录。"
           }
         />
       ) : (
@@ -70,9 +72,11 @@ export function ProgressPage() {
             <div>
               <h2>目标 Offer 达成进度</h2>
               <p>
-                {state.agentStatus === "finished"
-                  ? "目标已达成，系统已判定 Agent 运行结束。"
-                  : "继续推进求职沟通，当前状态会在 HR 更新后同步。"}
+                {state.agentStatus === "finished" && state.agentRun?.finishReason === "no_match"
+                  ? "本轮岗位已筛选完成，暂未产生投递结果。"
+                  : state.agentStatus === "finished"
+                    ? "目标已达成，系统已判定 Agent 运行结束。"
+                    : "继续推进求职沟通，当前状态会在 HR 更新后同步。"}
               </p>
             </div>
           </section>
@@ -102,7 +106,7 @@ export function ProgressPage() {
             {state.applications.map((application) => (
               <article className="application-card" key={application.id}>
                 <div className="application-top">
-                  <div>
+                  <div className="application-heading">
                     <h2>{application.jobTitle}</h2>
                     <p>
                       {application.company} · {application.location} · 最近沟通：
@@ -110,6 +114,10 @@ export function ProgressPage() {
                         ? new Date(application.lastContactAt).toLocaleString("zh-CN")
                         : "暂无"}
                     </p>
+                  </div>
+                  <div className="application-match-summary">
+                    <strong>推荐匹配得分 {application.matchScore}</strong>
+                    <p>{application.recommendationReason}</p>
                   </div>
                   <StatusBadge tone={deliveryProgressMeta[application.status].tone}>
                     {deliveryProgressMeta[application.status].label}

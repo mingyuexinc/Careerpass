@@ -449,6 +449,148 @@ select:focus {
 .two-col {
   grid-template-columns: 1.25fr 0.75fr;
 }
+.job-goal-section-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 6px;
+  border: 1px solid var(--color-line);
+  border-radius: 17px;
+  background: white;
+  box-shadow: var(--shadow-soft);
+}
+.job-goal-section-nav a {
+  min-width: 0;
+  padding: 13px 16px;
+  border-radius: 12px;
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.job-goal-section-nav a:hover,
+.job-goal-section-nav a.is-active {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-dark);
+}
+.job-goal-section-nav a.is-active {
+  box-shadow: inset 0 0 0 1px rgb(255 106 0 / 14%);
+}
+.job-goal-create-page {
+  display: grid;
+  gap: 20px;
+}
+.job-goal-create-page > .panel {
+  margin-bottom: 0;
+}
+.form-action-row {
+  display: flex;
+  justify-content: flex-start;
+}
+.agent-card-content,
+.agent-card-action {
+  min-width: 0;
+}
+.agent-card-action {
+  flex: 0 0 auto;
+}
+.agent-card-action .button {
+  white-space: nowrap;
+}
+.agent-start-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 12px;
+}
+.job-goal-list-panel {
+  margin-bottom: 0;
+}
+.job-goal-table {
+  margin-top: 18px;
+  overflow-x: auto;
+}
+.job-goal-table-head,
+.job-goal-record-list {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) minmax(160px, 0.8fr) minmax(200px, 1fr);
+  min-width: 680px;
+}
+.job-goal-table-head {
+  align-items: center;
+  gap: 22px;
+  padding: 0 14px 8px;
+  color: #8a94a1;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+.job-goal-record-list {
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.job-goal-record {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: inherit;
+  align-items: center;
+  gap: 22px;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #fff4e8;
+  transition: background 0.16s ease;
+}
+.job-goal-record:nth-child(even) {
+  border-color: #edf0f3;
+  background: #fff;
+}
+.job-goal-record:hover,
+.job-goal-record:nth-child(even):hover {
+  border-color: rgb(255 106 0 / 28%);
+  background: #fffaf5;
+}
+.job-goal-record-title {
+  overflow: hidden;
+  color: #8a4216;
+  font-size: 15px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-goal-record:nth-child(even) .job-goal-record-title {
+  color: #354253;
+}
+.job-goal-record-offer {
+  color: #a55d2b;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.job-goal-record:nth-child(even) .job-goal-record-offer {
+  color: #465568;
+}
+.job-goal-record-created {
+  color: #b8754b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.job-goal-record:nth-child(even) .job-goal-record-created {
+  color: #98a1ac;
+}
+.job-goal-record-count {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
 .panel {
   margin-bottom: 20px;
   padding: 24px;
@@ -464,6 +606,37 @@ select:focus {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+.application-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr) auto;
+  align-items: start;
+}
+.application-heading {
+  min-width: 0;
+}
+.application-heading h2 {
+  overflow-wrap: anywhere;
+}
+.application-match-summary {
+  min-width: 0;
+  max-width: 360px;
+  padding: 12px 14px;
+  border: 1px solid rgb(255 106 0 / 18%);
+  border-radius: 12px;
+  background: #fff8f2;
+}
+.application-match-summary strong {
+  display: block;
+  color: var(--color-brand-dark);
+  font-size: 13px;
+}
+.application-match-summary p {
+  margin: 6px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 .panel-heading p {
   margin-bottom: 0;
@@ -859,33 +1032,47 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
+  min-width: 0;
   padding: 20px;
   border-radius: 17px;
   background: linear-gradient(135deg, #fff8f2, #fff);
 }
+.agent-card h3 {
+  margin: 0 0 7px;
+  font-size: 17px;
+}
 .agent-card p {
-  margin: 7px 0 0;
+  margin: 0;
   color: var(--color-muted);
   font-size: 13px;
+  line-height: 1.6;
 }
 .agent-state {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 9px;
-  color: var(--color-text);
-  font-weight: 850;
+  gap: 7px;
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 .pulse {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--color-muted);
+  background: #9aa3ad;
 }
-.agent-state .pulse {
-  box-shadow: 0 0 0 4px #eef0f2;
+.agent-state.running {
+  color: var(--color-success);
 }
-.agent-card:has(.status-success) .pulse,
-.agent-state:has(+ p) .pulse {
+.agent-state.running .pulse {
+  background: var(--color-success);
+  box-shadow: 0 0 0 5px var(--color-success-soft);
+}
+.agent-state.finished {
+  color: var(--color-success);
+}
+.agent-state.finished .pulse {
   background: var(--color-success);
 }
 .offer-progress-panel {
@@ -1221,6 +1408,12 @@ select:focus {
   .conversation-list .panel-heading {
     margin-bottom: 10px;
   }
+  .application-top {
+    grid-template-columns: 1fr;
+  }
+  .application-match-summary {
+    max-width: none;
+  }
 }
 @media (max-width: 540px) {
   .login-card {
@@ -1235,6 +1428,16 @@ select:focus {
   .agent-card {
     display: block;
     padding: 22px;
+  }
+  .job-goal-section-nav a {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+  .agent-card-action {
+    margin-top: 16px;
+  }
+  .agent-card-action .button {
+    width: 100%;
   }
   .hero-orb {
     display: grid;

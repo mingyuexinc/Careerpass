@@ -104,7 +104,7 @@ describe("LoginPage", () => {
   });
 
   it.each([
-    ["candidate", ["使用指南", "求职资料上传", "求职任务创建", "求职进度查看"]],
+    ["candidate", ["使用指南", "求职资料上传", "求职任务", "求职进度查看"]],
     ["hr", ["使用指南", "岗位 JD 上传", "求职沟通", "投递进度更新"]],
   ] as const)(
     "matches the %s navigation labels from the HTML reference",

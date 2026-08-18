@@ -1,5 +1,6 @@
 import type {
   Application,
+  AgentRunSummary,
   Conversation,
   WorkspaceSnapshot,
   DeliveryProgress,
@@ -33,7 +34,7 @@ export interface JobRepository {
 export interface JobGoalRepository {
   getCurrentGoal(): Promise<JobGoal | null>;
   saveGoal(input: JobGoalInput): Promise<JobGoal>;
-  startAgent(): Promise<WorkspaceSnapshot>;
+  startAgent(): Promise<AgentRunSummary>;
 }
 
 export interface ApplicationRepository {

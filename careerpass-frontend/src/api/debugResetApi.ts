@@ -18,7 +18,13 @@ export async function resetCurrentAccount(accessToken: string): Promise<DebugRes
   });
   const payload = (await response.json()) as ApiEnvelope<DebugResetData>;
   if (response.status === 409) {
-    throw new Error("当前账号仍有任务处理中，请稍后再恢复初始状态。 ");
+    if (payload.msg === "reset is unavailable while account tasks are running") {
+      throw new Error("当前账号仍有任务处理中，请稍后再恢复初始状态。 ");
+    }
+    if (payload.msg === "account reset is blocked by dependent data") {
+      throw new Error("当前账号存在未清理的历史联调数据，请稍后重试。 ");
+    }
+    throw new Error(payload.msg || "恢复初始状态失败，请稍后重试。 ");
   }
   if (response.status === 403) {
     throw new Error("当前环境未开启调试数据恢复。 ");

@@ -17,12 +17,11 @@ describe("mock repository workspace lifecycle", () => {
       filters: "深圳",
     });
     const running = await mockRepository.startAgent();
-    expect(running.agentStatus).toBe("running");
-    expect(running.applications).toHaveLength(2);
-    expect(running.conversations).toHaveLength(running.applications.length);
-    expect(
-      running.conversations.map((conversation) => conversation.applicationId),
-    ).toEqual(running.applications.map((application) => application.id));
+    expect(running.status).toBe("running");
+    const snapshot = await mockRepository.getSnapshot();
+    expect(snapshot.agentStatus).toBe("running");
+    expect(snapshot.applications).toHaveLength(0);
+    expect(snapshot.conversations).toHaveLength(0);
   });
 
   it("keeps the resume failure state available to the data layer", async () => {
@@ -154,7 +153,7 @@ describe("mock repository workspace lifecycle", () => {
     await mockRepository.uploadResume(file);
     await mockRepository.setParseResult("succeeded");
     await mockRepository.saveGoal({ offerTarget: 1, title: "前端工程师", filters: "" });
-    await mockRepository.startAgent();
+    await mockRepository.loadRunningScenario();
     await mockRepository.updateApplicationStatus("application-001", "interview_1");
     expect((await mockRepository.getSnapshot()).applications[0].status).toBe(
       "interview_1",
@@ -170,7 +169,7 @@ describe("mock repository workspace lifecycle", () => {
     await mockRepository.uploadResume(file);
     await mockRepository.setParseResult("succeeded");
     await mockRepository.saveGoal({ offerTarget: 1, title: "前端工程师", filters: "" });
-    await mockRepository.startAgent();
+    await mockRepository.loadRunningScenario();
     const conversation = await mockRepository.sendConversationMessage(
       "conversation-001",
       "您好，请补充项目经验。",

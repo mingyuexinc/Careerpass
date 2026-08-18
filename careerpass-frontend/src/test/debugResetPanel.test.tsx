@@ -69,10 +69,17 @@ describe("DebugResetPanel", () => {
 
   it("keeps the current session when reset is rejected", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ code: 409, msg: "busy", data: null }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({
+          code: 409,
+          msg: "reset is unavailable while account tasks are running",
+          data: null,
+        }),
+        {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
 
     renderPanel();

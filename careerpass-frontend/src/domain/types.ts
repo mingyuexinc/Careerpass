@@ -4,6 +4,21 @@ export type ResumeParseStatus =
   "not_uploaded" | "uploading" | "processing" | "succeeded" | "failed";
 
 export type AgentStatus = "not_started" | "ready" | "running" | "finished";
+export type AgentRunState = "not_started" | "running" | "finished";
+
+export interface AgentRunSummary {
+  id: string;
+  status: "running" | "finished";
+  startedAt: string;
+  finishedAt: string | null;
+  finishReason: "offer_target_reached" | "no_match" | null;
+}
+
+export interface AgentRunStatus {
+  state: AgentRunState;
+  canStart: boolean;
+  run: AgentRunSummary | null;
+}
 
 export type DeliveryProgress =
   | "submitted"
@@ -81,6 +96,8 @@ export interface Application {
   status: DeliveryProgress;
   appliedAt: string;
   lastContactAt: string | null;
+  matchScore: number;
+  recommendationReason: string;
 }
 
 export interface Message {

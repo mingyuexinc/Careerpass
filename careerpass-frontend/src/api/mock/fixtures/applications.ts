@@ -12,6 +12,8 @@ export const applicationFixtures: Application[] = [
     status: "screening",
     appliedAt: "2026-08-08T09:00:00+08:00",
     lastContactAt: "2026-08-08T09:18:00+08:00",
+    matchScore: 82,
+    recommendationReason: "岗位画像高度匹配；能力层级同级；技能匹配度较高。",
   },
   {
     id: "application-002",
@@ -24,5 +26,7 @@ export const applicationFixtures: Application[] = [
     status: "submitted",
     appliedAt: "2026-08-08T09:02:00+08:00",
     lastContactAt: null,
+    matchScore: 76,
+    recommendationReason: "岗位画像同属软件开发方向；能力层级接近；技能覆盖较好。",
   },
 ];

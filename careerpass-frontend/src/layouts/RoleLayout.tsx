@@ -19,7 +19,7 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
       ? [
           { to: "/candidate", label: "使用指南", icon: "⌂" },
           { to: "/candidate/documents", label: "求职资料上传", icon: "↥" },
-          { to: "/candidate/job-goal", label: "求职任务创建", icon: "◎" },
+          { to: "/candidate/job-goal", label: "求职任务", icon: "◎" },
           { to: "/candidate/progress", label: "求职进度查看", icon: "▥" },
         ]
       : [

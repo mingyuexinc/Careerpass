@@ -1,5 +1,6 @@
 import type {
   Application,
+  AgentRunSummary,
   Conversation,
   WorkspaceSnapshot,
   DeliveryProgress,
@@ -12,10 +13,8 @@ import type {
 } from "../../domain/types";
 import { createReadyDocumentResult, getDocumentFileType } from "../candidateDocumentApi";
 import { getOfferCount, isValidDeliveryTransition } from "../../domain/mappings";
-import { applicationFixtures } from "./fixtures/applications";
-import { conversationFixtures } from "./fixtures/conversations";
 import { jobFixtures } from "./fixtures/jobs";
-import { createInitialSnapshot } from "./fixtures/scenarios";
+import { createInitialSnapshot, createRunningSnapshot } from "./fixtures/scenarios";
 import type { WorkspaceRepository } from "../repositories/interfaces";
 
 const delay = (milliseconds = 180) =>
@@ -59,6 +58,11 @@ class MockRepository implements WorkspaceRepository {
 
   async getSnapshot(): Promise<WorkspaceSnapshot> {
     await delay(80);
+    return clone(this.snapshot);
+  }
+
+  async loadRunningScenario(): Promise<WorkspaceSnapshot> {
+    this.snapshot = createRunningSnapshot();
     return clone(this.snapshot);
   }
 
@@ -243,7 +247,7 @@ class MockRepository implements WorkspaceRepository {
     return clone(goal);
   }
 
-  async startAgent(): Promise<WorkspaceSnapshot> {
+  async startAgent(): Promise<AgentRunSummary> {
     await delay(520);
     if (!this.snapshot.resume || this.snapshot.resume.parseStatus !== "succeeded") {
       throw new Error("简历解析成功后才能启动 Agent。");
@@ -251,18 +255,24 @@ class MockRepository implements WorkspaceRepository {
     if (!this.snapshot.jobGoal) throw new Error("请先创建求职目标。");
     if (this.snapshot.agentStatus === "finished")
       throw new Error("Agent 已结束，不能重复启动。");
-    if (this.snapshot.agentStatus === "running") return clone(this.snapshot);
+    if (this.snapshot.agentStatus === "running") {
+      return {
+        id: "mock-agent-run-001",
+        status: "running",
+        startedAt: "2026-08-17T00:00:00.000Z",
+        finishedAt: null,
+        finishReason: null,
+      };
+    }
     this.snapshot.agentStatus = "running";
     this.snapshot.round = 1;
-    if (this.snapshot.applications.length === 0) {
-      this.snapshot.applications = clone(applicationFixtures);
-      if (!this.snapshot.currentJob) {
-        this.snapshot.currentJob = { ...clone(jobFixtures[0]), uploaded: true };
-        this.snapshot.jobs = [this.snapshot.currentJob];
-      }
-      this.snapshot.conversations = clone(conversationFixtures);
-    }
-    return clone(this.snapshot);
+    return {
+      id: "mock-agent-run-001",
+      status: "running",
+      startedAt: "2026-08-17T00:00:00.000Z",
+      finishedAt: null,
+      finishReason: null,
+    };
   }
 
   async listApplications(): Promise<Application[]> {
