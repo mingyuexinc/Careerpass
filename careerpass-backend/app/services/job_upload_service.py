@@ -99,6 +99,7 @@ class JobUploadService:
                         hr_profile_id=hr_profile_id,
                         upload=stored_upload,
                         detected_mime_type=validated.mime_type,
+                        file_name=_safe_file_name(upload_input.filename),
                     )
                     await self._task_repository.create_or_get_queued_job_task(
                         hr_profile_id=hr_profile_id,
@@ -144,3 +145,12 @@ def _validate_upload(
         except UnicodeDecodeError as exc:
             raise InvalidJobUploadError from exc
     return _ValidatedUpload(content=content, file_type=extension, mime_type=expected_mime)
+
+
+def _safe_file_name(filename: str | None) -> str | None:
+    """Persist only the client-visible basename, never a submitted path."""
+
+    if not filename:
+        return None
+    name = PurePath(filename.replace("\\", "/")).name.strip()
+    return name[:255] or None

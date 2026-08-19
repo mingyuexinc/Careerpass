@@ -67,7 +67,7 @@ Slice 是实现边界，Integration Scenario 是交付边界，二者不要求�
 | S-06 求职目标创建 | 求职者提交求职目标 | 当前候选人获得一个不绑定简历、可更新的活跃求职目标 | S-01 | `implemented` |
 | S-07 Agent 投递启动 | 求职者点击启动 Agent | 校验当前目标、当前简历和画像匹配资格，绑定当前简历并从未启动进入运行中 | S-04、S-06 | `implemented` |
 | S-08 岗位匹配与投递 | Agent 运行入口成立后执行匹配 | 同步检查关联 HR 的全部可用结构化 JD（岗位池最多 20 个），使用本地简化算法生成结构化、可解释的 Match，并为成功匹配岗位创建 Application 和初始 ProgressEvent | S-03、S-07（Handoff Contract：Agent 已进入运行中） | `implemented` |
-| S-09 投递进度更新 | HR 更新一条授权投递记录 | 投递记录进入合法后续阶段，候选人可看到进度变化 | S-08 | `missing` |
+| [S-09 投递进度更新](slices/slice-09-application-progress-update/slice-spec.md) | HR 更新一条授权投递记录 | 投递记录进入合法后续阶段，候选人可看到进度变化 | S-08 | `implemented` |
 | S-10 AI 求职沟通 | HR 在授权投递上下文中查看或发送消息 | 系统形成会话和经过校验的回复草稿或模拟回复 | S-08、S-05；Agent 控制面最小能力 | `missing` |
 | S-11 业务资料删除 | 已授权用户选择一条简历、求职资料或岗位 JD 并提交删除 | 指定资料按资源类型的删除条件从当前可用资料中移除，并处理下游引用和对象清理 | S-01、S-02、S-04、S-05；资源状态与引用规则 | `missing` |
 
@@ -125,3 +125,5 @@ S-06 已完成目标 API、数据库迁移、前端真实 API 适配、实现级
 S-07 已完成 Agent 启动上下文、启动 API、S-06 目标冻结联动、前端创建/查看子页面和前后端联调；开发者已将 `IS-S07-01` 裁定为 `integration_delivered`，S-07 代码结果为 `implemented`。S-07 只负责启动校验、当前简历绑定和进入 `running`；结构化 JD 检查、匹配和投递由 S-08 负责。
 
 S-08 已完成 Match/Application/ProgressEvent 迁移、v0.1 确定性算法、S-07 同步编排、Application 查询 API 和 Candidate 进度页真实数据接入；开发者已完成真实前后端闭环复测，前述问题均已整改并通过验收。`IS-S08-01` 已标记为 `integration_delivered`，S-08 交付完成。
+
+S-09 已完成业务裁决、Slice Spec、Technical Design、Integration Contract 和 Integration Scenario；代码、前端真实 API 接入、原始 JD 文件名恢复、自动化验证、完整前后端演示和隔离 PostgreSQL 联调已完成，`IS-S09-01` 标记为 `integration_delivered`。S-09 复用现有 Application、ProgressEvent、Job、CandidateProfile、AgentRunContext 和 JobGoal，不新增业务实体或业务表；岗位文件名元数据由 `20260819_0014` 迁移落地。

@@ -75,6 +75,17 @@ export function isValidDeliveryTransition(
   return nextIndex > currentIndex;
 }
 
+export function getAllowedDeliveryTransitions(
+  current: DeliveryProgress,
+): DeliveryProgress[] {
+  if (deliveryProgressMeta[current].terminal) return [];
+  const currentIndex = deliveryProgressOrder.indexOf(current);
+  return [
+    ...deliveryProgressOrder.slice(currentIndex + 1),
+    "terminated",
+  ];
+}
+
 export function getOfferCount(statuses: DeliveryProgress[]): number {
   return statuses.filter((status) => status === "offer").length;
 }

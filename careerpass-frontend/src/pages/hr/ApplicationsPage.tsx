@@ -9,7 +9,10 @@ import {
   StatusBadge,
   Toast,
 } from "../../components/ui";
-import { deliveryProgressMeta, deliveryProgressOrder } from "../../domain/mappings";
+import {
+  deliveryProgressMeta,
+  getAllowedDeliveryTransitions,
+} from "../../domain/mappings";
 import type { DeliveryProgress } from "../../domain/types";
 import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
 import { useWorkspaceStore } from "../../stores/workspace-store";
@@ -37,19 +40,21 @@ export function ApplicationsPage() {
       {state.error ? (
         <ErrorState description={state.error} onRetry={state.clearError} />
       ) : null}
-      {!state.applications.length ? (
+      {!state.hrApplications.length ? (
         <EmptyState
           title="暂无投递记录"
           description="求职者启动 Agent 后，投递记录会在这里显示。"
         />
       ) : (
         <section className="application-list">
-          {state.applications.map((application) => (
+          {state.hrApplications.map((application) => (
             <article className="application-card" key={application.id}>
               <div className="application-top">
                 <div>
                   <h2>{application.jobTitle}</h2>
-                  <p>{application.company} · 候选人 Alex Chen</p>
+                  <p>
+                    {application.companyName ?? "未提供公司名称"} · {application.candidateName}
+                  </p>
                 </div>
                 <StatusBadge tone={deliveryProgressMeta[application.status].tone}>
                   {deliveryProgressMeta[application.status].label}
@@ -69,7 +74,10 @@ export function ApplicationsPage() {
                       void update(application.id, event.target.value as DeliveryProgress)
                     }
                   >
-                    {[...deliveryProgressOrder, "terminated" as const].map((status) => (
+                    <option value={application.status} disabled>
+                      {deliveryProgressMeta[application.status].label}
+                    </option>
+                    {getAllowedDeliveryTransitions(application.status).map((status) => (
                       <option key={status} value={status}>
                         {deliveryProgressMeta[status].label}
                       </option>

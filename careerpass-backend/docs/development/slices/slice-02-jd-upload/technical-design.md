@@ -14,7 +14,7 @@
 | 跨端 Integration Contract | [`IC-S02-JD-UPLOAD`](../../../../../docs/integration/slices/slice-02-jd-upload/integration-contract.md) |
 | 跨端 Integration Scenario | [`IS-S02-01`](../../../../../docs/integration/slices/slice-02-jd-upload/integration-scenario.md) |
 
-当前 S-02 的业务裁决已同步至业务基线。API、Job 迁移和 S-03 任务技术字段属于 Coding Agent 的实现决策；跨端上传结果、自动上传交互和 `.md` 格式限制已由 `IC-S02-JD-UPLOAD@0.3` 锁定。S-02 页面只展示“上传成功”或“上传失败”，不展示“解析中”、岗位摘要或解析结果；查询、删除和岗位摘要不属于本次联调范围。解析失败 Job 再次上传时，未删除 Job 由 S-03 复用并重建解析任务，已删除 Job 不复用。
+当前 S-02 的业务裁决已同步至业务基线。API、Job 迁移和 S-03 任务技术字段属于 Coding Agent 的实现决策；跨端上传结果、自动上传交互和 `.md` 格式限制已由 `IC-S02-JD-UPLOAD@0.3` 锁定。S-02 页面只展示“上传成功”或“上传失败”，不展示“解析中”、岗位摘要或解析结果；S-02 只负责上传，不负责岗位读取。HR 已上传岗位的持久化读取和跨角色恢复由 S-09 的独立 HR Job 查询边界负责，不改变 S-02 上传接口。解析失败 Job 再次上传时，未删除 Job 由 S-03 复用并重建解析任务，已删除 Job 不复用。
 
 ## 2. 接口设计边界
 
@@ -52,9 +52,10 @@ Job 1 ── 1 有效 JD 解析任务（由 S-02 创建/复用 queued 交接记�
 | `id` | UUID 主键 | Job 标识 |
 | `hr_profile_id` | 非空外键 | 资源归属 |
 | `stored_file_object_id` | 非空外键 | JD 文件关联 |
+| `file_name` | 可空字符串 | 上传时的原始文件名；历史 Job 为空时由 HR 查询使用安全回退文案 |
 | `created_at` | 非空时间 | 创建记录 |
 
-Job 不保存岗位展示字段、解析状态或 JD 版本号。删除状态的具体字段由 S-11 设计。
+Job 不保存岗位结构化展示字段、解析状态或 JD 版本号。删除状态的具体字段由 S-11 设计。
 
 ### 3.3 重复判断
 

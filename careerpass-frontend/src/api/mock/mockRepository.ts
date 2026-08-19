@@ -4,6 +4,7 @@ import type {
   Conversation,
   WorkspaceSnapshot,
   DeliveryProgress,
+  HrJob,
   Job,
   JobGoal,
   JobGoalInput,
@@ -26,6 +27,17 @@ function clone<T>(value: T): T {
 
 function now(): string {
   return new Date().toISOString();
+}
+
+function toHrJob(job: Job): HrJob {
+  return {
+    id: job.id,
+    fileName: job.fileName,
+    jobTitle: job.title,
+    companyName: job.company,
+    createdAt: job.uploadedAt,
+    parseStatus: "succeeded",
+  };
 }
 
 function contentFingerprint(bytes: Uint8Array): string {
@@ -207,6 +219,10 @@ class MockRepository implements WorkspaceRepository {
     });
     this.snapshot.jobs = [...this.snapshot.jobs, ...uploaded];
     this.snapshot.currentJob = uploaded.at(-1) ?? current;
+    this.snapshot.hrJobs = this.snapshot.jobs.map(toHrJob);
+    this.snapshot.currentHrJob = this.snapshot.currentJob
+      ? toHrJob(this.snapshot.currentJob)
+      : null;
     return clone(uploaded);
   }
 
@@ -221,6 +237,10 @@ class MockRepository implements WorkspaceRepository {
     if (!exists) throw new Error("没有找到对应的岗位 JD。");
     this.snapshot.jobs = this.snapshot.jobs.filter((job) => job.id !== id);
     this.snapshot.currentJob = this.snapshot.jobs.at(-1) ?? null;
+    this.snapshot.hrJobs = this.snapshot.jobs.map(toHrJob);
+    this.snapshot.currentHrJob = this.snapshot.currentJob
+      ? toHrJob(this.snapshot.currentJob)
+      : null;
     return clone(this.snapshot.jobs);
   }
 
@@ -278,6 +298,37 @@ class MockRepository implements WorkspaceRepository {
   async listApplications(): Promise<Application[]> {
     await delay(120);
     return clone(this.snapshot.applications);
+  }
+
+  async listHrApplications() {
+    await delay(120);
+    return clone(this.snapshot.hrApplications);
+  }
+
+  async updateHrApplicationStatus(
+    id: string,
+    status: DeliveryProgress,
+  ) {
+    await delay(280);
+    const hrApplication = this.snapshot.hrApplications.find((item) => item.id === id);
+    if (!hrApplication) throw new Error("没有找到对应的投递记录。");
+    if (!isValidDeliveryTransition(hrApplication.status, status)) {
+      throw new Error("该投递状态不能直接跳转到目标阶段。");
+    }
+    hrApplication.status = status;
+    const candidateApplication = this.snapshot.applications.find((item) => item.id === id);
+    if (candidateApplication) {
+      candidateApplication.status = status;
+      candidateApplication.lastContactAt = now();
+    }
+    const offerCount = getOfferCount(
+      this.snapshot.applications.map((item) => item.status),
+    );
+    if (this.snapshot.jobGoal && offerCount >= this.snapshot.jobGoal.offerTarget) {
+      this.snapshot.agentStatus = "finished";
+      this.snapshot.jobGoal.status = "achieved";
+    }
+    return clone(hrApplication);
   }
 
   async updateApplicationStatus(

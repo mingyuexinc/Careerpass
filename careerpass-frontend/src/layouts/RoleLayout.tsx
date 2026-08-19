@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/auth-store";
+import { useWorkspaceStore } from "../stores/workspace-store";
 import type { UserRole } from "../domain/types";
 
 interface NavigationItem {
@@ -13,6 +14,7 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const signOut = useAuthStore((state) => state.signOut);
+  const clearLocalState = useWorkspaceStore((state) => state.clearLocalState);
   const roleLabel = role === "candidate" ? "求职者工作台" : "HR 工作台";
   const items: NavigationItem[] =
     role === "candidate"
@@ -30,6 +32,7 @@ export function RoleLayout({ role, children }: { role: UserRole; children: React
         ];
 
   function handleSignOut() {
+    void clearLocalState();
     signOut();
     navigate("/login");
   }

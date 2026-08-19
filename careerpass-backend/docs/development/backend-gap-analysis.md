@@ -103,7 +103,7 @@ G1 认证与用户初始化
 | G4 岗位 JD 解析与入库 | HR 或受控流程提供岗位 JD、形成可用岗位输入 | `implemented` | S-02 Job 上传、S-03 Parser、快照迁移、内部验证 API、Capability Acceptance、真实 Compose 拓扑和 `IS-S03-01` | 当前版本关键缺口已关闭；正式前端接入仍属后续 F1 | S-02/S-03 岗位 JD Slice |
 | G5 求职目标 | 当前活跃目标、过滤条件、合法状态迁移、下游目标读取 | `implemented` | S-06 API、Repository、Service、Schema、迁移、单元/API 测试和真实前端场景 | 启动条件、运行冻结和启动时简历绑定归属 S-07 | S-07 Agent 启动 |
 | G6 岗位匹配 | 画像/JD/目标快照、过滤评分、结果追踪和查询 | `implemented` | S-08 Match/Application/ProgressEvent 模型、`20260817_0013` 迁移、v0.1 算法、同步服务和 Candidate 查询 API 已实现；非 acceptance 回归及本地 API/数据库冒烟通过 | 完整混合结果验收仍缺结构化 JD 快照和前端浏览器联调 | `IS-S08-01` Integration Verify |
-| G7 投递与进度 | 系统内投递记录、合法状态迁移、Progress Event、双方视图 | `partial` | S-08 已实现 submitted Application、初始 ProgressEvent 和 Candidate 投影；S-09 后续状态机及 HR 视图仍未实现 | 缺少 HR 投递查询、状态推进和后续事件 | G7/S-09 Slice |
+| G7 投递与进度 | 系统内投递记录、合法状态迁移、Progress Event、双方视图 | `implemented` | S-08 Candidate 投影与 S-09 HR 查询/状态更新、状态事件、Offer 联动、前端四字段视图和 PostgreSQL 集成测试已通过 | 后续仅维护回归；真实外部投递、多轮投递和实时推送不属于 G7 | [S-09 Slice](../development/slices/slice-09-application-progress-update/slice-spec.md) |
 | G8 AI 求职沟通 | 授权会话、消息、结构化回复草稿/模拟回复、审计 | `missing` | 当前后端文档描述目标；当前代码未发现实现 | 缺少会话/消息领域实现、工作流注册、授权闸门和受控模型调用 | G8 Slice |
 | G9 业务资料删除 | 简历、求职资料和岗位 JD 的受控删除 | `missing` | 当前前端流程、交付范围和能力映射已确认目标；当前代码未发现公开业务删除接口 | 三类资源的删除条件、引用影响、状态处理和对象清理边界未实现 | S-11 业务资料删除 |
 | F1 前端闭环验收 | 正式前端通过锁定契约完成完整受控流程 | `blocked` | 前端 Mock 页面已完成 | 后端 G4–G9 尚未形成真实可调用能力；角色、状态和契约仍未锁定 | 所有 G1–G9 完成后 |
@@ -256,12 +256,12 @@ G7 只管理系统内投递记录和进度，不执行真实招聘平台投递�
 
 | 差距 | 严重性 | 说明 | 关闭证据 |
 | --- | --- | --- | --- |
-| Application 和 Progress Event 未实现 | `critical` | 当前代码、迁移和 API 未发现完整投递与事件持久化能力。 | G7 领域/数据实现和迁移 |
-| 投递创建前置校验未实现 | `high` | 必须复核候选人、简历、活跃目标、岗位和可选匹配结果的归属/快照，不能只依赖资源 ID。 | Repository 归属测试和用例测试 |
-| 状态机未实现 | `critical` | 需要支持后续阶段直跳、不允许回退、终态不可修改，并记录事件。 | 状态机单元测试、接口测试和事件审计 |
-| 求职者与 HR 视图未实现 | `high` | 求职者只能读本人记录；HR 只能读授权岗位下的记录，并且只能修改单条记录。 | 双角色权限接口测试和前端 E2E |
+| Application 和 Progress Event | `closed` | S-08 已创建投递和初始事件；S-09 状态更新追加状态事件。 | S-09 Repository/Service、迁移和 PostgreSQL 集成测试 |
+| 投递创建与状态更新归属校验 | `closed` | Candidate、Job、Application、AgentRun 关系和 HR → Job → Application 授权链已实现。 | 归属测试、API 测试和完整联调 |
+| 状态机与 Offer 联动 | `closed` | 后续推进、终态、幂等、非法回退、ProgressEvent、AgentRun/JobGoal 联动均已验证。 | S-09 单元/API/集成测试和开发者演示 |
+| 求职者与 HR 视图 | `closed` | 求职者读取本人最新投递；HR 恢复本人岗位和投递，岗位卡片保留原始文件名且不泄露敏感字段。 | 前端真实 API 接入、跨角色联调和 `IS-S09-01` |
 
-投递记录只在系统内产生，不得将“创建 Application”解释为真实外部投递或自动跟进。
+投递记录只在系统内产生，不得将“创建 Application”解释为真实外部投递或自动跟进。G7 当前差距已关闭；真实外部投递、多轮投递、实时推送和 S-10 沟通仍不属于 G7。
 
 ### 4.8 G8：AI 求职沟通
 

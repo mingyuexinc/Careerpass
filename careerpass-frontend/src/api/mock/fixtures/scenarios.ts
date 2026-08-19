@@ -3,6 +3,15 @@ import { applicationFixtures } from "./applications";
 import { conversationFixtures } from "./conversations";
 import { jobFixtures } from "./jobs";
 
+const hrApplicationFixtures = applicationFixtures.map((application) => ({
+  id: application.id,
+  jobId: application.jobId,
+  jobTitle: application.jobTitle,
+  companyName: application.company,
+  candidateName: "Alex Chen",
+  status: application.status,
+}));
+
 export function createInitialSnapshot(): WorkspaceSnapshot {
   return {
     resume: null,
@@ -10,10 +19,13 @@ export function createInitialSnapshot(): WorkspaceSnapshot {
     supportingDocumentUploads: [],
     jobs: [],
     currentJob: null,
+    hrJobs: [],
+    currentHrJob: null,
     jobGoal: null,
     agentStatus: "not_started",
     round: 0,
     applications: [],
+    hrApplications: [],
     conversations: [],
   };
 }
@@ -34,6 +46,24 @@ export function createRunningSnapshot(): WorkspaceSnapshot {
     supportingDocumentUploads: [],
     jobs: [job],
     currentJob: job,
+    hrJobs: [
+      {
+        id: job.id,
+        fileName: job.fileName,
+        jobTitle: job.title,
+        companyName: job.company,
+        createdAt: job.uploadedAt,
+        parseStatus: "succeeded",
+      },
+    ],
+    currentHrJob: {
+      id: job.id,
+      fileName: job.fileName,
+      jobTitle: job.title,
+      companyName: job.company,
+      createdAt: job.uploadedAt,
+      parseStatus: "succeeded",
+    },
     jobGoal: {
       id: "goal-001",
       offerTarget: 1,
@@ -46,6 +76,7 @@ export function createRunningSnapshot(): WorkspaceSnapshot {
     agentStatus: "running",
     round: 1,
     applications,
+    hrApplications: structuredClone(hrApplicationFixtures),
     conversations: structuredClone(conversationFixtures),
   };
 }

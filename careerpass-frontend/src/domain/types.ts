@@ -75,6 +75,17 @@ export interface Job {
   uploaded: boolean;
 }
 
+export type HrJobParseStatus = "queued" | "running" | "succeeded" | "failed";
+
+export interface HrJob {
+  id: string;
+  fileName: string | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  createdAt: string;
+  parseStatus: HrJobParseStatus | null;
+}
+
 export interface JobGoal {
   id: string;
   offerTarget: number;
@@ -100,6 +111,15 @@ export interface Application {
   recommendationReason: string;
 }
 
+export interface HrApplication {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  companyName: string | null;
+  candidateName: string;
+  status: DeliveryProgress;
+}
+
 export interface Message {
   id: string;
   sender: "hr" | "agent";
@@ -121,10 +141,13 @@ export interface WorkspaceSnapshot {
   supportingDocumentUploads: SupportingDocumentUploadResult[];
   jobs: Job[];
   currentJob: Job | null;
+  hrJobs: HrJob[];
+  currentHrJob: HrJob | null;
   jobGoal: JobGoal | null;
   agentStatus: AgentStatus;
   round: number;
   applications: Application[];
+  hrApplications: HrApplication[];
   conversations: Conversation[];
 }
 

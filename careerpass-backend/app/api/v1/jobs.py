@@ -5,15 +5,37 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, UploadFile
 
 from app.api.dependencies.auth import get_current_identity
-from app.api.dependencies.services import get_job_upload_service
+from app.api.dependencies.services import get_job_service, get_job_upload_service
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
 from app.core.identity import CurrentIdentity
+from app.schemas.job import HrJobListResponse
 from app.schemas.job_upload import JobUploadResponse
 from app.schemas.response import success_response
+from app.services.job_service import JobService
 from app.services.job_upload_service import JobUploadInput, JobUploadService
 
 jobs_router = APIRouter(tags=["jobs"])
+
+
+@jobs_router.get("/jobs/hr/current")
+async def get_current_hr_jobs(
+    identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
+    service: Annotated[JobService, Depends(get_job_service)],
+) -> dict[str, object]:
+    if identity.active_role != "hr" or identity.hr_profile_id is None:
+        raise AppException(
+            status_code=403,
+            code=ErrorCode.FORBIDDEN,
+            message="HR identity required",
+        )
+    jobs = await service.list_current_for_hr(hr_profile_id=identity.hr_profile_id)
+    response = HrJobListResponse(jobs=jobs, total=len(jobs))
+    return success_response(
+        response.model_dump(mode="json"),
+        msg="current HR jobs",
+        code=ErrorCode.SUCCESS,
+    )
 
 
 @jobs_router.post("/jobs")

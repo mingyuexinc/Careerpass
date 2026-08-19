@@ -42,7 +42,26 @@ describe("workspace upload loading scopes", () => {
   });
 
   it("does not call candidate APIs while refreshing an authenticated HR workspace", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/jobs/hr/current")) {
+        return new Response(
+          JSON.stringify({ code: 200, msg: "current HR jobs", data: { jobs: [], total: 0 } }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/applications/hr/current")) {
+        return new Response(
+          JSON.stringify({
+            code: 200,
+            msg: "current HR applications",
+            data: { applications: [], total: 0 },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
     useAuthStore.setState({
       user: {
         id: "hr-001",
@@ -57,7 +76,18 @@ describe("workspace upload loading scopes", () => {
 
     await useWorkspaceStore.getState().refresh();
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/jobs/hr/current",
+      expect.objectContaining({
+        headers: { Authorization: "Bearer hr-token" },
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/applications/hr/current",
+      expect.objectContaining({
+        headers: { Authorization: "Bearer hr-token" },
+      }),
+    );
     expect(useWorkspaceStore.getState().initialized).toBe(true);
     useAuthStore.getState().signOut();
     fetchMock.mockRestore();

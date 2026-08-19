@@ -78,7 +78,17 @@
 - 本轮全部可用岗位均已筛选完成且 Application 数量为 0 时，Agent 以“当前没有可供匹配的岗位”结束；不要求 Offer 数量达到目标。
 - Application 展示推荐匹配得分和推荐理由；未形成 Application 的 Match 不在求职进度页展示。
 
-## 5. 异步可靠性
+## 5. 投递进度更新
+
+- S-09 查询当前 HR 所有未删除岗位下的当前首轮 Application；当前单 Candidate 受控演示以全局最新 AgentRunContext 作为当前首轮，不纳入历史 Candidate 的旧运行；当前演示不处理多 Candidate、多轮投递、历史轮次、跨 HR 查询或独立岗位授权配置。
+- HR 投递进度视图只展示岗位名称、公司名称、候选人姓名和当前投递进度；联系方式、简历原文、匹配信息、沟通全文和其它候选人资料不得进入该视图。
+- HR 只能更新当前 HR 有权访问的单条 Application；服务端必须同时校验 HR、Job、Candidate、Application 和 AgentRun 关系，不得仅凭 Application ID 授权。
+- Application 状态只能向后推进或进入 `terminated`；`offer` 和 `terminated` 为终态；同状态重复提交幂等成功且不新增事件；非法回退和终态修改失败且保持原状态。
+- 有效状态变化在同一事务中更新 Application、追加 `application_status_updated` ProgressEvent，并记录准确的前状态、后状态、`actor=hr` 和服务端时间。
+- Application 进入 `offer` 后，系统统计当前首轮 AgentRun 的 Offer 数量；达到 `offer_target` 时，AgentRun 转为 `finished`、结束原因为 `offer_target_reached`，JobGoal 转为 `achieved`。
+- AgentRun 结束后不能重新启动，但其它未终态 Application 仍可继续按状态机推进；已进入终态的 Application 不可修改。
+
+## 6. 异步可靠性
 
 - 同一简历和任务版本只能存在一个有效幂等任务。
 - PostgreSQL 中的 AsyncTaskRun 是权威状态，Redis/Celery 结果不是业务事实源。
@@ -86,7 +96,7 @@
 - 岗位 JD 上传成功后，在同一事务内为每个新 Job 创建或复用 queued 的 JD 解析任务；生产者不直接调用下游 Service、Dispatcher 或 Worker。
 - S-03 的临时技术失败自动重试，重试耗尽进入 `failed` 并记录 `retry_exhausted`；输入不可用和核心字段缺失立即进入 `failed`，核心字段缺失不创建快照。
 
-## 6. 安全
+## 7. 安全
 
 - 密码、令牌、联系方式、简历原文、内部路径、模型原始响应和异常堆栈不得进入非必要响应、日志或追踪。
 - 不可逆外部副作用必须有明确授权和审计；当前代码未实现真实外部投递或消息发送。

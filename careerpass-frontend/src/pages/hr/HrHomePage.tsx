@@ -14,18 +14,18 @@ import { useWorkspaceStore } from "../../stores/workspace-store";
 export function HrHomePage() {
   useWorkspaceRefresh();
   const user = useAuthStore((state) => state.user);
-  const { initialized, currentJob, applications, conversations } = useWorkspaceStore(
+  const { initialized, currentHrJob, hrApplications, conversations } = useWorkspaceStore(
     (state) => state,
   );
   if (!initialized) return <LoadingState />;
   const firstName = user?.displayName.split(" ")[0] ?? "HR";
   const hasConversations = conversations.length > 0;
-  const hasApplications = applications.length > 0;
+  const hasApplications = hrApplications.length > 0;
   const processStarted = hasConversations || hasApplications;
-  const jobStepStatus: StepMarkerStatus = currentJob ? "completed" : "active";
+  const jobStepStatus: StepMarkerStatus = currentHrJob ? "completed" : "active";
   const conversationStepStatus: StepMarkerStatus = hasConversations
     ? "completed"
-    : currentJob
+    : currentHrJob
       ? "active"
       : "waiting";
   const applicationStepStatus: StepMarkerStatus = hasApplications
@@ -40,7 +40,7 @@ export function HrHomePage() {
   }> = [
     {
       title: "上传岗位 JD",
-      description: currentJob
+      description: currentHrJob
         ? "岗位信息已准备，可以查看岗位摘要"
         : "准备供求职者 Agent 匹配的岗位信息",
       status: jobStepStatus,
@@ -70,17 +70,17 @@ export function HrHomePage() {
       <section className="hero-card">
         <div>
           <div className="eyebrow">HR WORKSPACE</div>
-          <h2>{currentJob ? "岗位已经准备就绪" : "先准备一个岗位 JD"}</h2>
+          <h2>{currentHrJob ? "岗位已经准备就绪" : "先准备一个岗位 JD"}</h2>
           <p>
-            {currentJob
-              ? `${currentJob.title} · ${currentJob.company}，现在可以查看沟通和投递进度。`
+            {currentHrJob
+              ? `${currentHrJob.jobTitle ?? "岗位 JD"} · ${currentHrJob.companyName ?? "待解析"}，现在可以查看投递进度。`
               : "上传岗位资料，为求职者 Agent 准备可匹配的岗位。"}
           </p>
           <Link
             className="button button-primary inline-button"
-            to={currentJob ? "/hr/applications" : "/hr/jobs"}
+            to={currentHrJob ? "/hr/applications" : "/hr/jobs"}
           >
-            {currentJob ? "查看投递进度" : "上传岗位 JD"} <span>→</span>
+            {currentHrJob ? "查看投递进度" : "上传岗位 JD"} <span>→</span>
           </Link>
         </div>
         <div className="hero-orb">⌁</div>
@@ -115,7 +115,7 @@ export function HrHomePage() {
               step={1}
               status={jobStepStatus}
               title="岗位 JD"
-              description={currentJob ? "已准备岗位数据" : "尚未上传"}
+              description={currentHrJob ? "已准备岗位数据" : "尚未上传"}
             />
             <StepListItem
               step={2}
@@ -141,7 +141,7 @@ export function HrHomePage() {
           本页面展示 HR 从岗位信息准备、候选人 Agent
           沟通到投递进度更新的完整流程。具体岗位和投递数据将在对应功能页面中展示。
         </p>
-        <span className="muted-text">当前已有 {applications.length} 条投递记录。</span>
+        <span className="muted-text">当前已有 {hrApplications.length} 条投递记录。</span>
       </section>
       <DebugResetPanel />
     </div>

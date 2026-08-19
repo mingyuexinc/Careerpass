@@ -1,5 +1,6 @@
 import type {
   Application,
+  HrApplication,
   AgentRunSummary,
   Conversation,
   WorkspaceSnapshot,
@@ -40,6 +41,8 @@ export interface JobGoalRepository {
 export interface ApplicationRepository {
   listApplications(): Promise<Application[]>;
   updateApplicationStatus(id: string, status: DeliveryProgress): Promise<Application>;
+  listHrApplications(): Promise<HrApplication[]>;
+  updateHrApplicationStatus(id: string, status: DeliveryProgress): Promise<HrApplication>;
 }
 
 export interface ConversationRepository {

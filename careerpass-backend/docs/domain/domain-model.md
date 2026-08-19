@@ -81,6 +81,10 @@
 | Application | `submitted →` 后续招聘阶段 | S-08 创建；S-09 推进 | 初始创建必须关联 `matched` Match；状态变化必须通过状态机和 ProgressEvent |
 | ProgressEvent | `application_created` 及后续合法事件 | Application 状态拥有者 | 事件追加保存，不得伪造前状态或绕过状态机 |
 
+S-09 的 HR Application 授权链为 `CurrentIdentity → HrProfile → Job → Application`，并复核 Application 关联的 Candidate 和 AgentRunContext。HR 视图只投影岗位名称、公司名称、候选人姓名和当前投递进度；内部标识不作为页面业务信息。
+
+S-09 有效状态变化追加 `application_status_updated` 事件，操作者主体为 `hr`。相同状态重复提交不追加事件；终态 Application 不再产生状态事件。Offer 达标时，S-09 可在同一事务内结束 AgentRun 并将 JobGoal 标记为 `achieved`，但不锁定其它未终态 Application。
+
 ## 5. 解析结果与匹配资格
 
 ### 简历解析
@@ -113,7 +117,7 @@ CandidateProfile 的工作年限是由非实习工作年月确定性派生的 `u
 | 顺序重复 | 同一 HrProfile 对相同文件内容，返回已有 Job 的幂等成功结果 |
 | 跨 HR 相同内容 | 当前 Demo 不裁决业务复用规则 |
 | 并发重复 | 当前 Demo 不纳入验收 |
-| Job 展示字段 | Job 不保存岗位名称、公司、地点、薪资或摘要；由 S-03 快照提供 |
+| Job 展示字段 | Job 保存上传时的原始 `file_name`；岗位名称、公司、地点、薪资或摘要仍由 S-03 快照提供 |
 | 批量上传 | 每个文件独立处理，允许部分成功 |
 | 解析交接 | 新 Job 与 queued S-03 任务在同一事务内创建/复用；S-02 不直接调用 S-03、Dispatcher 或 Worker |
 

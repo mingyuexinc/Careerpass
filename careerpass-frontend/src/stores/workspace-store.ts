@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { mockRepository } from "../api/mock/mockRepository";
+import { listCurrentHrJobs } from "../api/hrJobApi";
 import { listResumes, uploadResume as uploadResumeRequest } from "../api/resumeApi";
 import {
   createReadyDocumentResult,
@@ -9,7 +10,12 @@ import {
 import { useAuthStore } from "./auth-store";
 import { getCurrentJobGoal, saveCurrentJobGoal } from "../api/jobGoalApi";
 import { getCurrentAgentRun, startCurrentAgentRun } from "../api/agentRunApi";
-import { listCurrentApplications } from "../api/applicationApi";
+import {
+  ApiRequestError,
+  listCurrentApplications,
+  listCurrentHrApplications,
+  updateCurrentHrApplicationStatus,
+} from "../api/applicationApi";
 import type {
   DeliveryProgress,
   AgentRunSummary,
@@ -51,10 +57,13 @@ function toWorkspaceSnapshot(state: WorkspaceState): WorkspaceSnapshot {
     supportingDocumentUploads: state.supportingDocumentUploads,
     jobs: state.jobs,
     currentJob: state.currentJob,
+    hrJobs: state.hrJobs,
+    currentHrJob: state.currentHrJob,
     jobGoal: state.jobGoal,
     agentStatus: state.agentStatus,
     round: state.round,
     applications: state.applications,
+    hrApplications: state.hrApplications,
     conversations: state.conversations,
   };
 }
@@ -65,10 +74,13 @@ const emptySnapshot: WorkspaceSnapshot = {
   supportingDocumentUploads: [],
   jobs: [],
   currentJob: null,
+  hrJobs: [],
+  currentHrJob: null,
   jobGoal: null,
   agentStatus: "not_started",
   round: 0,
   applications: [],
+  hrApplications: [],
   conversations: [],
 };
 
@@ -86,6 +98,9 @@ async function runAction(
       : {};
     set({ loading: false, initialized: true, ...completedState });
   } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 401) {
+      useAuthStore.getState().signOut();
+    }
     const failedState: Partial<WorkspaceState> = loadingKey
       ? { [loadingKey]: false }
       : {};
@@ -110,10 +125,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   savingGoal: false,
   startingAgent: false,
   refresh: async () => {
-    set({ loading: true, error: null });
+    set({ loading: true, initialized: false, error: null });
     try {
-      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
-      snapshot.supportingDocumentUploads = [];
+      const snapshot: WorkspaceSnapshot = {
+        ...emptySnapshot,
+        supportingDocuments: [],
+        supportingDocumentUploads: [],
+        jobs: [],
+        currentJob: null,
+        hrJobs: [],
+        currentHrJob: null,
+        applications: [],
+        hrApplications: [],
+        conversations: [],
+      };
       const accessToken = useAuthStore.getState().accessToken;
       const activeRole = useAuthStore.getState().user?.role;
       if (accessToken && activeRole === "candidate") {
@@ -135,6 +160,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         });
         return;
       }
+      if (accessToken && activeRole === "hr") {
+        snapshot.hrJobs = await listCurrentHrJobs(accessToken);
+        snapshot.currentHrJob = snapshot.hrJobs.at(-1) ?? null;
+        snapshot.hrApplications = await listCurrentHrApplications(accessToken);
+        set({
+          ...snapshot,
+          agentRun: null,
+          agentRunCanStart: false,
+          loading: false,
+          initialized: true,
+        });
+        return;
+      }
       set({
         ...snapshot,
         agentRun: null,
@@ -143,6 +181,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         initialized: true,
       });
     } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        useAuthStore.getState().signOut();
+      }
       set({
         loading: false,
         error: error instanceof Error ? error.message : "数据加载失败。",
@@ -308,7 +349,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   },
   updateApplicationStatus: async (id, status) =>
     runAction(set, async () => {
-      await mockRepository.updateApplicationStatus(id, status);
+      const accessToken = useAuthStore.getState().accessToken;
+      const activeRole = useAuthStore.getState().user?.role;
+      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+      if (accessToken && activeRole === "hr") {
+        const updated = await updateCurrentHrApplicationStatus(id, status, accessToken);
+        snapshot.hrApplications = snapshot.hrApplications.map((item) =>
+          item.id === updated.id ? updated : item,
+        );
+        return snapshot;
+      }
+      await mockRepository.updateHrApplicationStatus(id, status);
       return mockRepository.getSnapshot();
     }),
   sendMessage: async (id, content) =>

@@ -43,6 +43,7 @@ class JobUploadRepository:
         hr_profile_id: UUID,
         upload: StoredUpload,
         detected_mime_type: str,
+        file_name: str | None = None,
     ) -> tuple[Job, bool]:
         file_object = await self._file_object_by_digest(upload.content_sha256)
         created_file_object = file_object is None
@@ -60,6 +61,7 @@ class JobUploadRepository:
         job = Job(
             hr_profile_id=hr_profile_id,
             stored_file_object_id=file_object.id,
+            file_name=file_name,
         )
         self._session.add(job)
         await self._session.flush()

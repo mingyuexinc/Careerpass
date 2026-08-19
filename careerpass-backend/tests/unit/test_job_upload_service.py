@@ -14,6 +14,7 @@ from app.services.job_upload_service import (
     InvalidJobUploadError,
     JobUploadInput,
     JobUploadService,
+    _safe_file_name,
     _validate_upload,
 )
 
@@ -37,7 +38,7 @@ class FakeJobRepository:
 
     async def create_job(self, *, upload: object, **_: object):
         content_sha256 = upload.content_sha256  # type: ignore[attr-defined]
-        job = SimpleNamespace(id=uuid4())
+        job = SimpleNamespace(id=uuid4(), file_name=_.get("file_name"))
         self.active[content_sha256] = job
         self.created.append(job)
         return job, True
@@ -65,6 +66,11 @@ def _service(tmp_path: Path) -> tuple[JobUploadService, FakeJobRepository, FakeT
 
 def test_job_upload_validation_accepts_markdown_only() -> None:
     assert _validate_upload(b"# Role", "role.md", "text/markdown").file_type == "md"
+
+
+def test_job_upload_persists_only_the_original_basename() -> None:
+    assert _safe_file_name(r"C:\\fake\\001-ai-engineer.md") == "001-ai-engineer.md"
+    assert _safe_file_name("  002-data.md  ") == "002-data.md"
 
 
 @pytest.mark.parametrize(
@@ -104,6 +110,7 @@ def test_batch_upload_creates_independent_jobs_and_allows_partial_failure(tmp_pa
     result = asyncio.run(execute())
     assert [item.outcome for item in result.results] == ["created", "failed", "created"]
     assert len(repository.created) == 2
+    assert [job.file_name for job in repository.created] == ["first.md", "second.md"]
     assert len(tasks.calls) == 2
     assert all(call["job_id"] in {job.id for job in repository.created} for call in tasks.calls)
     assert list(tmp_path.iterdir())

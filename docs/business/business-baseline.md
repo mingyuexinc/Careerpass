@@ -115,6 +115,12 @@
 | `BF-RULE-036` | `confirmed` | 当本轮全部可用岗位均已筛选完成且本轮 Application 数量为 0 时，Agent 以“没有可供匹配的岗位”结束；该结束条件不要求 Offer 数量达到目标。 |
 | `BF-RULE-037` | `confirmed` | 求职进度页展示已创建 Application 对应的推荐匹配得分和推荐理由；未形成 Application 的 Match 不展示。 |
 | `BF-RULE-038` | `confirmed` | 当前演示候选人的匹配候选集为关联 HR 已上传且可用的全部结构化岗位 JD；演示只设置一个 HR 与一个 Candidate，不单独实现跨 HR 授权筛选。 |
+| `BF-RULE-039` | `confirmed` | HR 投递进度页只展示岗位名称、公司名称、候选人姓名和当前投递进度；Application、Job 等内部标识可用于接口操作，但不作为页面业务信息展示。 |
+| `BF-RULE-040` | `confirmed` | 当前演示中，HR 查询当前 HR 所有未删除岗位下的当前首轮 Application；单 Candidate 受控演示以全局最新 AgentRunContext 作为当前首轮，不纳入历史 Candidate 的旧运行；不实现多候选人、多轮投递、历史轮次、跨 HR 查询或独立岗位授权配置。 |
+| `BF-RULE-041` | `confirmed` | HR 更新必须作用于当前 HR 有权访问的单条 Application，并同时校验 Job 归属、Candidate 关系和 Application 关系；不得仅凭 Application ID 授权。 |
+| `BF-RULE-042` | `confirmed` | Application 状态更新只能向后推进或进入 `terminated`；同状态重复提交按幂等成功处理且不新增 ProgressEvent；非法回退和终态修改失败且保持原状态。 |
+| `BF-RULE-043` | `confirmed` | Application 进入 `offer` 后，系统统计当前首轮 AgentRun 的 Offer 数量；达到 `offer_target` 时，AgentRun 进入 `finished`、结束原因为 `offer_target_reached`，当前 JobGoal 转为 `achieved`。 |
+| `BF-RULE-044` | `confirmed` | AgentRun 因 Offer 达标结束后，当前轮次其它未终态 Application 仍允许 HR 按合法状态机继续推进；AgentRun 不得重新启动，已进入终态的 Application 不得修改。 |
 
 ## 6. 智能体和投递状态
 
@@ -182,6 +188,6 @@
 
 | 事项 | 当前状态 | 影响 | 裁决位置 |
 | --- | --- | --- | --- |
-| 当前业务裁决事项 | `confirmed` | 当前没有阻塞 S-08 的业务未决事项；算法权重、阈值、排序和推荐理由模板由 S-08 Technical Design 作为工程参数锁定 | [`matching-algorithm-v0.1.md`](matching/matching-algorithm-v0.1.md)；S-08 Technical Design |
+| 当前业务裁决事项 | `confirmed` | S-08 和 S-09 当前业务事项已完成裁决；S-09 的 HR 可见字段、查询范围、合法状态更新和 Offer 达标联动由本基线定义，接口与实现细节由对应 Slice 文档锁定 | [`matching-algorithm-v0.1.md`](matching/matching-algorithm-v0.1.md)；S-08/S-09 Slice 文档 |
 
 待裁决事项只阻塞受其影响的 Slice，不阻塞已经使用 `confirmed` 事实且业务边界独立的 Slice。

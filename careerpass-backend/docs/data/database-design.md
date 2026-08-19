@@ -19,6 +19,7 @@
 | `20260816_0011` | `implemented` | S-06 `job_goals` 当前求职目标、Candidate 唯一约束和字段 CHECK 约束 |
 | `20260817_0012` | `implemented` | AgentRunContext 运行上下文、当前目标/简历/画像绑定、状态和幂等唯一约束 |
 | `20260817_0013` | `implemented` | Match、Application、ProgressEvent、算法版本、评分快照和 `run_id + job_id` 幂等约束 |
+| `20260819_0014` | `implemented` | Job 上传原始文件名 `file_name`，用于 HR 岗位卡片恢复展示 |
 
 ## 2. 已实现表
 
@@ -46,9 +47,10 @@
 | `jobs` | `id` | UUID，主键 | 岗位资源标识 | `implemented` |
 | `jobs` | `hr_profile_id` | UUID，非空，外键 → `hr_profiles.id` | 岗位所有者 | `implemented` |
 | `jobs` | `stored_file_object_id` | UUID，非空，外键 → `stored_file_objects.id` | 唯一 JD 文件关联 | `implemented` |
+| `jobs` | `file_name` | `VARCHAR(255)`，可空（历史记录兼容） | 上传时保存的原始文件名，用于 HR 上传卡片展示 | `implemented` |
 | `jobs` | `created_at` | `TIMESTAMPTZ`，非空 | 创建时间 | `implemented` |
 
-Job 不新增以下字段：
+Job 不新增以下解析或业务字段：
 
 | 不保存字段 | 事实来源 |
 | --- | --- |
@@ -113,7 +115,7 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | --- | --- |
 | `Match` | S-08 独立保存岗位筛选结果、算法版本、已脱敏输入快照、三维分数、总分、状态、推荐理由和原因码；`UNIQUE(run_id, job_id)`；`slice-confirmed` |
 | `Application` | S-08 为通过投递筛选的 Match 创建；绑定 Candidate、Job、AgentRun 和 Match，初始状态为 `submitted`；`UNIQUE(run_id, job_id)`；`slice-confirmed` |
-| `ProgressEvent` | S-08 创建 Application 时写入 `application_created` 初始事件；后续状态事件由 S-09/S-10 使用；`slice-confirmed` |
+| `ProgressEvent` | S-08 创建 Application 时写入 `application_created` 初始事件；S-09 写入 `application_status_updated` 状态事件；`slice-confirmed` |
 | `Conversation`、`Message` | 由沟通 Slice 负责 |
 
 ### 6.1 S-08 计划表
@@ -125,6 +127,8 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | `progress_events` | Application、事件类型、前状态、后状态、操作者主体、时间和脱敏载荷 | 按 Application/时间查询；不得保存原文和凭证 | 保存 Application 创建及后续状态事件 |
 
 S-08 只保存已解析业务语义快照，不保存 JD/简历原文、文件路径、联系方式或模型原始响应。具体类型、枚举和索引由 `20260817_0013` 和 S-08 Technical Design 实现。
+
+S-09 MVP 复用现有 `applications`、`progress_events`、`jobs`、`candidate_profiles`、`agent_run_contexts` 和 `job_goals` 表；为岗位跨角色恢复增加 `jobs.file_name` 上传元数据字段，由 `20260819_0014` 落地，不新增业务实体或业务表。状态更新、事件追加、Offer 统计、AgentRun 结束和 JobGoal 达成在同一事务内完成；HR 查询通过 Job 归属和 Application 关系完成授权过滤。
 
 ## 7. 变更规则
 

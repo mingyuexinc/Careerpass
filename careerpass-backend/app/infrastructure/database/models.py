@@ -228,6 +228,7 @@ class Job(Base):
         ForeignKey("stored_file_objects.id", ondelete="RESTRICT"),
         nullable=False,
     )
+    file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

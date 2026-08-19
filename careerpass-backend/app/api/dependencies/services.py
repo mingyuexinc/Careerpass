@@ -8,6 +8,7 @@ from fastapi import Depends, Request
 from app.core.config import Settings, get_settings
 from app.infrastructure.storage.controlled import ControlledJobDescriptionStorage
 from app.repositories.agent_run_repository import AgentRunRepository
+from app.repositories.application_repository import ApplicationRepository
 from app.repositories.async_task_repository import AsyncTaskRepository
 from app.repositories.candidate_preparation_repository import CandidatePreparationRepository
 from app.repositories.debug_reset_repository import DebugResetRepository
@@ -15,20 +16,23 @@ from app.repositories.document_parsing_repository import DocumentParsingReposito
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.job_description_repository import JobDescriptionRepository
 from app.repositories.job_goal_repository import JobGoalRepository
+from app.repositories.job_repository import JobRepository
 from app.repositories.job_upload_repository import JobUploadRepository
 from app.repositories.matching_repository import MatchingRepository
 from app.repositories.object_storage_repository import ObjectStorageRepository
 from app.repositories.user_repository import UserRepository
 from app.services.agent_run_service import AgentRunService
+from app.services.application_service import ApplicationService
 from app.services.candidate_preparation_service import CandidatePreparationService
 from app.services.debug_reset_service import DebugResetService
 from app.services.document_parsing_service import DocumentParsingService
 from app.services.job_description_service import JobDescriptionService
 from app.services.job_goal_service import JobGoalService
+from app.services.job_service import JobService
 from app.services.job_upload_service import JobUploadService
 from app.services.login_service import LoginService
-from app.services.registration_service import RegistrationService
 from app.services.matching_service import MatchingService
+from app.services.registration_service import RegistrationService
 
 
 async def get_registration_service(
@@ -85,6 +89,12 @@ async def get_job_upload_service(
         )
 
 
+async def get_job_service(request: Request) -> AsyncIterator[JobService]:
+    """Build the request-scoped HR Job query service."""
+    async with request.app.state.database.session_factory() as session:
+        yield JobService(repository=JobRepository(session))
+
+
 async def get_job_description_service(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
@@ -116,6 +126,12 @@ async def get_matching_service(request: Request) -> AsyncIterator[MatchingServic
     """Build the request-scoped S-08 query service."""
     async with request.app.state.database.session_factory() as session:
         yield MatchingService(repository=MatchingRepository(session))
+
+
+async def get_application_service(request: Request) -> AsyncIterator[ApplicationService]:
+    """Build the request-scoped S-09 Application service."""
+    async with request.app.state.database.session_factory() as session:
+        yield ApplicationService(repository=ApplicationRepository(session))
 
 
 async def get_debug_reset_service(
