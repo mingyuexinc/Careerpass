@@ -46,7 +46,7 @@ def test_adapter_uses_json_mode_and_returns_only_validated_profile() -> None:
             )
         )
 
-    profile = asyncio.run(_adapter(handler).extract_profile("## Target role\nBackend Engineer"))
+    profile = asyncio.run(_adapter(handler).extract_profile("## Target role\nBackend Engineer\nPython"))
 
     assert profile.target_job_titles == ["Backend Engineer"]
     assert profile.skills[0].name == "Python"
@@ -165,7 +165,51 @@ def test_adapter_retries_when_explicit_experience_section_was_omitted() -> None:
     assert len(bodies) == 2
     assert profile.project_experience_summary[0].name == "Explicit project"
     retry_message = bodies[1]["messages"][0]["content"]
-    assert "Recover only explicit work and project" in retry_message
+    assert "Recover only explicit skills, work, and project" in retry_message
+
+
+def test_adapter_rejects_explicit_skill_section_when_recovery_still_omits_skills() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return _response(
+                json.dumps(
+                    {
+                        "full_name": "Candidate",
+                        "phone": None,
+                        "email": "candidate@example.com",
+                        "target_job_titles": [],
+                        "skills": [],
+                        "work_experience_summary": [],
+                        "project_experience_summary": [],
+                        "years_of_experience": "unknown",
+                        "education": "Bachelor",
+                        "expected_location": None,
+                        "expected_salary": None,
+                    }
+                )
+            )
+        return _response(
+            json.dumps(
+                {
+                    "skills": [],
+                    "work_experience_summary": [],
+                    "project_experience_summary": [],
+                }
+            )
+        )
+
+    with pytest.raises(QwenProfileValidationError):
+        asyncio.run(
+            _adapter(handler).extract_profile(
+                "Candidate candidate@example.com Bachelor\n# 专业技能\nPython"
+            )
+        )
+
+    assert calls == 2
 
 
 def test_adapter_rejects_repeated_omission_of_an_explicit_section() -> None:
@@ -268,7 +312,7 @@ def test_adapter_repairs_schema_name_education_from_explicit_source_section() ->
     assert profile.education == "Example University Bachelor"
 
 
-def test_canonical_pdf_source_uses_deterministic_core_and_experience_only_qwen_schema() -> None:
+def test_canonical_pdf_source_uses_deterministic_core_and_recovery_schema() -> None:
     captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -276,6 +320,7 @@ def test_canonical_pdf_source_uses_deterministic_core_and_experience_only_qwen_s
         return _response(
             json.dumps(
                 {
+                    "skills": [{"name": "RAG", "proficiency": "advanced"}],
                     "work_experience_summary": [
                         {
                             "experience_type": "work",
@@ -295,7 +340,7 @@ def test_canonical_pdf_source_uses_deterministic_core_and_experience_only_qwen_s
     canonical = (
         "候选人\ncandidate@example.com 13800000000\n# 工作经历\n"
         "Example Company Engineer 2024-01 present\n# 项目经历\nExample Project\n"
-        "# 教育经历\nExample University Bachelor"
+        "# 专业技能\nRAG\n# 教育经历\nExample University Bachelor"
     )
     profile = asyncio.run(
         _adapter(handler).extract_profile(compose_resume_extraction_source(canonical, ""))
@@ -306,6 +351,7 @@ def test_canonical_pdf_source_uses_deterministic_core_and_experience_only_qwen_s
     assert profile.email == "candidate@example.com"
     assert profile.education == "Example University Bachelor"
     assert profile.work_experience_summary[0].company_name == "Example Company"
+    assert profile.skills[0].name == "RAG"
     assert profile.years_of_experience != "unknown"
 
 

@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from pathlib import Path
 from uuid import uuid4
 
 from app.parsers.job_description import parse_job_description
@@ -107,3 +106,43 @@ def test_two_level_difference_gives_zero_level_dimension() -> None:
         goal=JobGoalMatchingSummary(title="AI 应用开发"),
     )
     assert result.level_score == 0
+
+
+def test_experience_highlights_are_used_as_candidate_skill_evidence() -> None:
+    candidate = CandidateMatchingSummary(
+        target_job_titles=["AI 应用开发工程师"],
+        experience_titles=["AI 应用开发工程师"],
+        experience_highlights=["使用 Python、FastAPI 和 RAG 开发 Agent 应用"],
+        years_of_experience="3年",
+    )
+
+    result = evaluate(
+        job=_job(), candidate=candidate, goal=JobGoalMatchingSummary(title="AI 应用开发")
+    )
+
+    assert result.skill_score == 83.33
+    assert result.input_snapshot["algorithm_input"]["candidate"]["experience_highlights"] == [
+        "使用 Python、FastAPI 和 RAG 开发 Agent 应用"
+    ]
+
+
+def test_project_technologies_are_used_when_top_level_skills_are_empty() -> None:
+    candidate = CandidateMatchingSummary(
+        target_job_titles=["AI 应用开发工程师"],
+        experience_titles=["AI 应用开发工程师"],
+        project_technologies=["Python", "FastAPI", "RAG", "Agent", "Docker"],
+        years_of_experience="3年",
+    )
+
+    result = evaluate(
+        job=_job(), candidate=candidate, goal=JobGoalMatchingSummary(title="AI 应用开发")
+    )
+
+    assert result.skill_score == 100.0
+    assert result.input_snapshot["algorithm_input"]["candidate"]["project_technologies"] == [
+        "Python",
+        "FastAPI",
+        "RAG",
+        "Agent",
+        "Docker",
+    ]

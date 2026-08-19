@@ -149,9 +149,9 @@ class ResumeProfileExtractionV1(BaseModel):
                 if normalized and normalized not in existing:
                     skills.append(Skill(name=technology.strip()))
                     existing.add(normalized)
-        if len(skills) == len(self.skills):
-            return self
-        return self.model_copy(update={"skills": skills})
+        if len(skills) != len(self.skills):
+            self.skills = skills
+        return self
 
     @model_validator(mode="after")
     def reject_completely_empty_extraction(self) -> "ResumeProfileExtractionV1":

@@ -20,8 +20,8 @@ from app.infrastructure.database.models import (
     ParsedJobDescriptionSnapshot,
     ProgressEvent,
 )
-from app.schemas.application import ApplicationItem
 from app.schemas.agent_run import AgentRunSummary
+from app.schemas.application import ApplicationItem
 from app.schemas.job_description import ParsedJobDescriptionFields
 from app.services.matching_algorithm_v0_1 import (
     CandidateMatchingSummary,
@@ -98,8 +98,10 @@ class MatchingRepository:
             skills=_names(profile.skills),
             experience_titles=_experience_values(profile.work_experience_summary, "title"),
             experience_summaries=_experience_values(profile.work_experience_summary, "summary"),
+            experience_highlights=_experience_highlights(profile.work_experience_summary),
             project_technologies=_project_technologies(profile.project_experience_summary),
             project_summaries=_experience_values(profile.project_experience_summary, "summary"),
+            project_highlights=_experience_highlights(profile.project_experience_summary),
             years_of_experience=profile.years_of_experience,
         )
         return MatchingRunInput(
@@ -255,6 +257,15 @@ def _names(values: list[dict[str, object]] | None) -> list[str]:
 
 def _experience_values(values: list[dict[str, object]] | None, key: str) -> list[str]:
     return [str(value.get(key, "")) for value in values or [] if str(value.get(key, "")).strip()]
+
+
+def _experience_highlights(values: list[dict[str, object]] | None) -> list[str]:
+    result: list[str] = []
+    for value in values or []:
+        highlights = value.get("highlights", [])
+        if isinstance(highlights, list):
+            result.extend(str(item) for item in highlights if str(item).strip())
+    return result
 
 
 def _project_technologies(values: list[dict[str, object]] | None) -> list[str]:

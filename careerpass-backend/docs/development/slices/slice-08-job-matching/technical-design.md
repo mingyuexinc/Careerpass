@@ -15,7 +15,7 @@ S-08 不使用 Celery、Redis、外部匹配服务或大模型。
 | 输入 | 来源 | 使用方式 |
 | --- | --- | --- |
 | `AgentRunContext` | S-07 | Candidate、JobGoal、Resume、CandidateProfile 和目标快照的权威关联 |
-| CandidateProfile | S-04 | 岗位经历、项目经历、技能、工作年限和层级判断字段 |
+| CandidateProfile | S-04 | 岗位经历、项目经历、技能、工作年限和层级判断字段；工作/项目 `highlights` 作为技能证据 |
 | JobGoal 快照 | S-07 | 目标岗位名称和用户硬过滤条件；`offer_target` 不参与评分 |
 | ParsedJobDescriptionSnapshot | S-03 | 五项核心 JD 字段；仅 `parse_succeeded + matching_ready` 可用 |
 | Job | S-02 | 岗位归属、删除状态和岗位标识 |
@@ -61,11 +61,14 @@ Repository 必须在查询时校验 Candidate、AgentRun、JobGoal、Resume、Ca
 ### 3.3 技能匹配
 
 - 从 `responsibilities` 和 `requirements` 中只提取技能项；
+- 候选人技能证据包括顶层 `skills`、项目 `technologies`、工作/项目 `highlights`，以及工作/项目标题和摘要中的明确技术事实；
 - 工作年限、学历、证书、管理职责和层级描述不进入技能项；
 - 技能同义词使用受控归一化表，例如 `大模型/LLM`、`Agent/智能体`、`Function Calling/函数调用`；
 - `skill_score = matched_skill_count / required_skill_count × 100`；
 - 没有可提取技能项或候选人无明确技能证据时，技能分数为 `0`；
 - 技能缺失不单独淘汰岗位。
+
+`Match.input_snapshot.algorithm_input.candidate` 必须保存实际使用的 `experience_highlights` 和 `project_highlights`，用于结果追溯；该输入扩展不新增数据库字段，沿用现有 JSONB 快照。
 
 ### 3.4 硬过滤
 
@@ -247,6 +250,8 @@ GET /api/v1/applications/current
 - [x] Match/Application/ProgressEvent 字段、索引和迁移已实现；
 - [x] v0.1 参数和算法单测已实现；
 - [x] 前端查询字段、得分/理由和空状态已同步；
+- [x] 固定 `resume_01.pdf` 的解析回归已通过：`CandidateProfile.skills` 非空，工作/项目 `highlights` 已进入匹配输入快照；
+- [x] 新运行已完成 7 个岗位的 Match 评估，2 个北京岗位被硬过滤，5 个岗位创建 Application；历史“2 个匹配”因无可比历史输入快照未作为算法参数调整依据；
 - [x] S-07 同步编排、Application 查询 API 和幂等检查已实现；
 - [x] 后端非 acceptance 回归、前端类型检查与测试、`git diff --check` 已通过；
 - [x] 真实 API/数据库/前端闭环演示已通过；开发者复测已覆盖此前问题，`IS-S08-01` 已标记为 `integration_delivered`。

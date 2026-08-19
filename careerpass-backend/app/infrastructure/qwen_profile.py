@@ -15,6 +15,7 @@ from app.parsers.resume_pdf import canonical_resume_text
 from app.schemas.document_parsing import (
     ProjectExperience,
     ResumeProfileExtractionV1,
+    Skill,
     WorkExperience,
     derive_years_of_experience,
 )
@@ -37,6 +38,14 @@ _PROJECT_SECTION_MARKERS = (
     "project experience",
     "projects",
 )
+_SKILL_SECTION_MARKERS = (
+    "专业技能",
+    "技能",
+    "技术栈",
+    "skills",
+    "technical skills",
+    "tech stack",
+)
 _EDUCATION_SECTION_MARKERS = (
     "教育背景",
     "教育经历",
@@ -48,6 +57,7 @@ _PHONE_PATTERN = re.compile(r"(?<!\d)(?:\+?86[- ]?)?1[3-9]\d(?:[- ]?\d){8}(?!\d)
 
 class _ExperienceRecoveryV1(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    skills: list[Skill] = Field(default_factory=list)
     work_experience_summary: list[WorkExperience] = Field(default_factory=list)
     project_experience_summary: list[ProjectExperience] = Field(default_factory=list)
 
@@ -109,7 +119,7 @@ class QwenProfileAdapter:
                         else None
                     )
                     recovery_reasons: tuple[str, ...] = (
-                        ("work_experience", "project_experience")
+                        ("work_experience", "project_experience", "skills")
                         if has_canonical_source
                         else ()
                     )
@@ -140,28 +150,18 @@ class QwenProfileAdapter:
                                 recovered = _validated_experience_recovery(
                                     response.json(), extracted_markdown
                                 )
-                                profile = recovery_profile.model_copy(
-                                    update={
-                                        **(
-                                            {
-                                                "work_experience_summary": (
-                                                    recovered.work_experience_summary
-                                                )
-                                            }
-                                            if _recovery_needs_work(recovery_reasons)
-                                            else {}
-                                        ),
-                                        **(
-                                            {
-                                                "project_experience_summary": (
-                                                    recovered.project_experience_summary
-                                                )
-                                            }
-                                            if _recovery_needs_projects(recovery_reasons)
-                                            else {}
-                                        ),
-                                    }
-                                )
+                                updates: dict[str, object] = {}
+                                if _recovery_needs_skills(recovery_reasons):
+                                    updates["skills"] = recovered.skills
+                                if _recovery_needs_work(recovery_reasons):
+                                    updates["work_experience_summary"] = (
+                                        recovered.work_experience_summary
+                                    )
+                                if _recovery_needs_projects(recovery_reasons):
+                                    updates["project_experience_summary"] = (
+                                        recovered.project_experience_summary
+                                    )
+                                profile = _rebuild_profile(recovery_profile, **updates)
                             else:
                                 profile = _validated_profile(response.json(), extracted_markdown)
                             invalid_facts = _invalid_explicit_source_facts(
@@ -177,13 +177,12 @@ class QwenProfileAdapter:
                                     recovery_reasons = invalid_facts
                                     continue
                                 raise QwenProfileValidationError
-                            return profile.model_copy(
-                                update={
-                                    "years_of_experience": derive_years_of_experience(
-                                        profile.work_experience_summary,
-                                        parsed_on=date.today(),
-                                    )
-                                }
+                            return _rebuild_profile(
+                                profile,
+                                years_of_experience=derive_years_of_experience(
+                                    profile.work_experience_summary,
+                                    parsed_on=date.today(),
+                                ),
                             )
                         except QwenProfileValidationError:
                             if attempt == 1:
@@ -275,21 +274,28 @@ def _experience_recovery_payload(
         if _recovery_needs_projects(reasons)
         else "Set project_experience_summary to an empty array; existing projects are valid. "
     )
+    skills_instruction = (
+        "Recover every explicit skill from the resume's professional skills, skills, technical skills, "
+        "or tech stack section, and preserve explicit project technologies. "
+        if _recovery_needs_skills(reasons)
+        else "Set skills to an empty array; existing skills are already valid. "
+    )
     return {
         "model": model,
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "Recover only explicit work and project experience entries from the resume "
+                    "Recover only explicit skills, work, and project experience facts from the resume "
                     "Markdown. Return JSON only. Preserve every entry separately. Associate each "
                     "company, title, and date only with the same work entry; never copy a company "
                     "from another entry. Mark entries under an explicit internship section as "
                     "internship and all other employment entries as work. Use present only for an "
                     "explicitly current role. Company names, titles, and project names must be "
                     "copied exactly from the supplied Markdown. Never use a company from another "
-                    "entry. All returned facts must be supported by the "
-                    f"supplied Markdown. {work_instruction}{project_instruction}"
+                    "entry. All returned facts must be supported by the supplied Markdown; do not "
+                    "infer skills from job titles or vague responsibilities. "
+                    f"{skills_instruction}{work_instruction}{project_instruction}"
                 ),
             },
             {"role": "user", "content": f"Resume Markdown:\n{extracted_markdown}"},
@@ -323,6 +329,8 @@ def _invalid_explicit_source_facts(
         extracted_markdown, _PROJECT_SECTION_MARKERS
     ) and not profile.project_experience_summary:
         missing.append("project_experience")
+    if _has_section_heading(extracted_markdown, _SKILL_SECTION_MARKERS) and not profile.skills:
+        missing.append("skills")
     if _has_section_heading(extracted_markdown, _EDUCATION_SECTION_MARKERS) and not (
         profile.education or ""
     ).strip():
@@ -351,6 +359,9 @@ def _invalid_explicit_source_facts(
     for item in profile.project_experience_summary:
         if not _source_supports_value(grounding_source, item.name):
             missing.append("unsupported_project_name")
+    for skill in profile.skills:
+        if not _source_supports_value(grounding_source, skill.name):
+            missing.append("unsupported_skill")
     return tuple(missing)
 
 
@@ -361,6 +372,8 @@ def _needs_experience_recovery(reasons: tuple[str, ...]) -> bool:
         "unsupported_work_",
         "unsupported_repeated_company",
         "unsupported_project_name",
+        "skills",
+        "unsupported_skill",
     )
     return any(reason.startswith(prefixes) for reason in reasons)
 
@@ -379,6 +392,10 @@ def _recovery_needs_projects(reasons: tuple[str, ...]) -> bool:
         reason == "project_experience" or reason == "unsupported_project_name"
         for reason in reasons
     )
+
+
+def _recovery_needs_skills(reasons: tuple[str, ...]) -> bool:
+    return any(reason in {"skills", "unsupported_skill"} for reason in reasons)
 
 
 def _source_supports_value(markdown: str, value: str) -> bool:
@@ -418,6 +435,16 @@ def _strict_experience_recovery_schema() -> dict[str, object]:
     schema = _ExperienceRecoveryV1.model_json_schema()
     _require_all_object_properties(schema)
     return schema
+
+
+def _rebuild_profile(
+    profile: ResumeProfileExtractionV1,
+    **updates: object,
+) -> ResumeProfileExtractionV1:
+    """Apply updates through the public profile contract and its validators."""
+    values = profile.model_dump(mode="python")
+    values.update(updates)
+    return ResumeProfileExtractionV1.model_validate(values)
 
 
 def _require_all_object_properties(node: object) -> None:

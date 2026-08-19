@@ -33,8 +33,10 @@ class CandidateMatchingSummary(BaseModel):
     skills: list[str] = Field(default_factory=list)
     experience_titles: list[str] = Field(default_factory=list)
     experience_summaries: list[str] = Field(default_factory=list)
+    experience_highlights: list[str] = Field(default_factory=list)
     project_technologies: list[str] = Field(default_factory=list)
     project_summaries: list[str] = Field(default_factory=list)
+    project_highlights: list[str] = Field(default_factory=list)
     years_of_experience: str = "unknown"
 
 
@@ -262,7 +264,8 @@ def _skill_score(fields: ParsedJobDescriptionFields, candidate: CandidateMatchin
     required = _extract_skills(_section_text(fields))
     available = _extract_skills([
         *candidate.skills, *candidate.experience_titles, *candidate.experience_summaries,
-        *candidate.project_technologies, *candidate.project_summaries,
+        *candidate.experience_highlights, *candidate.project_technologies,
+        *candidate.project_summaries, *candidate.project_highlights,
     ])
     if not required:
         return 0.0, "未提取到明确技能项"

@@ -41,6 +41,17 @@ def test_resume_profile_optional_fields_can_be_absent_without_parse_failure() ->
     assert matching_readiness(profile) == "matching_ready"
 
 
+def test_resume_profile_consolidates_explicit_project_technologies_into_skills() -> None:
+    profile = ResumeProfileExtractionV1(
+        full_name="候选人",
+        project_experience_summary=[
+            {"name": "RAG 项目", "technologies": ["FastAPI", "RAG", "FastAPI"]}
+        ],
+    )
+
+    assert [skill.name for skill in profile.skills] == ["FastAPI", "RAG"]
+
+
 def test_resume_profile_rejects_a_completely_empty_extraction() -> None:
     with pytest.raises(ValidationError):
         ResumeProfileExtractionV1()

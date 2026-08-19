@@ -56,6 +56,27 @@ def _run_acceptance() -> dict[str, object]:
     checks.append(_check("schema_valid", profile is not None))
     readiness = matching_readiness(profile) if profile is not None else "not_evaluated"
     checks.append(_check("matching_readiness_calculated", readiness in {"matching_ready", "matching_not_ready"}))
+    skill_names = {
+        skill.name.casefold().strip()
+        for skill in (profile.skills if profile else [])
+        if skill.name.strip()
+    }
+    fixture_skill_hits = {
+        name
+        for name in ("fastapi", "langchain", "rag", "postgresql")
+        if any(name in skill_name for skill_name in skill_names)
+    }
+    checks.append(_check("explicit_skills_present", bool(skill_names)))
+    checks.append(_check("fixture_skills_preserved", len(fixture_skill_hits) >= 2))
+    checks.append(
+        _check(
+            "experience_highlights_present",
+            bool(
+                profile
+                and any(item.highlights for item in profile.work_experience_summary)
+            ),
+        )
+    )
     checks.append(_check("full_name_present", bool(profile and (profile.full_name or "").strip())))
     checks.append(
         _check(
