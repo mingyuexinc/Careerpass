@@ -13,9 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.identity import CurrentIdentity
 from app.infrastructure.database.models import (
-    AsyncTaskRun,
     AgentRunContext,
     Application,
+    AsyncTaskRun,
     Candidate,
     CandidateDocument,
     CandidateProfile,
@@ -179,6 +179,48 @@ class DebugResetRepository:
         job_ids = tuple(value.id for value in jobs)
         await self._assert_no_active_tasks(resource_type="job", resource_ids=job_ids)
         file_ids = {value.stored_file_object_id for value in jobs}
+
+        # Applications, Matches and ProgressEvents reference HR-owned Jobs
+        # with RESTRICT constraints. They are system-side demo results created
+        # from those Jobs, so an HR reset must remove them before the Job rows.
+        # AgentRunContext remains candidate-owned and is intentionally kept;
+        # it may contain results for another HR-owned Job.
+        applications = list(
+            (
+                await self._session.scalars(
+                    select(Application).where(Application.job_id.in_(job_ids))
+                )
+            ).all()
+        ) if job_ids else []
+        application_ids = tuple(value.id for value in applications)
+        progress_events = list(
+            (
+                await self._session.scalars(
+                    select(ProgressEvent).where(
+                        or_(
+                            ProgressEvent.job_id.in_(job_ids),
+                            ProgressEvent.application_id.in_(application_ids),
+                        )
+                    )
+                )
+            ).all()
+        ) if job_ids else []
+        matches = list(
+            (
+                await self._session.scalars(
+                    select(Match).where(Match.job_id.in_(job_ids))
+                )
+            ).all()
+        ) if job_ids else []
+
+        for event in progress_events:
+            await self._session.delete(event)
+        for application in applications:
+            await self._session.delete(application)
+        await self._session.flush()
+        for match in matches:
+            await self._session.delete(match)
+        await self._session.flush()
 
         if job_ids:
             snapshots = list(

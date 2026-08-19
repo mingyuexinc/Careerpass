@@ -16,7 +16,7 @@
 
 ## 3. Transaction and Storage
 
-Repository 锁定当前 Candidate 或 HrProfile，检查其资源关联的 `AsyncTaskRun` 是否处于 `queued/running`，然后在一个数据库事务中删除业务记录和终态任务记录。
+Repository 锁定当前 Candidate 或 HrProfile，检查其资源关联的 `AsyncTaskRun` 是否处于 `queued/running`，然后在一个数据库事务中删除业务记录和终态任务记录。HR 重置按外键约束顺序删除岗位产生的 `ProgressEvent`、`Application`、`Match`、岗位解析快照和 `Job`；候选人拥有的 `AgentRunContext`、`JobGoal` 和候选人资料不属于 HR 清理范围。
 
 不再被 Resume、CandidateDocument 或 Job 引用的 `StoredFileObject` 标记为 `deleting`。事务提交后删除物理对象并最终确认数据库记录；物理删除失败时保留 `deleting` 状态，交由对象清理调度重试。
 
