@@ -8,6 +8,9 @@
 | Redis 7.4 | Celery Broker 和就绪依赖 | Redis 运行时、Celery 配置 | Compose 连通不等于任务闭环通过 |
 | MinerU MCP | 正式简历文本提取 | stdio/HTTP Client 与适配器单元测试 | partial；工具发现已验证，受控文件完整解析证据待确认 |
 | Qwen Plus | 结构化候选人画像 | Qwen 适配器和 Schema 单元测试 | partial；真实模型调用由外部测试显式启用 |
+| Qwen Plus（S10-01） | 基于 Resume-derived 结构化事实生成受约束沟通回复 | `qwen_communication.py`、Pydantic 输出 Schema、S10 Readiness/Verify/Close 记录 | passed；2026-08-20 已完成脱敏结构化事实最小真实调用、有限失败分类、经历范围内否定回答和真实前端回答复验；固定 Fixture 验收不依赖外部模型 |
+
+S10-02 不新增大模型或第三方能力，文件名匹配采用确定性标准化、关键词和受控别名；附件下载复用现有 CandidateDocument/对象存储基础设施。2026-08-20 已通过迁移 `20260820_0016`、PostgreSQL/本地对象存储联调，验证对象下载、7 天独立有效期、CandidateDocument 删除后的附件交接和过期清理引用保护。
 
 ## 1. 通用边界
 

@@ -67,6 +67,7 @@
 | - - - - -| - - - - - |
 | `.harness/README.md` | AI Coding 指令范围和阅读顺序 |
 | `.harness/rules/AI coding workflow.md` | 前端优先、Slice 层级的 AI Coding Gate |
+| `docs/integration/complex-special-slice-development-paradigm.md` | 多场景、复杂 Agent/Tool 协作切片的开发范式 |
 | `.harness/skills/slice-design/切片设计技能.md` | Slice 选择、设计和 Readiness 文档技能 |
 | `.harness/skills/implementation-decision-autonomy/实现决策自主权.md` | 实现细节自主决策与人工确认边界 |
 | `docs/business/business-baseline.md` | 跨前后端已确认业务事实唯一基线 |

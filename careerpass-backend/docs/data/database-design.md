@@ -2,7 +2,7 @@
 
 > 本文档用表格记录当前 Alembic 迁移链、已实现表和已通过 Slice Design 确认但尚未迁移的结构。
 >
-> 标记：`implemented` = 当前代码/迁移已落地；`planned` = Slice 已确认、待 Alembic 实现；`not confirmed` = 不提前设计。
+> 标记：`implemented` = 当前代码/迁移已落地；`slice-confirmed` = Slice 设计已确认、待 Alembic 实现；`planned` = 后续规划、尚未进入当前 Slice；`not confirmed` = 不提前设计。
 
 ## 1. 迁移链
 
@@ -20,6 +20,7 @@
 | `20260817_0012` | `implemented` | AgentRunContext 运行上下文、当前目标/简历/画像绑定、状态和幂等唯一约束 |
 | `20260817_0013` | `implemented` | Match、Application、ProgressEvent、算法版本、评分快照和 `run_id + job_id` 幂等约束 |
 | `20260819_0014` | `implemented` | Job 上传原始文件名 `file_name`，用于 HR 岗位卡片恢复展示 |
+| `20260820_0015` | `implemented` | S10-01 `conversations`、`messages`、`agent_turns` 及其归属、状态和幂等约束 |
 
 ## 2. 已实现表
 
@@ -116,7 +117,18 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | `Match` | S-08 独立保存岗位筛选结果、算法版本、已脱敏输入快照、三维分数、总分、状态、推荐理由和原因码；`UNIQUE(run_id, job_id)`；`slice-confirmed` |
 | `Application` | S-08 为通过投递筛选的 Match 创建；绑定 Candidate、Job、AgentRun 和 Match，初始状态为 `submitted`；`UNIQUE(run_id, job_id)`；`slice-confirmed` |
 | `ProgressEvent` | S-08 创建 Application 时写入 `application_created` 初始事件；S-09 写入 `application_status_updated` 状态事件；`slice-confirmed` |
-| `Conversation`、`Message` | 由沟通 Slice 负责 |
+| `Conversation`、`Message`、`AgentTurn`、`MessageAttachment` | S10-01 已完成迁移、持久化、权限、幂等和集成验证；S10-02 附件消息、有效期和删除交接已完成迁移 `20260820_0016` 验证 |
+
+### 6.2 S-10 计划表
+
+| 表 | 核心关系/约束方向 | 业务用途 | 状态 |
+| --- | --- | --- | --- |
+| `conversations` | `application_id` 归属 Application 且唯一 | 保存当前投递的系统沟通会话；由 S-08 在 Application 创建时初始化 | `implemented` |
+| `messages` | `conversation_id` 归属 Conversation；消息状态由 S10 Message Service 拥有 | 保存 S10-01 HR/Agent 正式文本消息；只有 `sent` 消息对 HR 可见 | `implemented` |
+| `message_attachments` | `message_id` 归属 Message；来源 CandidateDocument；保留有效期内独立下载引用 | 保存文件名、格式、大小、创建/过期时间和下载状态；下载请求复核完整归属链；迁移 `20260820_0016` | `implemented` |
+| `agent_turns` | `conversation_id` 归属 Conversation；幂等键全局唯一；每个 HR 入站消息最多一条 | 保存 S10-01 Agent Turn 状态、场景、结果分类和脱敏失败信息 | `implemented` |
+
+S-10 不在上述表中保存简历原文、联系方式、文件正文、对象存储定位、Prompt 或模型原始响应；S10-02 的附件记录已验证创建后 7 天内独立下载，CandidateDocument 删除不影响有效期内下载。
 
 ### 6.1 S-08 计划表
 

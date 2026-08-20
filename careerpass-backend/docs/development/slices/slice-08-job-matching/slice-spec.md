@@ -24,6 +24,7 @@ S-08 不读取 JD 或简历原文，不消费公司简介、优先条件、加�
 - `Match` 独立保存算法版本、输入快照、筛选状态、评分和推荐理由；
 - 通过投递筛选的 Match 创建一条初始状态为 `submitted` 的 `Application`；
 - Application 创建时记录初始 `ProgressEvent`；
+- Application 成功创建后，幂等初始化一个当前 Conversation 容器，供 S10 使用；不写入欢迎消息；
 - 候选人进度查询只返回 Application，不返回未形成投递记录的 Match；
 - 全部可用岗位筛选完成且本轮 Application 数量为 0 时，AgentRun 进入 `finished`，结束原因是 `no_match`。
 

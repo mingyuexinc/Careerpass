@@ -27,7 +27,10 @@
 | Match | 持久化实体 | Candidate、Job、AgentRunContext | 保存本轮岗位筛选的独立结果、算法版本、输入快照、评分、状态和推荐理由 | `slice-confirmed` | S-08 Technical Design；`UNIQUE(run_id, job_id)` |
 | Application | 持久化实体 | Candidate、Job、Match、AgentRunContext | 保存通过投递筛选后的系统内投递记录，初始为 `submitted` | `slice-confirmed` | S-08 Technical Design；一条 Application 只能关联一条 Match |
 | ProgressEvent | 持久化实体 | Application | 记录 Application 创建和后续合法状态变化 | `slice-confirmed` | S-08 创建初始 `application_created` 事件；S-09 负责后续状态推进 |
-| Conversation / Message | 持久化实体 | 待对应业务主体确认 | 沟通记录和消息 | `not confirmed` | 由后续 Slice 负责；S-08 不创建 |
+| Conversation | 持久化实体 | Application | 当前投递上下文内的系统沟通会话 | `slice-confirmed` | S-10 Technical Design；一条当前 Application 对应当前 Conversation |
+| Message | 持久化实体 | Conversation | HR 与 Agent 的系统内正式消息 | `slice-confirmed` | S-10 Technical Design；消息状态由 Conversation Message Service 拥有 |
+| MessageAttachment | 持久化实体 | Message | CandidateDocument 在 Conversation 中的可下载附件投影；保留有效期内独立下载能力 | `implemented` | S10-02 迁移 `20260820_0016`、Repository 和下载接口；不提供在线预览；创建后 7 天有效 |
+| AgentTurn | 技术执行记录 | Conversation | Agent Turn 的幂等、执行状态和脱敏结果分类 | `slice-confirmed` | 不作为 Application 业务状态；S-10 Technical Design |
 
 ## 2. 关系与归属
 
@@ -52,6 +55,10 @@
 | Match | 1 : 0..1 | Application | 仅 `matched` 结果创建 Application；创建后 Match 状态为 `application_created` |
 | AgentRunContext | 1 : N | Application | 一轮运行对每个 Job 最多创建一条 Application；Application 必须关联同一轮 Match |
 | Application | 1 : N | ProgressEvent | Application 创建和后续合法状态变化写入事件；事件不替代当前状态 |
+| Application | 1 : 1 | Conversation | S-08 成功创建 Application 时幂等初始化的当前系统沟通会话；S10 只读取和写入当前 Conversation |
+| Conversation | 1 : N | Message | 消息只属于一个 Conversation；HR/Agent 为发送主体 |
+| Message | 1 : 0..1 | MessageAttachment | S10-02 一条 Agent 文本消息最多关联一个可下载附件；数据关系保留扩展空间但当前演示不交付多附件 |
+| Conversation | 1 : N | AgentTurn | Agent Turn 记录执行幂等和状态，不改变 Application 状态 |
 
 ## 3. 身份与资源授权
 
@@ -80,6 +87,10 @@
 | Match | `filtered_out`、`not_matched`、`matched`、`application_created` | S-08 | 同一 `run_id + job_id` 只保存一条；未形成 Application 的 Match 不进入 Candidate 进度页 |
 | Application | `submitted →` 后续招聘阶段 | S-08 创建；S-09 推进 | 初始创建必须关联 `matched` Match；状态变化必须通过状态机和 ProgressEvent |
 | ProgressEvent | `application_created` 及后续合法事件 | Application 状态拥有者 | 事件追加保存，不得伪造前状态或绕过状态机 |
+| Conversation | 当前 Application 的会话容器；不新增独立业务状态 | S-08 初始化；S10 读取 | 只允许读取当前 Application 对应会话；一条 Application 只能有一个当前 Conversation |
+| Message | `pending → sent / failed` | Conversation Message Service | 只有 `sent` 消息对 HR 可见 |
+| MessageAttachment | `preparing → downloadable / failed → expired` | Attachment Service | `downloadable` 支持下载；创建后 7 天进入 `expired`；不支持在线预览；CandidateDocument 删除不影响有效期内的已发送附件 |
+| AgentTurn | `accepted → processing → completed / waiting / failed` | Agent Workflow Service | Agent 编排状态不等于 Application 或 AgentRunContext 状态 |
 
 S-09 的 HR Application 授权链为 `CurrentIdentity → HrProfile → Job → Application`，并复核 Application 关联的 Candidate 和 AgentRunContext。HR 视图只投影岗位名称、公司名称、候选人姓名和当前投递进度；内部标识不作为页面业务信息。
 

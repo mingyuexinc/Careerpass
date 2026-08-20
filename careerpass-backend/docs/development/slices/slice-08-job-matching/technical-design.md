@@ -6,7 +6,7 @@
 
 ## 1. 交付边界
 
-S-08 由 S-07 启动成功后的后端内部服务同步执行。S-07 事务先提交运行上下文，随后 S-08 在独立事务中处理最多 20 个岗位。前端不提交匹配命令，只通过 Application 查询读取结果。
+S-08 由 S-07 启动成功后的后端内部服务同步执行。S-07 事务先提交运行上下文，随后 S-08 在独立事务中处理最多 20 个岗位。前端不提交匹配命令，只通过 Application 查询读取结果。每个成功创建的 Application 在同一 S-08 事务内幂等初始化一个 Conversation 容器，不写入欢迎消息；该容器通过 `APPLICATION-CONVERSATION@0.1` 交给 S10。
 
 S-08 不使用 Celery、Redis、外部匹配服务或大模型。
 
@@ -141,11 +141,24 @@ S-07 提交 AgentRunContext
   → 三维评分与加权总分
   → 持久化 Match
   → matched 结果创建 Application 和初始 ProgressEvent
+  → 为 Application 幂等创建 Conversation 容器（`APPLICATION-CONVERSATION@0.1`）
   → 全部岗位完成后统计 Application
   → Application=0 时 AgentRun finished/no_match
 ```
 
 同一批次内按稳定排序逐个处理。Match 和 Application 写入使用一个 S-08 数据库事务；重复调用只补处理缺失的岗位结果，不覆盖已有结果。
+
+### 5.1 S10 Handoff Contract
+
+| 项目 | 约定 |
+| --- | --- |
+| Producer | S-08 matching repository |
+| Consumer | S10 Conversation Message Service |
+| 触发条件 | Application 成功创建或重复确认 |
+| 输出 | 唯一 `conversation_id` 容器；不写入欢迎消息 |
+| 身份与归属 | `Application → Job → HrProfile` 与 `Application → Candidate → AgentRunContext` 可复核 |
+| 状态与幂等 | `UNIQUE(conversations.application_id)`；重复执行复用已有 Conversation |
+| 版本 | `APPLICATION-CONVERSATION@0.1` |
 
 ## 6. API 设计
 
@@ -255,9 +268,11 @@ GET /api/v1/applications/current
 - [x] S-07 同步编排、Application 查询 API 和幂等检查已实现；
 - [x] 后端非 acceptance 回归、前端类型检查与测试、`git diff --check` 已通过；
 - [x] 真实 API/数据库/前端闭环演示已通过；开发者复测已覆盖此前问题，`IS-S08-01` 已标记为 `integration_delivered`。
+- [x] `APPLICATION-CONVERSATION@0.1` 已完成 S-08 → S10 前后端联调复验：Application 创建后唯一 Conversation 可被 HR 会话列表读取，首次消息为空且不写欢迎消息。
 
 ## 10. Close 结论
 
 - S-08 的真实前后端闭环复测通过；此前记录的问题均已整改并通过开发者验收；
 - `IS-S08-01` 已完成 Integration Verify 并标记为 `integration_delivered`；
 - S-08 交付完成，后续投递状态推进仍归属 S-09。
+- `APPLICATION-CONVERSATION@0.1` 已完成跨 Slice Handoff Verify，交付给 S10 消费。

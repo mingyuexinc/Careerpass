@@ -121,6 +121,19 @@
 | `BF-RULE-042` | `confirmed` | Application 状态更新只能向后推进或进入 `terminated`；同状态重复提交按幂等成功处理且不新增 ProgressEvent；非法回退和终态修改失败且保持原状态。 |
 | `BF-RULE-043` | `confirmed` | Application 进入 `offer` 后，系统统计当前首轮 AgentRun 的 Offer 数量；达到 `offer_target` 时，AgentRun 进入 `finished`、结束原因为 `offer_target_reached`，当前 JobGoal 转为 `achieved`。 |
 | `BF-RULE-044` | `confirmed` | AgentRun 因 Offer 达标结束后，当前轮次其它未终态 Application 仍允许 HR 按合法状态机继续推进；AgentRun 不得重新启动，已进入终态的 Application 不得修改。 |
+| `BF-RULE-045` | `confirmed` | S10 的系统内沟通只作用于当前 Application 对应的 Conversation，Agent 是主动消息和回答消息的业务发送主体，不产生真实外部招聘沟通。 |
+| `BF-RULE-056` | `confirmed` | S-08 为成功创建的系统内 Application 幂等初始化唯一 Conversation 容器；当前版本不自动写入欢迎消息，首条业务消息由 HR 提问产生。 |
+| `BF-RULE-046` | `confirmed` | S10-01 只支持经历、项目和技能等简历相关问题；回答以 S-07 启动时绑定的 Resume 直接事实为准，CandidateProfile 只能作为其结构化投影，当前 Conversation 历史只作上下文；回答可提及项目名称，不向 HR 展示完整简历、原文片段或证据摘要。 |
+| `BF-RULE-047` | `confirmed` | S10-01 检索、生成或校验失败但消息通道可用时发送受控模板；消息发送有限重试仍失败时不追加回复；同一请求重试复用已有回答。 |
+| `BF-RULE-048` | `confirmed` | S10-02 的资料请求仅限当前 Candidate 的其它求职资料；当前投递会话默认可使用 CandidateDocument，不设置候选人二次授权，但仍须校验当前候选人归属和投递上下文；同一 CandidateDocument 可被多个 Application 的 Conversation 复用。 |
+| `BF-RULE-049` | `confirmed` | S10-02 将资料作为一条 Agent 消息关联一个 MessageAttachment 交付；匹配成功时不显示“已为你找到”等额外成功提示语，前端只展示仿微信接收文件效果的附件卡片；HR 可以重复下载，但当前演示不提供在线预览或文件内容查看能力；附件只展示文件名、格式、大小和必要时间信息，创建后 7 天内有效。 |
+| `BF-RULE-050` | `confirmed` | S10-02 重复发送按幂等处理；附件准备或消息发送失败有限重试仍失败时不产生可见 Agent 消息或半成品附件；未找到或资料失效时返回友好受控消息；成功交付保留不可见的最小审计记录，且不改变 Application 状态。 |
+| `BF-RULE-057` | `confirmed` | S10-02 只基于 CandidateDocument 文件名进行确定性语义匹配，使用标准化和受控关键词/别名，不读取文件内容、不进行 OCR/Embedding、不调用 LLM；每次资料请求最多交付一个资料，主演示 Fixture 保证只有一个符合项。 |
+| `BF-RULE-051` | `confirmed` | S10-03 主动获取的信息来自 JobGoal 求职过滤条件；已在岗位匹配/筛选阶段完成判断的条件不再询问，未处理条件通过语义识别形成待核验条件。 |
+| `BF-RULE-052` | `confirmed` | 当前 S10-03 受控 JD 不包含岗位是否外包等核验信息；对未被筛选阶段处理且无法由 JD 确认的条件，Agent 只生成一个 query，并将其写入当前 Conversation。 |
+| `BF-RULE-053` | `confirmed` | S10-03 对二元回答形成岗位推进判断：不继续推进时回复“感谢沟通，当前不考虑这个岗位了”；继续推进时回复“好的，了解”。 |
+| `BF-RULE-054` | `confirmed` | S10-03 中 HR 未回答时不主动追问；当前演示不处理模糊回答；解析失败时不自动作出继续或停止判断、不发送错误结论，query 保持待处理，技术层可有限重试。 |
+| `BF-RULE-055` | `confirmed` | S10-03 的判断结果只服务于当前 Conversation 和后续沟通行为，不修改 Application、匹配结果或其它投递状态；当前演示不支持多个未确认条件或完成一个 query 后继续发起其它 query。 |
 
 ## 6. 智能体和投递状态
 

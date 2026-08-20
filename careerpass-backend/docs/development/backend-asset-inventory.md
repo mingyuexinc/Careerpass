@@ -22,14 +22,14 @@
 | 异步任务 | Celery、Dispatcher、Worker、AsyncTaskRun Repository | partial | 配置和代码不等于真实重投递、租约及幂等全部通过 |
 | 本地对象存储 | local/cleanup 适配器、ObjectStorageRepository 和测试 | reusable | 只适用于本地 Demo，不代表云文件平台 |
 | 公共运行底座 | config、logging、exceptions、runtime health、database/redis | reusable | 不代表生产部署和完整观测能力 |
-| 岗位、目标、匹配、投递、沟通 | 当前未发现对应业务 Model 和完整 API | missing | 只能按后续 Slice 增量实现 |
+| 岗位、目标、匹配、投递、沟通 | Job/JobGoal/Match/Application/ProgressEvent 及 S10 Conversation/Message/AgentTurn/MessageAttachment Model、Repository、API 和迁移 | partial | S10-01 已交付；S10-02 文件名匹配、附件生命周期、下载和权限核心能力已通过，但真实前端展示整改待回归；S10-03 主动 query 和资料删除仍按后续 Slice 增量实现 |
 
 ## 3. 数据与测试资产
 
 | 资产 | 当前事实 |
 | --- | --- |
 | Alembic | 0001 → 0002 → 0003 → 0004 单链 |
-| 当前 Model | User、Candidate、StoredFileObject、Resume、CandidateProfile、CandidateDocument、AsyncTaskRun |
+| 当前 Model | User、Candidate、StoredFileObject、Resume、CandidateProfile、CandidateDocument、AsyncTaskRun、Job、JobGoal、AgentRunContext、Match、Application、ProgressEvent、Conversation、Message、AgentTurn |
 | 单元测试 | 覆盖认证、资料、解析、异步、存储和架构边界 |
 | 集成测试 | PostgreSQL/Redis 与应用运行依赖；需要隔离环境显式执行 |
 | 外部测试 | MinerU/Qwen 与完整解析链；需要受控样本和真实凭证显式执行 |
@@ -66,7 +66,7 @@
 | MinerU/Qwen 完整真实链路证据不足 | 保持 partial，在解析 Slice Readiness Check 中验证 |
 | Dispatcher/Worker 真实重投递和接管证据需要复核 | 在首个实际异步 Slice 中验证 |
 | 旧契约仍绑定旧开发包边界 | 只保留归档；当前 Producer Slice 重新定义 Handoff |
-| 未来岗位、匹配、投递和沟通设计可能误导开发 | 不进入当前领域或数据库事实源 |
+| S10-02 前端展示、S10-03 及通用沟通平台仍有后续工作 | S10-02 核心附件能力已实现但当前场景 `integration_blocked`，先完成成功提示语移除和仿微信文件卡片整改；S10-03 和通用 Agent Workflow 边界由后续 Slice 重新确认 |
 
 ## 7. 盘点边界
 

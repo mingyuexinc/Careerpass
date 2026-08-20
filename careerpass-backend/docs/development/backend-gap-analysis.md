@@ -104,7 +104,7 @@ G1 认证与用户初始化
 | G5 求职目标 | 当前活跃目标、过滤条件、合法状态迁移、下游目标读取 | `implemented` | S-06 API、Repository、Service、Schema、迁移、单元/API 测试和真实前端场景 | 启动条件、运行冻结和启动时简历绑定归属 S-07 | S-07 Agent 启动 |
 | G6 岗位匹配 | 画像/JD/目标快照、过滤评分、结果追踪和查询 | `implemented` | S-08 Match/Application/ProgressEvent 模型、`20260817_0013` 迁移、v0.1 算法、同步服务和 Candidate 查询 API 已实现；非 acceptance 回归及本地 API/数据库冒烟通过 | 完整混合结果验收仍缺结构化 JD 快照和前端浏览器联调 | `IS-S08-01` Integration Verify |
 | G7 投递与进度 | 系统内投递记录、合法状态迁移、Progress Event、双方视图 | `implemented` | S-08 Candidate 投影与 S-09 HR 查询/状态更新、状态事件、Offer 联动、前端四字段视图和 PostgreSQL 集成测试已通过 | 后续仅维护回归；真实外部投递、多轮投递和实时推送不属于 G7 | [S-09 Slice](../development/slices/slice-09-application-progress-update/slice-spec.md) |
-| G8 AI 求职沟通 | 授权会话、消息、结构化回复草稿/模拟回复、审计 | `missing` | 当前后端文档描述目标；当前代码未发现实现 | 缺少会话/消息领域实现、工作流注册、授权闸门和受控模型调用 | G8 Slice |
+| G8 AI 求职沟通 | 授权会话、消息、结构化回复草稿/模拟回复、审计 | `partial` | S10-01 的 Conversation/Message/AgentTurn、授权会话、受控 Qwen 回复、幂等和真实前端交付已完成；`IS-S10-01` 已关闭 | S10-02 附件、S10-03 主动 query 和通用 Agent Workflow 平台仍未实现 | S10-02/S10-03 Slice |
 | G9 业务资料删除 | 简历、求职资料和岗位 JD 的受控删除 | `missing` | 当前前端流程、交付范围和能力映射已确认目标；当前代码未发现公开业务删除接口 | 三类资源的删除条件、引用影响、状态处理和对象清理边界未实现 | S-11 业务资料删除 |
 | F1 前端闭环验收 | 正式前端通过锁定契约完成完整受控流程 | `blocked` | 前端 Mock 页面已完成 | 后端 G4–G9 尚未形成真实可调用能力；角色、状态和契约仍未锁定 | 所有 G1–G9 完成后 |
 
@@ -267,16 +267,18 @@ G7 只管理系统内投递记录和进度，不执行真实招聘平台投递�
 
 #### 设计目标
 
-G8 基于已授权投递上下文创建系统内会话和消息，生成经过结构化校验的回复草稿或模拟回复。候选人附加资料只能在候选人明确选择和授权后成为消息附件引用；Agent 不得自行选择资料、读取资料正文或向真实 HR/平台外发。
+G8 基于已授权投递上下文创建系统内会话和消息，生成经过结构化校验的回复草稿或模拟回复。候选人附加资料可在当前投递授权上下文内按已确认规则成为消息附件引用；Agent 不得读取资料正文或向真实 HR/平台外发。
 
 #### 当前差距
 
 | 差距 | 严重性 | 说明 | 关闭证据 |
 | --- | --- | --- | --- |
-| Conversation/Message/Attachment 未实现 | `critical` | 当前代码和迁移没有完整沟通域持久化和资源归属边界。 | G8 领域、数据、Repository 和迁移 |
-| 代码注册工作流与授权闸门未实现 | `critical` | 当前 Agent 架构要求计划、输入、归属、策略和授权在调度前校验，当前没有业务工作流闭环证据。 | Workflow Registry、授权测试和审计记录 |
-| 结构化回复和失败语义未实现 | `high` | LLM 输出不能直接成为消息或状态变更；需定义 Schema、拒绝、超时、重试和模拟回复策略。 | G8 Contract、Pydantic/业务校验和集成测试 |
-| HR/候选人可见范围未实现 | `high` | HR 可看完整会话；候选人侧只看沟通状态，不能读取单岗位完整聊天。 | 双角色接口测试和前端 E2E |
+| S10-01 Conversation/Message/AgentTurn | `closed for S10-01` | Conversation/Message/AgentTurn、Repository、迁移、归属校验、幂等和安全投影已完成并通过 PostgreSQL 集成验证。 | `IS-S10-01`、`20260820_0015`、S10-01 技术设计 |
+| S10-02 MessageAttachment | `implemented / integration_blocked` | 文件名确定性匹配、单消息单附件、迁移、下载生命周期、权限和幂等已通过；成功消息仍有额外提示语，前端附件卡片未达到仿微信接收文件效果，待整改回归。 | `IS-S10-02`、`20260820_0016`、S10 技术设计 |
+| S10-03 主动 query | `deferred` | 保留设计状态，不进入 S10-01/S10-02 实现和关闭条件。 | 后续 S10 Slice |
+| 通用 Agent Workflow 注册与控制面 | `deferred` | S10-01 使用受限的 ConversationService + Qwen 适配器，不新增通用 Agent 平台或工作流注册能力。 | 后续 Agent Workflow Slice |
+| S10-01 结构化回复和失败语义 | `closed for S10-01` | Pydantic Schema、事实支持校验、否定事实、失败模板、超时/有限重试和安全消息投影已通过验证。 | S10-01 Contract、Capability Acceptance、PostgreSQL 集成 |
+| 候选人侧完整沟通可见范围 | `deferred` | S10-01 只交付 HR 当前投递会话安全投影；候选人侧完整聊天不属于当前范围。 | 后续沟通 Slice |
 | 外部消息副作用必须保持延期 | `non-blocking` | 真实 HR 消息、跨平台 IM、自动代投递和无人确认承诺不属于 MVP。 | 范围文档保持 `deferred` |
 
 ### 4.9 G9：业务资料删除
@@ -340,7 +342,7 @@ G9 作为一个业务 Slice 进入 `missing`。它覆盖简历、求职资料和
 - Agent 只能生成经过 Pydantic 校验的结构化计划，不能直接写业务数据、拼接 SQL/Shell 或发起未经校验的外部请求；
 - 涉及投递、进度、会话或其他副作用时，计划成功不等于获得副作用授权。
 
-当前 G5–G8 均缺少实际注册工作流、授权闸门、运行记录、幂等审计和失败结果，因此 Agent 能力整体不能标记为 `reusable`。
+S10-01 已形成一条受限、可审计的沟通能力路径；S10-02 已形成受限的文件名匹配和附件交付路径，但尚未完成展示整改关闭；项目仍没有可复用的通用 Agent Workflow 平台，S10-03 及其它 Agent 场景需单独完成注册工作流、授权闸门、运行记录和失败证据后再评估 `reusable`。
 
 ### 5.3 对象存储和敏感数据
 

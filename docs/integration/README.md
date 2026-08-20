@@ -18,6 +18,8 @@ S-DBG 是开发/联调环境的当前账号级数据恢复能力，不等同于�
 - Slice 技术实现和后端 Slice 间交接以对应 `technical-design.md` 为准；
 - 页面、流程和视觉以前端 `docs/` 为准。
 
+多场景、复杂 Agent/Tool 协作的 Slice 还应遵循 [`complex-special-slice-development-paradigm.md`](complex-special-slice-development-paradigm.md)，该文档细化场景地图、能力拆解、契约设计、逐场景实现和最终 Slice 验收，不新增独立 Gate。
+
 ## 2. 三类边界
 
 | 对象 | 负责回答的问题 |
@@ -56,6 +58,7 @@ Slice 与 Integration Scenario 不要求一一对应：一个 Slice 可以支持
 ```text
 docs/integration/
 ├── README.md
+├── complex-special-slice-development-paradigm.md
 ├── integration-contract-template.md
 ├── integration-scenario-template.md
 ├── slice-acceptance-testing.md

@@ -52,7 +52,7 @@ HR 准备并上传岗位 JD
 | 3 | S-08 逐个筛选岗位 | 每个 `run_id + job_id` 最多保存一条 Match；不采用 Top-N 截断 | 页面不伪造未查询到的匹配结果 |
 | 4 | 岗位命中硬过滤条件 | 保存 `filtered_out` Match，不计算三维评分，不创建 Application | 该岗位不出现在求职进度页 |
 | 5 | 岗位进入评分但总分未达阈值 | 保存 `not_matched` Match，不创建 Application | 该岗位不出现在求职进度页 |
-| 6 | 岗位达到匹配阈值 | 保存完整评分和推荐理由，创建 `submitted` Application，并记录初始 `application_created` ProgressEvent | 进度页展示岗位、投递状态、匹配得分和推荐理由 |
+| 6 | 岗位达到匹配阈值 | 保存完整评分和推荐理由，创建 `submitted` Application，记录初始 `application_created` ProgressEvent，并幂等初始化当前 Conversation 容器 | 进度页展示岗位、投递状态、匹配得分和推荐理由；HR 沟通页可加载对应会话 |
 | 7 | Candidate 进入求职进度页 | 只查询当前 Candidate 的 Application，不查询未投递 Match | 展示已投递结果 |
 | 8 | 全部岗位筛选完成且 Application 数量为 0 | AgentRun 进入 `finished`，`finish_reason=no_match` | 展示“当前没有可供匹配的岗位”及 Agent 已结束 |
 | 9 | 重复提交启动或重入 S-08 | 复用当前运行上下文；不重复生成 Match、Application 或 ProgressEvent | 页面结果不重复 |
@@ -73,6 +73,17 @@ HR 准备并上传岗位 JD
 本次修复确认了解析链路和匹配输入缺陷，但未改变权重、阈值或地点过滤。修复后的新运行得分为：`001=83`、`002=82.09`、`003=86.33`、`004=74.11`、`006=83`，`005` 和 `007` 因北京被过滤。历史“2 个匹配”缺少可比输入快照，不能据此调整算法参数。
 
 > 开发者已完成 S-08 真实前后端闭环复测；此前记录的问题均已整改并通过验收。
+
+### 4.2 S-08 → S10 Conversation Handoff 联调复验
+
+| 验证项 | 预期结果 | 实际结果 |
+| --- | --- | --- |
+| Application 创建后的 Conversation 初始化 | 每个成功创建的 Application 在同一事务内幂等创建唯一 Conversation，不写入欢迎消息 | 开发者已完成前后端联调复验，Conversation 容器按预期创建且无欢迎消息 |
+| S10 会话列表消费 | HR 当前会话查询能够返回对应 `conversation_id`，且归属链保持有效 | 已通过；S10 可读取 S-08 交接的 Conversation |
+| 空会话读取 | 首次读取返回空消息列表，首条业务消息由 HR 提问产生 | 已通过 |
+| 交接边界 | S-08 只负责容器初始化，消息、AgentTurn 和沟通行为由 S10 负责 | 已确认 |
+
+本项只验证 `APPLICATION-CONVERSATION@0.1` 的跨 Slice 交接，不提前验收 S10-01 的 Qwen 回答或 S10-02/S10-03。
 
 | 记录编号 | 操作 | 实际结果 | 其它问题 |
 | :-: | --- | --- | --- |
@@ -96,5 +107,6 @@ HR 准备并上传岗位 JD
 ## 6. 关闭结论
 
 - 开发者已完成 S-08 真实前后端闭环复测，混合结果、20 岗位、重复启动及空结果路径均通过验收；
+- `APPLICATION-CONVERSATION@0.1` 已完成开发者前后端联调复验，Conversation Handoff 交付完成并可供 S10 消费；
 - `S08-E01`、`S08-E02`、`S08-FE01`、`S08-I02`、`S08-UI01`、`S08-UI02` 和 `S08-MATCH01` 均已关闭；
 - 当前阶段结论：S-08 Integration Verify 通过，`IS-S08-01` 已标记为 `integration_delivered`，S-08 交付完成。
