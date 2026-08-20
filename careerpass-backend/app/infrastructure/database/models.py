@@ -520,6 +520,117 @@ class Application(Base):
     )
 
 
+class Conversation(Base):
+    """One current system conversation for an Application."""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    application_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("applications.id", ondelete="CASCADE"),
+        nullable=False, unique=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
+class Message(Base):
+    """A visible HR or Agent message in a Conversation."""
+
+    __tablename__ = "messages"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    conversation_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sender: Mapped[str] = mapped_column(String(16), nullable=False)
+    message_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'text'"))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'sent'"))
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    client_message_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    attachments: Mapped[list["MessageAttachment"]] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+        lazy="raise",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
+class MessageAttachment(Base):
+    """Safe downloadable projection of one CandidateDocument in a Message."""
+
+    __tablename__ = "message_attachments"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    message_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    candidate_document_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("candidate_documents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    stored_file_object_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("stored_file_objects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'preparing'")
+    )
+    message: Mapped[Message] = relationship(back_populates="attachments", lazy="raise")
+
+
+class AgentTurn(Base):
+    """Idempotent execution record for one S10 HR message."""
+
+    __tablename__ = "agent_turns"
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()" )
+    )
+    conversation_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source_message_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("messages.id", ondelete="CASCADE"),
+        nullable=False, unique=True,
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    scene: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'resume_answer'"))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'accepted'"))
+    outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    retryable: Mapped[bool] = mapped_column(nullable=False, server_default=text("false"))
+    failure_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
 class ProgressEvent(Base):
     """Auditable state transition event for an Application."""
 

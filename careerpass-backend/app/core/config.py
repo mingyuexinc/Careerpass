@@ -77,6 +77,8 @@ class Settings(BaseSettings):
         min_length=1,
     )
     qwen_model: str = Field(default="qwen-plus", min_length=1, max_length=128)
+    communication_timeout_seconds: float = Field(default=20, gt=0, le=60)
+    communication_max_retries: int = Field(default=2, ge=0, le=2)
     jwt_secret_key: SecretStr = Field(min_length=32)
     jwt_issuer: str = Field(default="careerpass-api", min_length=1, max_length=128)
     jwt_audience: str = Field(default="careerpass-client", min_length=1, max_length=128)

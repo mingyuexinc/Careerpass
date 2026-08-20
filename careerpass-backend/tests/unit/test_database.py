@@ -40,6 +40,10 @@ def test_base_metadata_contains_candidate_preparation_models() -> None:
         "matches",
         "applications",
         "progress_events",
+        "conversations",
+        "messages",
+        "message_attachments",
+        "agent_turns",
         "user_roles",
         "users",
     }

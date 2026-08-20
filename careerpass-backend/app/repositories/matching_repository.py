@@ -14,6 +14,7 @@ from app.infrastructure.database.models import (
     AgentRunContext,
     Application,
     CandidateProfile,
+    Conversation,
     Job,
     JobGoal,
     Match,
@@ -146,6 +147,7 @@ class MatchingRepository:
         if application is not None:
             if match.status == "matched":
                 match.status = "application_created"
+            await self.ensure_conversation(application_id=application.id)
             return application
         now = datetime.now(UTC)
         application = Application(
@@ -174,7 +176,20 @@ class MatchingRepository:
         )
         match.status = "application_created"
         await self._session.flush()
+        await self.ensure_conversation(application_id=application.id)
         return application
+
+    async def ensure_conversation(self, *, application_id: UUID) -> Conversation:
+        """Create the single current Conversation container for an Application."""
+        conversation = await self._session.scalar(
+            select(Conversation).where(Conversation.application_id == application_id).with_for_update()
+        )
+        if conversation is not None:
+            return conversation
+        conversation = Conversation(application_id=application_id)
+        self._session.add(conversation)
+        await self._session.flush()
+        return conversation
 
     async def count_applications(self, *, run_id: UUID, candidate_id: UUID) -> int:
         from sqlalchemy import func

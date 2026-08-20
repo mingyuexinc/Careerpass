@@ -46,6 +46,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
       S03_JD_ROOT: /opt/careerpass/s03-jd
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       READINESS_TIMEOUT_SECONDS: "2"
       CELERY_TASK_TIME_LIMIT_SECONDS: "150"
       CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"

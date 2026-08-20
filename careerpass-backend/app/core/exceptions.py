@@ -44,6 +44,7 @@ def _http_error_code(status_code: int) -> ErrorCode:
         status.HTTP_401_UNAUTHORIZED: ErrorCode.UNAUTHORIZED,
         status.HTTP_403_FORBIDDEN: ErrorCode.FORBIDDEN,
         status.HTTP_404_NOT_FOUND: ErrorCode.NOT_FOUND,
+        status.HTTP_410_GONE: ErrorCode.GONE,
         status.HTTP_409_CONFLICT: ErrorCode.CONFLICT,
     }
     return mapping.get(status_code, ErrorCode.INTERNAL_ERROR)

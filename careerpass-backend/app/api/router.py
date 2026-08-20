@@ -6,6 +6,7 @@ from app.api.v1.agent_runs import agent_run_router
 from app.api.v1.applications import applications_router
 from app.api.v1.auth import auth_router
 from app.api.v1.candidate_preparation import candidate_preparation_router
+from app.api.v1.conversations import conversations_router
 from app.api.v1.debug_reset import debug_reset_router
 from app.api.v1.document_parsing import document_parsing_router
 from app.api.v1.health import health_router
@@ -22,6 +23,7 @@ api_router.include_router(applications_router, prefix="/api/v1")
 api_router.include_router(candidate_preparation_router, prefix="/api/v1")
 api_router.include_router(document_parsing_router, prefix="/api/v1")
 api_router.include_router(debug_reset_router, prefix="/api/v1")
+api_router.include_router(conversations_router, prefix="/api/v1")
 api_router.include_router(health_router)
 api_router.include_router(jobs_router, prefix="/api/v1")
 api_router.include_router(job_description_router)

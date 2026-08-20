@@ -6,11 +6,13 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.core.config import Settings, get_settings
+from app.infrastructure.qwen_communication import QwenCommunicationAdapter
 from app.infrastructure.storage.controlled import ControlledJobDescriptionStorage
 from app.repositories.agent_run_repository import AgentRunRepository
 from app.repositories.application_repository import ApplicationRepository
 from app.repositories.async_task_repository import AsyncTaskRepository
 from app.repositories.candidate_preparation_repository import CandidatePreparationRepository
+from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.debug_reset_repository import DebugResetRepository
 from app.repositories.document_parsing_repository import DocumentParsingRepository
 from app.repositories.identity_repository import IdentityRepository
@@ -24,6 +26,7 @@ from app.repositories.user_repository import UserRepository
 from app.services.agent_run_service import AgentRunService
 from app.services.application_service import ApplicationService
 from app.services.candidate_preparation_service import CandidatePreparationService
+from app.services.conversation_service import ConversationService
 from app.services.debug_reset_service import DebugResetService
 from app.services.document_parsing_service import DocumentParsingService
 from app.services.job_description_service import JobDescriptionService
@@ -132,6 +135,29 @@ async def get_application_service(request: Request) -> AsyncIterator[Application
     """Build the request-scoped S-09 Application service."""
     async with request.app.state.database.session_factory() as session:
         yield ApplicationService(repository=ApplicationRepository(session))
+
+
+async def get_conversation_service(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AsyncIterator[ConversationService]:
+    """Build the request-scoped S10-01 service and bounded Qwen adapter."""
+    async with request.app.state.database.session_factory() as session:
+        yield ConversationService(
+            repository=ConversationRepository(session),
+            responder=QwenCommunicationAdapter(
+                api_key=(
+                    settings.qwen_api_key.get_secret_value()
+                    if settings.qwen_api_key is not None
+                    else None
+                ),
+                base_url=settings.qwen_base_url,
+                model=settings.qwen_model,
+                timeout_seconds=settings.communication_timeout_seconds,
+                max_retries=settings.communication_max_retries,
+            ),
+            storage=request.app.state.object_storage,
+        )
 
 
 async def get_debug_reset_service(

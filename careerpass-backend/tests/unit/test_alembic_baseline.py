@@ -6,12 +6,12 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 
-def test_alembic_revision_graph_has_the_s04_experience_duration_head() -> None:
+def test_alembic_revision_graph_has_the_current_s10_communication_head() -> None:
     project_root = Path(__file__).parents[2]
     config = Config(str(project_root / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
 
-    assert script.get_current_head() == "20260817_0013"
+    assert script.get_current_head() == "20260820_0016"
 
 
 def test_empty_baseline_contains_no_schema_operations() -> None:
