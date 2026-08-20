@@ -16,6 +16,11 @@ import {
   listCurrentHrApplications,
   updateCurrentHrApplicationStatus,
 } from "../api/applicationApi";
+import {
+  downloadConversationAttachment,
+  listCurrentConversations,
+  sendConversationMessage,
+} from "../api/conversationApi";
 import type {
   DeliveryProgress,
   AgentRunSummary,
@@ -30,7 +35,7 @@ interface WorkspaceState extends WorkspaceSnapshot {
   resumeLoading: boolean;
   supportingDocumentsLoading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (options?: { preserveView?: boolean }) => Promise<void>;
   uploadResume: (file: File) => Promise<void>;
   setParseResult: (result: "succeeded" | "failed") => Promise<void>;
   uploadDocuments: (files: File[]) => Promise<SupportingDocumentUploadResult[]>;
@@ -40,7 +45,8 @@ interface WorkspaceState extends WorkspaceSnapshot {
   saveGoal: (input: JobGoalInput) => Promise<void>;
   startAgent: () => Promise<void>;
   updateApplicationStatus: (id: string, status: DeliveryProgress) => Promise<void>;
-  sendMessage: (id: string, content: string) => Promise<void>;
+  sendMessage: (id: string, content: string, clientMessageId?: string) => Promise<void>;
+  downloadAttachment: (applicationId: string, messageId: string, attachmentId: string, fileName: string) => Promise<void>;
   resetData: () => Promise<void>;
   clearLocalState: () => Promise<void>;
   clearError: () => void;
@@ -124,8 +130,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   agentRunCanStart: false,
   savingGoal: false,
   startingAgent: false,
-  refresh: async () => {
-    set({ loading: true, initialized: false, error: null });
+  refresh: async (options = {}) => {
+    const preserveView = options.preserveView ?? false;
+    set({
+      loading: true,
+      ...(preserveView ? {} : { initialized: false }),
+      error: null,
+    });
     try {
       const snapshot: WorkspaceSnapshot = {
         ...emptySnapshot,
@@ -164,6 +175,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         snapshot.hrJobs = await listCurrentHrJobs(accessToken);
         snapshot.currentHrJob = snapshot.hrJobs.at(-1) ?? null;
         snapshot.hrApplications = await listCurrentHrApplications(accessToken);
+        try {
+          snapshot.conversations = await listCurrentConversations(accessToken);
+        } catch {
+          // Conversation loading is additive to the HR workspace.  Keep the
+          // applications page usable while an older backend is being upgraded.
+          snapshot.conversations = [];
+        }
         set({
           ...snapshot,
           agentRun: null,
@@ -186,7 +204,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       }
       set({
         loading: false,
-        error: error instanceof Error ? error.message : "数据加载失败。",
+        ...(preserveView
+          ? {}
+          : { error: error instanceof Error ? error.message : "数据加载失败。" }),
       });
     }
   },
@@ -362,11 +382,35 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       await mockRepository.updateHrApplicationStatus(id, status);
       return mockRepository.getSnapshot();
     }),
-  sendMessage: async (id, content) =>
+  sendMessage: async (id, content, clientMessageId) =>
     runAction(set, async () => {
-      await mockRepository.sendConversationMessage(id, content);
+      const accessToken = useAuthStore.getState().accessToken;
+      if (accessToken && useAuthStore.getState().user?.role === "hr") {
+        const current = useWorkspaceStore.getState().conversations.find((item) => item.id === id);
+        if (!current) throw new Error("沟通会话不存在或已不可用。");
+        const updated = await sendConversationMessage(
+          current.applicationId,
+          current.id,
+          content,
+          clientMessageId ?? crypto.randomUUID(),
+          accessToken,
+        );
+        const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+        snapshot.conversations = snapshot.conversations.map((item) =>
+          item.id === updated.id ? updated : item,
+        );
+        return snapshot;
+      }
+      await mockRepository.sendConversationMessage(id, content, clientMessageId);
       return mockRepository.getSnapshot();
     }),
+  downloadAttachment: async (applicationId, messageId, attachmentId, fileName) => {
+    const accessToken = useAuthStore.getState().accessToken;
+    if (!accessToken || useAuthStore.getState().user?.role !== "hr") {
+      throw new Error("当前身份无权下载附件。");
+    }
+    await downloadConversationAttachment(applicationId, messageId, attachmentId, fileName, accessToken);
+  },
   resetData: async () => runAction(set, () => mockRepository.resetData()),
   clearLocalState: async () => {
     set({

@@ -41,6 +41,23 @@ describe("workspace upload loading scopes", () => {
     expect(useWorkspaceStore.getState().supportingDocumentsLoading).toBe(false);
   });
 
+  it("keeps the current page visible during background resume polling", async () => {
+    useWorkspaceStore.setState({
+      initialized: true,
+      resume: {
+        id: "resume-processing-001",
+        fileName: "resume.pdf",
+        uploadedAt: "2026-08-20T00:00:00Z",
+        parseStatus: "processing",
+        version: 1,
+      },
+    });
+
+    await useWorkspaceStore.getState().refresh({ preserveView: true });
+
+    expect(useWorkspaceStore.getState().initialized).toBe(true);
+  });
+
   it("does not call candidate APIs while refreshing an authenticated HR workspace", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);

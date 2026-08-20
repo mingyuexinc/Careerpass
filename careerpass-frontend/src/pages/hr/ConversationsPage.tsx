@@ -63,10 +63,22 @@ export function ConversationsPage() {
                   </div>
                   <StatusBadge tone="success">可沟通</StatusBadge>
                 </div>
-                <MessageList messages={selected.messages} />
+                <MessageList
+                  messages={selected.messages}
+                  onDownload={(message, attachment) =>
+                    state.downloadAttachment(
+                      selected.applicationId,
+                      message.id,
+                      attachment.id,
+                      attachment.fileName,
+                    )
+                  }
+                />
                 <MessageComposer
                   disabled={state.loading}
-                  onSend={(content) => state.sendMessage(selected.id, content)}
+                  onSend={(content, clientMessageId) =>
+                    state.sendMessage(selected.id, content, clientMessageId)
+                  }
                 />
               </>
             ) : null}

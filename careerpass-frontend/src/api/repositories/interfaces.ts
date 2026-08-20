@@ -47,7 +47,8 @@ export interface ApplicationRepository {
 
 export interface ConversationRepository {
   listConversations(): Promise<Conversation[]>;
-  sendConversationMessage(id: string, content: string): Promise<Conversation>;
+  sendConversationMessage(id: string, content: string, clientMessageId?: string): Promise<Conversation>;
+  downloadConversationAttachment(applicationId: string, messageId: string, attachmentId: string, fileName: string): Promise<void>;
 }
 
 export interface WorkspaceRepository

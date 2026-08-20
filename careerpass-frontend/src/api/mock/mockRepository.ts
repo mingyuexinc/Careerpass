@@ -357,8 +357,9 @@ class MockRepository implements WorkspaceRepository {
     return clone(this.snapshot.conversations);
   }
 
-  async sendConversationMessage(id: string, content: string): Promise<Conversation> {
+  async sendConversationMessage(id: string, content: string, clientMessageId?: string): Promise<Conversation> {
     await delay(480);
+    void clientMessageId;
     const conversation = this.snapshot.conversations.find((item) => item.id === id);
     if (!conversation) throw new Error("没有找到对应会话。");
     const trimmed = content.trim();

@@ -6,17 +6,21 @@ export function MessageComposer({
   onSend,
 }: {
   disabled?: boolean;
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, clientMessageId: string) => Promise<void>;
 }) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
+  const [clientMessageId, setClientMessageId] = useState<string | null>(null);
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (sending || disabled || !value.trim()) return;
     setSending(true);
+    const requestId = clientMessageId ?? crypto.randomUUID();
+    setClientMessageId(requestId);
     try {
-      await onSend(value);
+      await onSend(value, requestId);
       setValue("");
+      setClientMessageId(null);
     } finally {
       setSending(false);
     }

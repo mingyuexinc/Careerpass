@@ -125,6 +125,21 @@ export interface Message {
   sender: "hr" | "agent";
   text: string;
   createdAt: string;
+  status?: "pending" | "sent" | "failed";
+  messageType?: "text";
+  attachments?: MessageAttachment[];
+}
+
+export type MessageAttachmentStatus = "preparing" | "downloadable" | "failed" | "expired";
+
+export interface MessageAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSizeBytes: number;
+  createdAt: string;
+  expiresAt: string;
+  status: MessageAttachmentStatus;
 }
 
 export interface Conversation {
