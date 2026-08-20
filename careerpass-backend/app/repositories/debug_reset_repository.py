@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import exists, or_, select
@@ -23,6 +24,7 @@ from app.infrastructure.database.models import (
     Job,
     JobGoal,
     Match,
+    MessageAttachment,
     ParsedJobDescriptionSnapshot,
     ProgressEvent,
     Resume,
@@ -305,6 +307,10 @@ class DebugResetRepository:
                                 Resume.stored_file_object_id == object_id,
                                 CandidateDocument.stored_file_object_id == object_id,
                                 Job.stored_file_object_id == object_id,
+                                (
+                                    (MessageAttachment.stored_file_object_id == object_id)
+                                    & (MessageAttachment.expires_at > datetime.now(UTC))
+                                ),
                             )
                         )
                     )

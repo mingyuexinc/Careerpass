@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models import CandidateDocument, Job, Resume, StoredFileObject
+from app.infrastructure.database.models import (
+    CandidateDocument,
+    Job,
+    MessageAttachment,
+    Resume,
+    StoredFileObject,
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +47,12 @@ class ObjectStorageRepository:
                     Job.deleted_at.is_(None),
                 )
             )
+            has_active_attachment = exists(
+                select(1).where(
+                    MessageAttachment.stored_file_object_id == StoredFileObject.id,
+                    MessageAttachment.expires_at > datetime.now(UTC),
+                )
+            )
             statement = (
                 select(StoredFileObject)
                 .where(
@@ -49,6 +61,7 @@ class ObjectStorageRepository:
                     ~has_resume,
                     ~has_document,
                     ~has_active_job,
+                    ~has_active_attachment,
                 )
                 .order_by(StoredFileObject.updated_at, StoredFileObject.id)
                 .with_for_update(skip_locked=True)
@@ -101,8 +114,12 @@ class ObjectStorageRepository:
         )
         if resume_exists:
             return True
-        return bool(
-            await self._session.scalar(
-                select(exists(select(1).where(CandidateDocument.stored_file_object_id == object_id)))
-            )
+        document_exists = await self._session.scalar(
+            select(exists(select(1).where(CandidateDocument.stored_file_object_id == object_id)))
         )
+        if document_exists:
+            return True
+        return bool(await self._session.scalar(select(exists(select(1).where(
+            MessageAttachment.stored_file_object_id == object_id,
+            MessageAttachment.expires_at > datetime.now(UTC),
+        )))))
