@@ -13,3 +13,12 @@ careerpass-backend/.pytest-tmp/
 .pytest-s07-tmp/
 careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/
 careerpass-backend/tests/acceptance/s04_resume_parse/delivery-acceptance-results/
+careerpass-backend/tests/acceptance/**/artifacts/
+
+# 演示资料：候选人附件、简历和岗位 JD 只保存在本地，不进入 Git
+careerpass-backend/tests/fixtures/candidate_preparation/candidate_documents/*
+!careerpass-backend/tests/fixtures/candidate_preparation/candidate_documents/.gitkeep
+careerpass-backend/tests/fixtures/candidate_preparation/resumes/*
+!careerpass-backend/tests/fixtures/candidate_preparation/resumes/.gitkeep
+careerpass-backend/tests/fixtures/job_descriptions/*
+!careerpass-backend/tests/fixtures/job_descriptions/README.md
