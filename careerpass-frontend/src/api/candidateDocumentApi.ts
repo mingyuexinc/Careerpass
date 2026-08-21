@@ -137,6 +137,17 @@ export async function uploadCandidateDocuments(
   return data.results.map(toUploadResult);
 }
 
+export async function deleteCandidateDocument(
+  documentId: string,
+  accessToken: string,
+): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/candidate_documents/${documentId}`, {
+    method: "DELETE",
+    headers: authorizationHeaders(accessToken),
+  });
+  await parseResponse<{ resource_type: string; resource_id: string; deleted: boolean }>(response);
+}
+
 export function createReadyDocumentResult(file: File): SupportingDocumentUploadResult {
   return {
     fileName: file.name,

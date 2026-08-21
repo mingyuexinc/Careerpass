@@ -9,6 +9,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
+    Candidate,
     CandidateDocument,
     Resume,
     StoredFileObject,
@@ -31,7 +32,10 @@ class CandidatePreparationRepository:
         return self._session.begin()
 
     async def has_other_resume(self, *, candidate_id: UUID, idempotency_key: UUID | None) -> bool:
-        statement = select(Resume.id).where(Resume.candidate_id == candidate_id)
+        statement = select(Resume.id).where(
+            Resume.candidate_id == candidate_id,
+            Resume.deleted_at.is_(None),
+        )
         if idempotency_key is not None:
             statement = statement.where(
                 or_(
@@ -65,6 +69,11 @@ class CandidatePreparationRepository:
         )
         self._session.add(resume)
         await self._session.flush()
+        candidate = await self._session.scalar(
+            select(Candidate).where(Candidate.id == candidate_id).with_for_update()
+        )
+        if candidate is not None:
+            candidate.current_resume_id = resume.id
         return resume, False, created_file_object
 
     async def create_document(
@@ -109,23 +118,31 @@ class CandidatePreparationRepository:
 
     async def list_resumes(
         self, candidate_id: UUID, page: int, page_size: int
-    ) -> tuple[list[Resume], int]:
+    ) -> tuple[list[Resume], int, UUID | None]:
+        current_resume_id = await self._session.scalar(
+            select(Candidate.current_resume_id).where(Candidate.id == candidate_id)
+        )
         count = await self._session.scalar(
-            select(func.count()).select_from(Resume).where(Resume.candidate_id == candidate_id)
+            select(func.count())
+            .select_from(Resume)
+            .where(Resume.candidate_id == candidate_id, Resume.deleted_at.is_(None))
         )
         statement = (
             select(Resume)
-            .where(Resume.candidate_id == candidate_id)
+            .where(Resume.candidate_id == candidate_id, Resume.deleted_at.is_(None))
             .order_by(Resume.created_at.desc(), Resume.id.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
-        return list((await self._session.scalars(statement)).all()), int(count or 0)
+        return list((await self._session.scalars(statement)).all()), int(count or 0), current_resume_id
 
     async def list_documents(
         self, candidate_id: UUID, page: int, page_size: int
     ) -> tuple[list[CandidateDocument], int]:
-        where = [CandidateDocument.candidate_id == candidate_id]
+        where = [
+            CandidateDocument.candidate_id == candidate_id,
+            CandidateDocument.deleted_at.is_(None),
+        ]
         count = await self._session.scalar(
             select(func.count()).select_from(CandidateDocument).where(*where)
         )
@@ -168,6 +185,7 @@ class CandidatePreparationRepository:
             .where(
                 Resume.candidate_id == candidate_id,
                 Resume.upload_idempotency_key == key,
+                Resume.deleted_at.is_(None),
             )
         )
         return (await self._session.execute(statement)).one_or_none()
@@ -181,6 +199,7 @@ class CandidatePreparationRepository:
             .where(
                 Resume.candidate_id == candidate_id,
                 StoredFileObject.content_sha256 == content_sha256,
+                Resume.deleted_at.is_(None),
             )
             .order_by(Resume.created_at.asc(), Resume.id.asc())
             .limit(1)
@@ -201,6 +220,7 @@ class CandidatePreparationRepository:
             .where(
                 CandidateDocument.candidate_id == candidate_id,
                 CandidateDocument.upload_idempotency_key == key,
+                CandidateDocument.deleted_at.is_(None),
             )
         )
         return (await self._session.execute(statement)).one_or_none()
@@ -217,6 +237,7 @@ class CandidatePreparationRepository:
             .where(
                 CandidateDocument.candidate_id == candidate_id,
                 StoredFileObject.content_sha256 == content_sha256,
+                CandidateDocument.deleted_at.is_(None),
             )
             .order_by(CandidateDocument.created_at.asc(), CandidateDocument.id.asc())
             .limit(1)

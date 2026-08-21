@@ -21,23 +21,27 @@
 | `20260817_0013` | `implemented` | Match、Application、ProgressEvent、算法版本、评分快照和 `run_id + job_id` 幂等约束 |
 | `20260819_0014` | `implemented` | Job 上传原始文件名 `file_name`，用于 HR 岗位卡片恢复展示 |
 | `20260820_0015` | `implemented` | S10-01 `conversations`、`messages`、`agent_turns` 及其归属、状态和幂等约束 |
+| `20260820_0016` | `implemented` | S10-02 `message_attachments` 及 7 天有效期、下载授权和幂等约束 |
+| `20260821_0017` | `implemented` | S10-03 AgentTurn 主动查询字段、回答解析和判断幂等约束 |
+| `20260821_0018` | `implemented` | S11 逻辑删除、当前简历指针、删除审计及未删除资源唯一索引 |
 
 ## 2. 已实现表
 
 | 表 | 主键/归属 | 关键字段 | 约束/索引 |
 | --- | --- | --- | --- |
 | `users` | `id` | `username`、`password_hash` | `username` 唯一；不保存密码原值 |
-| `candidates` | `id`；`user_id → users` | `user_id` | `user_id` 唯一，一对一 |
+| `candidates` | `id`；`user_id → users` | `user_id`、`current_resume_id` | `user_id` 唯一，一对一；当前简历可为空，删除后不自动回退 |
 | `hr_profiles` | `id`；`user_id → users` | `user_id` | `user_id` 唯一，一对一 |
 | `user_roles` | `id`；`user_id → users` | 角色关联 | 服务端复核角色归属 |
 | `stored_file_objects` | `id` | `storage_key`、`content_sha256`、状态 | `storage_key`、`content_sha256` 唯一；内部定位不进入 API |
-| `resumes` | `id`；`candidate_id → candidates` | 文件引用、解析状态、失败分类 | 只接受 `ready` 文件对象；同一 Candidate 可有多条记录，内容重复上传复用已有记录 |
+| `resumes` | `id`；`candidate_id → candidates` | 文件引用、解析状态、失败分类、`deleted_at` | 只接受 `ready` 文件对象；同一 Candidate 可有多条记录；逻辑删除后不参与列表、检索和内容幂等复用 |
 | `candidate_profiles` | `id`；`resume_id → resumes` | 结构化画像 | `resume_id` 唯一；`years_of_experience` 为 `unknown/x个月/x年` |
-| `candidate_documents` | `id`；`candidate_id → candidates`；`stored_file_object_id → stored_file_objects` | `document_type` 固定为 `other`、`document_name`、`file_type`、文件引用和上传幂等键 | 仅保存成功资料；不进入解析任务；失败文件不落库 |
+| `candidate_documents` | `id`；`candidate_id → candidates`；`stored_file_object_id → stored_file_objects` | `document_type` 固定为 `other`、`document_name`、`file_type`、文件引用、上传幂等键、`deleted_at` | 仅保存成功资料；不进入解析任务；失败文件不落库；逻辑删除后不参与新的资料检索 |
 | `async_task_runs` | `id`；按 `resource_type/resource_id` 关联业务资源 | 任务类型、版本、幂等键、租约、终态 | `idempotency_key`、任务标识按当前迁移约束 |
 | `parsed_job_description_snapshots` | `id`；`job_id → jobs` | `schema_version`、`fields`、`raw_sections`、创建时间 | `job_id` 唯一；成功快照才创建；`fields` 和 `raw_sections` 使用 JSONB；`implemented` |
 | `job_goals` | `id`；`candidate_id → candidates` | `offer_target`、`title`、`filters`、`status`、时间字段 | `candidate_id` 唯一；Offer 数量 1–10；状态为 `active/achieved/abandoned`；不含 Resume 外键；`implemented` |
 | `agent_run_contexts` | `id`；`candidate_id → candidates`；`job_goal_id → job_goals`；`resume_id → resumes`；`candidate_profile_id → candidate_profiles` | 目标快照、简历/画像绑定、`status`、结束原因、启动/结束时间 | `UNIQUE(candidate_id, job_goal_id)`；Candidate 归属；`running/finished`；`implemented` |
+| `resource_audit_events` | `id`；`actor_user_id → users` | 资源类型、资源 ID、操作者、事件类型、时间 | 删除事件最小审计；`resource_type + resource_id + event_type` 唯一；不记录删除原因 |
 
 ## 3. S-02 岗位表设计
 
@@ -49,6 +53,7 @@
 | `jobs` | `hr_profile_id` | UUID，非空，外键 → `hr_profiles.id` | 岗位所有者 | `implemented` |
 | `jobs` | `stored_file_object_id` | UUID，非空，外键 → `stored_file_objects.id` | 唯一 JD 文件关联 | `implemented` |
 | `jobs` | `file_name` | `VARCHAR(255)`，可空（历史记录兼容） | 上传时保存的原始文件名，用于 HR 上传卡片展示 | `implemented` |
+| `jobs` | `deleted_at` | `TIMESTAMPTZ`，可空 | S-11 逻辑删除标记；当前岗位列表只读取空值 | `implemented` |
 | `jobs` | `created_at` | `TIMESTAMPTZ`，非空 | 创建时间 | `implemented` |
 
 Job 不新增以下解析或业务字段：
@@ -106,7 +111,8 @@ JD 输入资源不单独建表，由 `jobs.stored_file_object_id` 表达。
 | 批量上传 | 每个文件独立处理，允许部分成功；批次不要求全成全败 |
 | 文件/事务失败 | 不留下可供 S-03 消费的半成品 Job 输入；未引用临时对象按对象存储清理规则处理 |
 | S-03 解析 | S-03 独立更新解析任务；成功且五项核心字段有效时创建结构化快照；核心字段缺失、临时技术失败重试耗尽或输入不可用不形成可供 S-08 使用的快照；不回滚已提交的 S-02 Job |
-| Job 删除 | 匹配开始前可删除；匹配已发起后不可删除；具体软删除/对象清理由 S-11 设计 |
+| S-11 业务资料删除 | 简历、CandidateDocument 和 Job 统一逻辑移除；当前业务读取和后续检索排除已移除资源；物理文件仅在没有有效引用后清理；具体事务与对象清理由 S-11 设计 |
+| Job 删除 | 匹配开始前可逻辑移除；匹配已发起后不可移除；删除后不保留可供当前业务读取的 S-03 快照 |
 | 内部定位 | 生产任务只携带资源标识；纯内部验证 API 可短暂接收受控 `local_path`，但路径不进入任务持久化、普通响应、日志或追踪 |
 | S-07 启动 | 目标快照、当前简历和画像绑定、运行状态和唯一约束在同一事务内提交；不检查 JD，不创建匹配/投递记录 |
 

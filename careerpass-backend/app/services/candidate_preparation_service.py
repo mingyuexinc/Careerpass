@@ -33,10 +33,6 @@ class InvalidUploadError(Exception):
         super().__init__(code)
 
 
-class ResumeAlreadyExistsError(Exception):
-    """The current MVP permits only one resume upload per candidate."""
-
-
 @dataclass(frozen=True)
 class ValidatedUpload:
     content: bytes
@@ -73,10 +69,6 @@ class CandidatePreparationService:
         display_name = _display_name(name, filename, "resume", "pdf")
         try:
             async with self._repository.transaction():
-                if await self._repository.has_other_resume(
-                    candidate_id=candidate_id, idempotency_key=idempotency_key
-                ):
-                    raise ResumeAlreadyExistsError
                 resume, reused, used_new_file_object = await self._repository.create_resume(
                     candidate_id=candidate_id,
                     name=display_name,
@@ -181,7 +173,12 @@ class CandidatePreparationService:
     async def list_resumes(
         self, candidate_id: UUID, page: int, page_size: int
     ) -> ResumeListResponse:
-        values, total = await self._repository.list_resumes(candidate_id, page, page_size)
+        result = await self._repository.list_resumes(candidate_id, page, page_size)
+        if len(result) == 2:
+            values, total = result
+            current_resume_id = None
+        else:
+            values, total, current_resume_id = result
         return ResumeListResponse(
             list=[
                 ResumeListItem(
@@ -190,6 +187,7 @@ class CandidatePreparationService:
                     created_at=value.created_at,
                     parse_status=value.parse_status,
                     failure_code=value.failure_code if value.parse_status == "failed" else None,
+                    is_current=value.id == current_resume_id,
                 )
                 for value in values
             ],

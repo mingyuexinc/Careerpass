@@ -44,6 +44,7 @@ export interface Resume {
   uploadedAt: string;
   parseStatus: ResumeParseStatus;
   version: number;
+  isCurrent?: boolean;
 }
 
 export interface SupportingDocument {
@@ -84,6 +85,7 @@ export interface HrJob {
   companyName: string | null;
   createdAt: string;
   parseStatus: HrJobParseStatus | null;
+  matchStarted?: boolean;
 }
 
 export interface JobGoal {

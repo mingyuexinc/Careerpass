@@ -1,0 +1,11 @@
+{
+  "scenario_id": "IS-S11-03",
+  "required": [
+    "hr_ownership_is_enforced",
+    "terminal_unmatched_job_delete",
+    "in_progress_or_matched_job_rejected",
+    "no_confirmation_dialog",
+    "deleted_job_removed_from_frontend_list"
+  ],
+  "actual": "artifacts/IS-S11-03-acceptance/actual.json"
+}

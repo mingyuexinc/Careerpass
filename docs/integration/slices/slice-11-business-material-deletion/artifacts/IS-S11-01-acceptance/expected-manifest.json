@@ -1,0 +1,13 @@
+{
+  "scenario_id": "IS-S11-01",
+  "required": [
+    "terminal_resume_delete",
+    "matching_readiness_does_not_change_delete_eligibility",
+    "processing_resume_rejected",
+    "agent_started_resume_rejected",
+    "current_resume_cleared_without_fallback",
+    "new_resume_becomes_current",
+    "duplicate_delete_is_idempotent"
+  ],
+  "actual": "artifacts/IS-S11-01-acceptance/actual.json"
+}

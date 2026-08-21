@@ -43,8 +43,9 @@ def test_base_metadata_contains_candidate_preparation_models() -> None:
         "conversations",
         "messages",
         "message_attachments",
-        "agent_turns",
-        "user_roles",
+            "agent_turns",
+            "resource_audit_events",
+            "user_roles",
         "users",
     }
     assert User.__table__.c.username.type.length == 64

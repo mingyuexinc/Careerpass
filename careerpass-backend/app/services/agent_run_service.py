@@ -79,7 +79,6 @@ def _is_startable(conditions: StartPreconditions) -> bool:
         conditions.run is None
         and conditions.goal is not None
         and conditions.goal.status == "active"
-        and conditions.resume_count == 1
         and conditions.resume is not None
         and conditions.resume.parse_status == "succeeded"
         and conditions.profile is not None

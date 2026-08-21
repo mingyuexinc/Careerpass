@@ -11,7 +11,7 @@ def test_alembic_revision_graph_has_the_current_s10_communication_head() -> None
     config = Config(str(project_root / "alembic.ini"))
     script = ScriptDirectory.from_config(config)
 
-    assert script.get_current_head() == "20260820_0016"
+    assert script.get_current_head() == "20260821_0018"
 
 
 def test_empty_baseline_contains_no_schema_operations() -> None:

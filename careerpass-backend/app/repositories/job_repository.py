@@ -10,8 +10,10 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
+    Application,
     AsyncTaskRun,
     Job,
+    Match,
     ParsedJobDescriptionSnapshot,
 )
 from app.schemas.job import HrJobItem, JobParseStatus
@@ -25,6 +27,7 @@ class HrJobRecord:
     job: Job
     snapshot: ParsedJobDescriptionSnapshot | None
     parse_status: JobParseStatus | None
+    match_started: bool
 
 
 class JobRepository:
@@ -62,6 +65,19 @@ class JobRepository:
                 .limit(1)
             )
             task_status = task.status if task is not None else None
+            match_started = bool(
+                await self._session.scalar(
+                    select(
+                        Match.id,
+                    )
+                    .where(Match.job_id == job.id)
+                    .limit(1)
+                )
+            ) or bool(
+                await self._session.scalar(
+                    select(Application.id).where(Application.job_id == job.id).limit(1)
+                )
+            )
             records.append(
                 HrJobRecord(
                     job=job,
@@ -69,6 +85,7 @@ class JobRepository:
                     parse_status=task_status
                     if task_status in {"queued", "running", "succeeded", "failed"}
                     else None,
+                    match_started=match_started,
                 )
             )
         return [to_hr_item(record) for record in records]
@@ -93,4 +110,5 @@ def to_hr_item(record: HrJobRecord) -> HrJobItem:
         company_name=company,
         created_at=record.job.created_at,
         parse_status=record.parse_status,
+        match_started=record.match_started,
     )

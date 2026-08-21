@@ -1,0 +1,12 @@
+{
+  "scenario_id": "IS-S11-02",
+  "required": [
+    "delete_allowed_across_agent_lifecycle",
+    "deleted_document_removed_from_list",
+    "deleted_document_excluded_from_new_retrieval",
+    "existing_attachment_retains_seven_day_lifecycle",
+    "same_content_reupload_creates_new_business_record",
+    "duplicate_delete_is_idempotent"
+  ],
+  "actual": "artifacts/IS-S11-02-acceptance/actual.json"
+}

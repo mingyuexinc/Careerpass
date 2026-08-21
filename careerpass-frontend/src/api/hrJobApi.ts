@@ -14,6 +14,7 @@ interface HrJobResponse {
   company_name: string | null;
   created_at: string;
   parse_status: HrJobParseStatus | null;
+  match_started?: boolean;
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
@@ -30,7 +31,19 @@ function mapHrJob(value: HrJobResponse): HrJob {
     companyName: value.company_name,
     createdAt: value.created_at,
     parseStatus: isHrJobParseStatus(value.parse_status) ? value.parse_status : null,
+    matchStarted: value.match_started ?? false,
   };
+}
+
+export async function deleteHrJob(jobId: string, accessToken: string): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/jobs/${jobId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const payload = (await response.json()) as ApiEnvelope<unknown>;
+  if (!response.ok || payload.data === null) {
+    throw new Error(payload.msg || "岗位 JD 删除失败，请稍后重试。");
+  }
 }
 
 export async function listCurrentHrJobs(accessToken: string): Promise<HrJob[]> {

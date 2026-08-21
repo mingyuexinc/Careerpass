@@ -16,12 +16,14 @@ import type {
 export interface ResumeRepository {
   getCurrentResume(): Promise<Resume | null>;
   uploadResume(file: File): Promise<Resume>;
+  deleteResume(id: string): Promise<Resume | null>;
   setParseResult(result: "succeeded" | "failed"): Promise<Resume>;
 }
 
 export interface SupportingDocumentRepository {
   listDocuments(): Promise<SupportingDocument[]>;
   uploadDocuments(files: File[]): Promise<SupportingDocumentUploadResult[]>;
+  deleteDocument(id: string): Promise<SupportingDocument[]>;
 }
 
 export interface JobRepository {

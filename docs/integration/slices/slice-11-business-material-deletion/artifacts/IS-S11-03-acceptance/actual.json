@@ -1,0 +1,22 @@
+{
+  "scenario_id": "IS-S11-03",
+  "contract": "IC-S11-BUSINESS-MATERIAL-DELETION@0.1",
+  "verified_at": "2026-08-21",
+  "status": "integration_delivered",
+  "runtime": {
+    "backend_migration": "20260821_0018",
+    "health_status": "ready",
+    "delete_http_status": 200,
+    "delete_result": true,
+    "list_total_before": 7,
+    "list_total_after": 6,
+    "deleted_job_present_after_refresh": false
+  },
+  "assertions": {
+    "hr_ownership_is_enforced": true,
+    "terminal_unmatched_job_delete": true,
+    "in_progress_or_matched_job_rejected": true,
+    "no_confirmation_dialog": true,
+    "deleted_job_removed_from_frontend_list": true
+  }
+}

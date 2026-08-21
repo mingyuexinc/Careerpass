@@ -1,0 +1,19 @@
+{
+  "scenario_id": "IS-S11-02",
+  "contract": "IC-S11-BUSINESS-MATERIAL-DELETION@0.1",
+  "verified_at": "2026-08-21",
+  "status": "integration_delivered",
+  "assertions": {
+    "delete_allowed_across_agent_lifecycle": true,
+    "deleted_document_removed_from_list": true,
+    "deleted_document_excluded_from_new_retrieval": true,
+    "existing_attachment_retains_seven_day_lifecycle": true,
+    "same_content_reupload_creates_new_business_record": true,
+    "duplicate_delete_is_idempotent": true
+  },
+  "automated_checks": {
+    "s10_02_regression": "passed",
+    "backend_unit_tests": "255 passed",
+    "frontend_tests": "72 passed"
+  }
+}

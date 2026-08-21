@@ -130,7 +130,7 @@ describe("JobsPage", () => {
 
     expect(screen.queryByText(/AI 产品前端工程师/)).not.toBeInTheDocument();
     expect(screen.queryByText(/界面实验室/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /删除/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /删除/ })).toHaveLength(2);
   });
 
   it("keeps restored HR jobs inside the JD upload card", async () => {
@@ -246,5 +246,76 @@ describe("JobsPage", () => {
       ),
     );
     await waitFor(() => expect(input).not.toBeDisabled());
+  });
+
+  it("deletes a parsed job immediately without a confirmation dialog", async () => {
+    useAuthStore.setState({
+      user: {
+        id: "hr-001",
+        role: "hr",
+        displayName: "Demo HR",
+        title: "HR 工作台",
+      },
+    });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/jobs/hr/current")) {
+        return new Response(
+          JSON.stringify({
+            code: 200,
+            msg: "current HR jobs",
+            data: {
+              jobs: init?.method === "DELETE" ? [] : [
+                {
+                  id: "job-delete-001",
+                  file_name: "001-天创机器人-Agent开发工程师.md",
+                  job_title: "Agent 开发工程师",
+                  company_name: "天创机器人",
+                  created_at: "2026-08-19T00:00:00Z",
+                  parse_status: "succeeded",
+                  match_started: false,
+                },
+              ],
+              total: init?.method === "DELETE" ? 0 : 1,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/applications/hr/current")) {
+        return new Response(
+          JSON.stringify({ code: 200, msg: "current HR applications", data: { applications: [], total: 0 } }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/jobs/job-delete-001") && init?.method === "DELETE") {
+        return new Response(
+          JSON.stringify({
+            code: 200,
+            msg: "success",
+            data: {
+              resource_type: "job",
+              resource_id: "job-delete-001",
+              deleted: true,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw new Error(`unexpected request: ${url}`);
+    });
+    const confirmSpy = vi.spyOn(window, "confirm");
+    render(<JobsPage />);
+
+    await waitFor(() => expect(screen.getByText("001-天创机器人-Agent开发工程师.md")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /删除 001-天创机器人-Agent开发工程师\.md/ }));
+
+    await waitFor(() => expect(screen.queryByText("001-天创机器人-Agent开发工程师.md")).not.toBeInTheDocument());
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) => String(input).endsWith("/jobs/job-delete-001") && init?.method === "DELETE",
+      ),
+    ).toBe(true);
   });
 });

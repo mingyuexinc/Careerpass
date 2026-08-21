@@ -1,0 +1,20 @@
+{
+  "scenario_id": "IS-S11-01",
+  "contract": "IC-S11-BUSINESS-MATERIAL-DELETION@0.1",
+  "verified_at": "2026-08-21",
+  "status": "integration_delivered",
+  "assertions": {
+    "terminal_resume_delete": true,
+    "matching_readiness_does_not_change_delete_eligibility": true,
+    "processing_resume_rejected": true,
+    "agent_started_resume_rejected": true,
+    "current_resume_cleared_without_fallback": true,
+    "new_resume_becomes_current": true,
+    "duplicate_delete_is_idempotent": true
+  },
+  "automated_checks": {
+    "backend_unit_tests": "255 passed",
+    "frontend_typecheck": "passed",
+    "frontend_tests": "72 passed"
+  }
+}

@@ -37,6 +37,7 @@ function toHrJob(job: Job): HrJob {
     companyName: job.company,
     createdAt: job.uploadedAt,
     parseStatus: "succeeded",
+    matchStarted: false,
   };
 }
 
@@ -110,6 +111,20 @@ class MockRepository implements WorkspaceRepository {
     return clone(resume);
   }
 
+  async deleteResume(id: string): Promise<Resume | null> {
+    await delay(180);
+    const current = this.snapshot.resume;
+    if (!current || current.id !== id) throw new Error("当前简历不存在或已不可用。");
+    if (
+      !["not_started", "ready"].includes(this.snapshot.agentStatus) ||
+      !["succeeded", "failed"].includes(current.parseStatus)
+    ) {
+      throw new Error("当前状态不能删除简历。");
+    }
+    this.snapshot.resume = null;
+    return null;
+  }
+
   async setParseResult(result: "succeeded" | "failed"): Promise<Resume> {
     await delay(520);
     if (!this.snapshot.resume) throw new Error("请先上传简历。");
@@ -119,6 +134,20 @@ class MockRepository implements WorkspaceRepository {
   }
 
   async listDocuments(): Promise<SupportingDocument[]> {
+    return clone(this.snapshot.supportingDocuments);
+  }
+
+  async deleteDocument(id: string): Promise<SupportingDocument[]> {
+    await delay(180);
+    if (!this.snapshot.supportingDocuments.some((item) => item.id === id)) {
+      throw new Error("其它资料不存在或已不可用。");
+    }
+    this.snapshot.supportingDocuments = this.snapshot.supportingDocuments.filter(
+      (item) => item.id !== id,
+    );
+    for (const [fingerprint, documentId] of this.documentFingerprints.entries()) {
+      if (documentId === id) this.documentFingerprints.delete(fingerprint);
+    }
     return clone(this.snapshot.supportingDocuments);
   }
 

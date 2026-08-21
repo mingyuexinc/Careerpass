@@ -11,6 +11,9 @@ from app.infrastructure.storage.controlled import ControlledJobDescriptionStorag
 from app.repositories.agent_run_repository import AgentRunRepository
 from app.repositories.application_repository import ApplicationRepository
 from app.repositories.async_task_repository import AsyncTaskRepository
+from app.repositories.business_resource_deletion_repository import (
+    BusinessResourceDeletionRepository,
+)
 from app.repositories.candidate_preparation_repository import CandidatePreparationRepository
 from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.debug_reset_repository import DebugResetRepository
@@ -25,6 +28,7 @@ from app.repositories.object_storage_repository import ObjectStorageRepository
 from app.repositories.user_repository import UserRepository
 from app.services.agent_run_service import AgentRunService
 from app.services.application_service import ApplicationService
+from app.services.business_resource_deletion_service import BusinessResourceDeletionService
 from app.services.candidate_preparation_service import CandidatePreparationService
 from app.services.conversation_service import ConversationService
 from app.services.debug_reset_service import DebugResetService
@@ -69,6 +73,16 @@ async def get_candidate_preparation_service(
             repository=CandidatePreparationRepository(session),
             task_repository=AsyncTaskRepository(session),
             storage=request.app.state.object_storage,
+        )
+
+
+async def get_business_resource_deletion_service(
+    request: Request,
+) -> AsyncIterator[BusinessResourceDeletionService]:
+    """Build the request-scoped S-11 deletion service."""
+    async with request.app.state.database.session_factory() as session:
+        yield BusinessResourceDeletionService(
+            repository=BusinessResourceDeletionRepository(session)
         )
 
 

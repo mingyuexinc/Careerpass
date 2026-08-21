@@ -12,6 +12,7 @@ from app.infrastructure.database.models import (
     Match,
     Message,
     ProgressEvent,
+    ResourceAuditEvent,
     User,
     UserRole,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "Match",
     "Message",
     "ProgressEvent",
+    "ResourceAuditEvent",
     "User",
     "UserRole",
     "create_database",

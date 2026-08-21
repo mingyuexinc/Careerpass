@@ -22,6 +22,7 @@ class HrJobItem(BaseModel):
     company_name: str | None = None
     created_at: datetime
     parse_status: JobParseStatus | None = None
+    match_started: bool = False
 
 
 class HrJobListResponse(BaseModel):

@@ -7,7 +7,7 @@ import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function JobsPage() {
   useWorkspaceRefresh();
-  const { hrJobs, refresh } = useWorkspaceStore((state) => state);
+  const { hrJobs, refresh, deleteJob } = useWorkspaceStore((state) => state);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +35,14 @@ export function JobsPage() {
       );
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function removeJob(id: string) {
+    try {
+      await deleteJob(id);
+    } catch {
+      // The workspace store exposes the controlled error state.
     }
   }
 
@@ -80,6 +88,13 @@ export function JobsPage() {
                     fileName={job.fileName ?? job.jobTitle ?? "岗位 JD"}
                     uploadedAt={job.createdAt}
                     iconLabel="MD"
+                    deleteLabel={job.fileName ?? job.jobTitle ?? "岗位 JD"}
+                    deleteDisabled={
+                      job.parseStatus !== "succeeded" && job.parseStatus !== "failed"
+                        ? true
+                        : job.matchStarted
+                    }
+                    onDelete={() => void removeJob(job.id)}
                   />
                 ))}
               </div>

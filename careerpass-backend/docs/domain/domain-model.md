@@ -16,9 +16,9 @@
 | UserRole | 关联实体 | User | 记录可用 `candidate` / `hr` 角色 | `implemented` | 当前代码与迁移 |
 | CurrentIdentity | 运行时投影 | 当前请求 | 提供 `user_id`、角色和可选业务身份 ID | `implemented` | 认证依赖；不持久化 |
 | StoredFileObject | 持久化实体 | 业务资源引用 | 保存受控文件元数据和对象存储引用 | `implemented` | 不向公开 API 暴露内部定位 |
-| Resume | 持久化实体 | Candidate | 保存正式简历和解析状态；同一 Candidate 可拥有多份简历 | `implemented` | 当前代码与迁移；S-04 内容幂等规则 |
+| Resume | 持久化实体 | Candidate | 保存正式简历和解析状态；同一 Candidate 可拥有多份简历；当前简历由 Agent 启动时绑定 | `implemented` | 当前代码与迁移；S-04 内容幂等规则；S-11 逻辑移除规则 |
 | CandidateProfile | 持久化实体 | Resume | 保存成功解析后的结构化候选人画像，并提供独立的岗位匹配资格判定 | `implemented` | `resume_id` 一对一；解析成功不等于具备匹配资格 |
-| CandidateDocument | 持久化实体 | Candidate | 保存附加求职资料，不进入解析状态机；上传业务状态由 S-05 负责 | `implemented` | 当前代码与迁移；业务状态以业务基线为准 |
+| CandidateDocument | 持久化实体 | Candidate | 保存附加求职资料，不进入解析状态机；上传业务状态由 S-05 负责；删除后不参与新的资料检索 | `implemented` | 当前代码与迁移；业务状态和 S-11 逻辑移除规则以业务基线为准 |
 | AsyncTaskRun | 持久化实体 | 关联业务资源 | 保存异步任务权威状态、租约、幂等和脱敏失败分类 | `implemented` | 当前已支持简历解析；岗位任务由后续 Slice 扩展 |
 | Job | 持久化实体 | HrProfile | 表示一份独立岗位，关联一个 JD 文件并作为 S-03 输入锚点 | `slice-confirmed` | S-02 已确认，代码/迁移待实现 |
 | ParsedJobDescriptionSnapshot | 持久化实体 | Job | 保存 S-03 按固定 Markdown 标题解析并校验后的岗位结构化事实和展示字段 | `slice-confirmed` | 一份 Markdown 文件对应一个 Job；仅成功且五项核心字段有效时创建；不由 S-02 创建 |
@@ -30,6 +30,7 @@
 | Conversation | 持久化实体 | Application | 当前投递上下文内的系统沟通会话 | `slice-confirmed` | S-10 Technical Design；一条当前 Application 对应当前 Conversation |
 | Message | 持久化实体 | Conversation | HR 与 Agent 的系统内正式消息 | `slice-confirmed` | S-10 Technical Design；消息状态由 Conversation Message Service 拥有 |
 | MessageAttachment | 持久化实体 | Message | CandidateDocument 在 Conversation 中的可下载附件投影；保留有效期内独立下载能力 | `implemented` | S10-02 迁移 `20260820_0016`、Repository 和下载接口；不提供在线预览；创建后 7 天有效 |
+| ResourceAuditEvent | 持久化审计实体 | User/业务资源 | 保存三类业务资料删除的最小审计事件，不保存原因或敏感原值 | `implemented` | S-11 迁移与删除 Repository；资源类型、资源 ID、操作者、事件类型和时间唯一约束 |
 | AgentTurn | 技术执行记录 | Conversation | Agent Turn 的幂等、执行状态和脱敏结果分类 | `slice-confirmed` | 不作为 Application 业务状态；S-10 Technical Design |
 
 ## 2. 关系与归属
@@ -42,6 +43,7 @@
 | Candidate | 1 : N | Resume | Resume 只能归属于本人 Candidate |
 | Candidate | 1 : N | CandidateDocument | 附加资料只能归属于本人 Candidate |
 | Candidate | 1 : 1 | JobGoal | 当前版本每个 Candidate 只有一个当前目标；目标不绑定 Resume |
+| Candidate | 1 : 0..1 | Resume | `current_resume_id` 表达当前简历；当前简历删除后置空，历史简历不自动回退 |
 | Resume | 1 : 1 | CandidateProfile | 成功解析的 Resume 至多一个画像；画像另行表达匹配资格 |
 | Candidate | 1 : N | AgentRunContext | 运行上下文只能归属于本人 Candidate；当前目标与运行上下文组合唯一 |
 | JobGoal | 1 : N | AgentRunContext | 运行上下文保存启动时目标快照；当前版本同一 Candidate/JobGoal 不创建第二个运行 |
@@ -76,10 +78,10 @@
 | 对象 | 状态/迁移 | 状态拥有者 | 约束 |
 | --- | --- | --- | --- |
 | StoredFileObject | `writing → ready → deleting` | 文件对象/清理流程 | 只有 `ready` 对象可被业务资源读取 |
-| Resume | `processing → succeeded / failed` | S-04 解析流程 | `succeeded` 必须有已校验画像；画像另行判定 `matching_ready / matching_not_ready`；`failed` 只能记录受控 `failure_code`；相同内容上传复用既有资源 |
-| CandidateDocument | `ready → success / failed`（业务投影） | S-05 上传流程 | `ready` 和 `failed` 为上传过程的瞬时业务结果，不写入 CandidateDocument；仅 `success` 资料形成持久化记录；删除由 S-11 负责 |
+| Resume | `processing → succeeded / failed`；终态后可逻辑移除 | S-04 解析流程；S-11 删除 | `succeeded` 必须有已校验画像；画像另行判定 `matching_ready / matching_not_ready`；`failed` 只能记录受控 `failure_code`；相同内容上传复用既有资源；仅解析终态且 Agent 未启动时可移除 |
+| CandidateDocument | `ready → success / failed`（业务投影）；`success → logically removed` | S-05 上传流程；S-11 删除 | `ready` 和 `failed` 为上传过程的瞬时业务结果，不写入 CandidateDocument；仅 `success` 资料形成持久化记录；逻辑移除后不参与新的资料检索，已创建附件保留有效期 |
 | AsyncTaskRun | `queued → running → succeeded / failed` | Dispatcher/Worker 与任务流程 | `running` 受租约保护；终态不可被迟到回调覆盖 |
-| Job | 创建后作为稳定岗位资源存在；删除后不再是当前可用岗位 | S-02 创建；S-11 删除 | 新 JD 创建新 Job；不覆盖、不建版本；删除资格受解析终态和匹配发起事实约束 |
+| Job | 创建后作为稳定岗位资源存在；逻辑移除后不再是当前可用岗位 | S-02 创建；S-11 删除 | 新 JD 创建新 Job；不覆盖、不建版本；删除资格受解析终态和匹配发起事实约束 |
 | Job 的 JD 解析状态 | `queued / running / succeeded / failed` 的任务/资源状态 | S-03 | S-02 只创建/复用 queued 任务，不写解析终态；临时技术失败和输入不可用进入 `parse_failed`，核心字段缺失也进入 `parse_failed + matching_not_ready` 且不创建快照 |
 | Job 删除资格 | 解析任务终态且未发起匹配 → 可删除；`queued/running` 或已发起匹配 → 不可删除 | S-11 执行，S-08 提供匹配发起事实 | 即使匹配失败或无结果，已发起匹配也不得删除；删除成功后不保留可用解析快照 |
 | JobGoal | `active` 可由 S-06 创建/更新；`achieved` / `abandoned` 不可由 S-06 修改 | S-06 创建/更新；S-07/后续流程负责运行与达成 | 目标只保存用户输入，不绑定简历，不启动 Agent |

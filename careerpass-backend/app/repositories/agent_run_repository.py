@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
     AgentRunContext,
+    Candidate,
     CandidateProfile,
     JobGoal,
     Resume,
@@ -52,15 +53,24 @@ class AgentRunRepository:
         )
         resume_count = int(
             await self._session.scalar(
-                select(func.count()).select_from(Resume).where(Resume.candidate_id == candidate_id)
+                select(func.count())
+                .select_from(Resume)
+                .where(Resume.candidate_id == candidate_id, Resume.deleted_at.is_(None))
             )
             or 0
         )
         resume = None
         profile = None
-        if resume_count == 1:
+        candidate = await self._session.scalar(
+            select(Candidate).where(Candidate.id == candidate_id).with_for_update()
+        )
+        if candidate is not None and candidate.current_resume_id is not None:
             resume = await self._session.scalar(
-                select(Resume).where(Resume.candidate_id == candidate_id)
+                select(Resume).where(
+                    Resume.id == candidate.current_resume_id,
+                    Resume.candidate_id == candidate_id,
+                    Resume.deleted_at.is_(None),
+                )
             )
             if resume is not None:
                 profile = await self._session.scalar(

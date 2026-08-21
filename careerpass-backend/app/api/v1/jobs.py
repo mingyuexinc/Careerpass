@@ -1,17 +1,29 @@
 """Authenticated HR-owned Job upload endpoint."""
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, UploadFile
 
 from app.api.dependencies.auth import get_current_identity
-from app.api.dependencies.services import get_job_service, get_job_upload_service
+from app.api.dependencies.services import (
+    get_business_resource_deletion_service,
+    get_job_service,
+    get_job_upload_service,
+)
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
 from app.core.identity import CurrentIdentity
+from app.repositories.business_resource_deletion_repository import (
+    DeletionNotAllowedError,
+    DeletionOwnershipError,
+    DeletionResourceNotFoundError,
+)
+from app.schemas.business_resource_deletion import ResourceDeletionResponse
 from app.schemas.job import HrJobListResponse
 from app.schemas.job_upload import JobUploadResponse
 from app.schemas.response import success_response
+from app.services.business_resource_deletion_service import BusinessResourceDeletionService
 from app.services.job_service import JobService
 from app.services.job_upload_service import JobUploadInput, JobUploadService
 
@@ -73,4 +85,34 @@ async def upload_jobs(
         response.model_dump(mode="json"),
         msg="job upload processed",
         code=ErrorCode.SUCCESS,
+    )
+
+
+@jobs_router.delete("/jobs/{job_id}")
+async def delete_job(
+    job_id: UUID,
+    identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
+    service: Annotated[BusinessResourceDeletionService, Depends(get_business_resource_deletion_service)],
+) -> dict[str, object]:
+    if identity.active_role != "hr" or identity.hr_profile_id is None:
+        raise AppException(status_code=403, code=ErrorCode.FORBIDDEN, message="HR identity required")
+    try:
+        result = await service.delete_job(
+            hr_profile_id=identity.hr_profile_id,
+            job_id=job_id,
+            actor_user_id=identity.user_id,
+            actor_role=identity.active_role,
+        )
+    except DeletionResourceNotFoundError:
+        raise AppException(status_code=404, code=ErrorCode.NOT_FOUND, message="resource not found") from None
+    except DeletionOwnershipError:
+        raise AppException(status_code=403, code=ErrorCode.FORBIDDEN, message="resource is not available") from None
+    except DeletionNotAllowedError:
+        raise AppException(status_code=409, code=ErrorCode.PRECONDITION_NOT_MET, message="job cannot be deleted in its current state") from None
+    return success_response(
+        ResourceDeletionResponse(
+            resource_type=result.resource_type,
+            resource_id=result.resource_id,
+            deleted=result.deleted,
+        ).model_dump(mode="json")
     )

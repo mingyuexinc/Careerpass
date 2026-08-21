@@ -16,6 +16,7 @@ interface ResumeListItemResponse {
   name: string;
   parse_status: Exclude<ResumeParseStatus, "not_uploaded" | "uploading">;
   created_at: string;
+  is_current?: boolean;
 }
 
 interface ResumeListResponse {
@@ -46,7 +47,16 @@ function toResume(item: ResumeListItemResponse, version: number): Resume {
     uploadedAt: item.created_at,
     parseStatus: item.parse_status,
     version,
+    isCurrent: item.is_current ?? false,
   };
+}
+
+export async function deleteResume(resumeId: string, accessToken: string): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/resumes/${resumeId}`, {
+    method: "DELETE",
+    headers: authorizationHeaders(accessToken),
+  });
+  await parseResponse<{ resource_type: string; resource_id: string; deleted: boolean }>(response);
 }
 
 export async function listResumes(accessToken: string): Promise<Resume[]> {

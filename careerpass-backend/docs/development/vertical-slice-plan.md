@@ -68,8 +68,8 @@ Slice 是实现边界，Integration Scenario 是交付边界，二者不要求�
 | S-07 Agent 投递启动 | 求职者点击启动 Agent | 校验当前目标、当前简历和画像匹配资格，绑定当前简历并从未启动进入运行中 | S-04、S-06 | `implemented` |
 | S-08 岗位匹配与投递 | Agent 运行入口成立后执行匹配 | 同步检查关联 HR 的全部可用结构化 JD（岗位池最多 20 个），使用本地简化算法生成结构化、可解释的 Match，并为成功匹配岗位创建 Application 和初始 ProgressEvent | S-03、S-07（Handoff Contract：Agent 已进入运行中） | `implemented` |
 | [S-09 投递进度更新](slices/slice-09-application-progress-update/slice-spec.md) | HR 更新一条授权投递记录 | 投递记录进入合法后续阶段，候选人可看到进度变化 | S-08 | `implemented` |
-| S-10 AI 求职沟通 | HR 在授权投递上下文中查看或发送消息 | S10-01 已完成基于 Resume-derived 结构化事实的校验回复；S10-02 核心附件交付已完成但展示整改待回归；S10-03 延后 | S-08、S-05；Agent 控制面和资料下载最小能力 | `S10-01 integration_delivered / S10-02 integration_blocked` |
-| S-11 业务资料删除 | 已授权用户选择一条简历、求职资料或岗位 JD 并提交删除 | 指定资料按资源类型的删除条件从当前可用资料中移除，并处理下游引用和对象清理 | S-01、S-02、S-04、S-05；资源状态与引用规则 | `missing` |
+| S-10 AI 求职沟通 | HR 在授权投递上下文中查看或发送消息 | S10-01、S10-02、S10-03 已完成当前范围内交付 | S-08、S-05；Agent 控制面和资料下载最小能力 | `S10-01/S10-02/S10-03 integration_delivered` |
+| S-11 业务资料删除 | 已授权用户选择一条简历、求职资料或岗位 JD 并提交删除 | 指定资料按资源类型的删除条件从当前可用资料中移除，并处理下游引用和对象清理 | S-01、S-02、S-04、S-05；资源状态与引用规则 | `integration_delivered` |
 
 Controller、Repository、Parser、Dispatcher、LLM Client、异步任务或数据库迁移不单独构成 Slice，随首次产生业务结果的 Slice 交付。
 
@@ -95,9 +95,9 @@ S-08、S-09、S-10、S-11
 
 S-05 的业务裁决已确认：支持 PDF、Markdown、JPG 和 PNG 附加资料，单文件不超过 10 MB；支持批量上传并按文件独立处理；重复上传按幂等成功处理；上传状态按 `ready → success` 或 `ready → failed` 表达。上传和资料创建归属 S-05，删除归属 S-11；S-05 不主动暴露原文件，后续 Agent 检索和向 S-10 的授权交接由后续流程负责。S-05 的 Contract、真实前端联调和失败提示整改已完成，`IS-S05-01` 已标记为 `integration_delivered`；S-05 交付结果为 `implemented`。
 
-S-11 可在对应资源创建后进入 Slice Select，不要求等待全部下游 Slice 完成；但简历、求职资料和岗位 JD 的删除条件、当前使用状态和下游引用处理必须在同一个 Slice Contract 中锁定。实际顺序以前置 Gate、真实能力证据和 Slice Design 结果为准，不按代码目录或技术组件排序。
+S-11 可在对应资源创建后进入 Slice Select，不要求等待全部下游 Slice 完成；简历、求职资料和岗位 JD 的删除条件、逻辑移除语义、当前使用状态和下游引用处理已由业务基线确认，必须在同一个 Slice Contract 中表达并通过引用场景验证。实际顺序以前置 Gate、真实能力证据和 Slice Design 结果为准，不按代码目录或技术组件排序。
 
-当前已确认岗位 JD 删除的业务事实，但 S-11 仍为 `missing`，尚未进入 Slice Select、Slice Design、Implement 或 Verify：删除只允许作用于解析任务已进入 `succeeded/failed` 终态且尚未开始匹配的 Job；`queued/running` 或匹配已开始时不可删除；成功后从当前可用岗位列表移除且不保留可供当前业务读取的 S-03 快照。上述事实不构成当前 API 或代码实现，简历和求职资料分支仍待 S-11 Contract 统一裁决。
+S-11 已完成 Slice Select、Slice Design、Implement、Verify 和 Close，当前状态为 `integration_delivered`：三类资源统一逻辑移除；简历仅在解析任务进入 `succeeded/failed` 终态且 Agent 尚未启动时可移除，`matching_ready/not_ready` 不改变资格，新上传的不同内容简历自动成为当前简历，解析未完成时仍不能启动 Agent；CandidateDocument 成功保存后可在 Agent 各生命周期阶段移除，删除后不参与新的资料检索，已创建附件保留 7 天；岗位 JD 仍只允许在解析终态且匹配尚未开始时移除。三份 S-11 Scenario 均已完成开发者验收并补齐脱敏结果证据，S11 交付目标达成。
 
 ### 5.2 变更回退
 
@@ -128,4 +128,6 @@ S-08 已完成 Match/Application/ProgressEvent 迁移、v0.1 确定性算法、S
 
 S-09 已完成业务裁决、Slice Spec、Technical Design、Integration Contract 和 Integration Scenario；代码、前端真实 API 接入、原始 JD 文件名恢复、自动化验证、完整前后端演示和隔离 PostgreSQL 联调已完成，`IS-S09-01` 标记为 `integration_delivered`。S-09 复用现有 Application、ProgressEvent、Job、CandidateProfile、AgentRunContext 和 JobGoal，不新增业务实体或业务表；岗位文件名元数据由 `20260819_0014` 迁移落地。
 
-S10-01 已由开发者裁定交付完成，锁定 `IC-S10-AI-COMMUNICATION@0.4` 中兼容的 S10-01 字段、`IS-S10-01` 和 S-08 `APPLICATION-CONVERSATION@0.1` 交接，完成 Qwen Plus 脱敏结构化事实最小真实调用、Conversation/Message/AgentTurn 持久化、权限/幂等/失败验证和真实前端联调。已补充“经历范围内的否定事实”语义：个人简历能覆盖经历范围但没有目标能力时，回答“没有相关经历”；资料范围不足时仍返回受控模板。已确认 S-08 成功创建 Application 后在同一事务内幂等初始化 Conversation，且该 Handoff 已完成开发者前后端联调复验；`IS-S10-01` 已标记为 `integration_delivered`。S10-02 的文件名确定性语义匹配、单 Agent 消息单附件、7 天有效期、删除后的独立下载、跨 Application 复用、无 LLM 内容读取、迁移 `20260820_0016` 和 PostgreSQL/对象存储联调已通过；补充真实前端复测发现成功交付仍显示额外提示语、附件卡片未达到仿微信文件接收效果，`IS-S10-02` 当前回退为 `integration_blocked`，待整改和开发者回归验收。S10-03 主动 query 保持未实现，不作为当前阻塞项。
+S10-01 已由开发者裁定交付完成，锁定 `IC-S10-AI-COMMUNICATION@0.4` 中兼容的 S10-01 字段、`IS-S10-01` 和 S-08 `APPLICATION-CONVERSATION@0.1` 交接，完成 Qwen Plus 脱敏结构化事实最小真实调用、Conversation/Message/AgentTurn 持久化、权限/幂等/失败验证和真实前端联调。已补充“经历范围内的否定事实”语义：个人简历能覆盖经历范围但没有目标能力时，回答“没有相关经历”；资料范围不足时仍返回受控模板。已确认 S-08 成功创建 Application 后在同一事务内幂等初始化 Conversation，且该 Handoff 已完成开发者前后端联调复验；`IS-S10-01` 已标记为 `integration_delivered`。S10-02 的文件名确定性语义匹配、单 Agent 消息单附件、7 天有效期、删除后的独立下载、跨 Application 复用、无 LLM 内容读取、迁移 `20260820_0016`、PostgreSQL/对象存储联调和仿微信文件卡片整改已通过；`IS-S10-02` 已标记为 `integration_delivered`。S10-03 已新增 `IC-S10-AI-COMMUNICATION@0.5`、`IS-S10-03`、AgentTurn 主动轮次扩展、迁移 `20260821_0017`、主动触发 API/前端入口、二元解析和能力验收；开发者重启后端完成真实场景复测，`IS-S10-03` 已标记为 `integration_delivered`，S10-3 Verify/Close 完成。通用 Agent Workflow 平台仍为后续范围。
+
+S-11 已完成三类业务资料删除的真实前后端验收：开发者重建并启动 S11 迁移、Backend、Worker 和 Dispatcher，验证 HR 岗位 JD 删除返回成功且从刷新后的列表消失；简历、附加资料、当前简历指针、逻辑删除过滤、审计幂等、S10-02 附件保留和前端删除交互均通过自动化回归与 Scenario 验收。`IS-S11-01`、`IS-S11-02`、`IS-S11-03` 均已标记为 `integration_delivered`。

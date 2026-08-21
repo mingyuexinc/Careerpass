@@ -39,6 +39,7 @@ class DocumentParsingRepository:
             select(Resume.id).where(
                 Resume.id == request.resume_id,
                 Resume.candidate_id == request.candidate_id,
+                Resume.deleted_at.is_(None),
             )
         )
         if matching_resume_id is None:
@@ -62,6 +63,7 @@ class DocumentParsingRepository:
                 Resume.id == resume_id,
                 Resume.candidate_id == candidate_id,
                 Resume.parse_status == "succeeded",
+                Resume.deleted_at.is_(None),
             )
         )
         return (await self._session.scalars(statement)).one_or_none()
@@ -76,6 +78,7 @@ class DocumentParsingRepository:
             .where(
                 Resume.id == resume_id,
                 Resume.parse_status == "processing",
+                Resume.deleted_at.is_(None),
                 StoredFileObject.status == "ready",
             )
         )
@@ -102,7 +105,7 @@ class DocumentParsingRepository:
             if task is None:
                 return False
             resume = await self._session.get(Resume, resume_id, with_for_update=True)
-            if resume is None or resume.parse_status != "processing":
+            if resume is None or resume.parse_status != "processing" or resume.deleted_at is not None:
                 return False
             existing_profile = await self._session.scalar(
                 select(CandidateProfile)
@@ -155,7 +158,7 @@ class DocumentParsingRepository:
             if task is None:
                 return False
             resume = await self._session.get(Resume, resume_id, with_for_update=True)
-            if resume is None or resume.parse_status != "processing":
+            if resume is None or resume.parse_status != "processing" or resume.deleted_at is not None:
                 return False
             resume.parse_status = "failed"
             resume.failure_code = failure_code

@@ -1,9 +1,14 @@
 import { create } from "zustand";
 import { mockRepository } from "../api/mock/mockRepository";
-import { listCurrentHrJobs } from "../api/hrJobApi";
-import { listResumes, uploadResume as uploadResumeRequest } from "../api/resumeApi";
+import { deleteHrJob, listCurrentHrJobs } from "../api/hrJobApi";
+import {
+  deleteResume as deleteResumeRequest,
+  listResumes,
+  uploadResume as uploadResumeRequest,
+} from "../api/resumeApi";
 import {
   createReadyDocumentResult,
+  deleteCandidateDocument,
   listCandidateDocuments,
   uploadCandidateDocuments,
 } from "../api/candidateDocumentApi";
@@ -38,8 +43,10 @@ interface WorkspaceState extends WorkspaceSnapshot {
   error: string | null;
   refresh: (options?: { preserveView?: boolean }) => Promise<void>;
   uploadResume: (file: File) => Promise<void>;
+  deleteResume: () => Promise<void>;
   setParseResult: (result: "succeeded" | "failed") => Promise<void>;
   uploadDocuments: (files: File[]) => Promise<SupportingDocumentUploadResult[]>;
+  deleteDocument: (id: string) => Promise<void>;
   uploadJobs: (files: File[]) => Promise<void>;
   uploadJob: (file: File) => Promise<void>;
   deleteJob: (id: string) => Promise<void>;
@@ -156,7 +163,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       const activeRole = useAuthStore.getState().user?.role;
       if (accessToken && activeRole === "candidate") {
         const resumes = await listResumes(accessToken);
-        snapshot.resume = resumes[0] ?? null;
+        snapshot.resume = resumes.find((item) => item.isCurrent) ?? null;
         snapshot.supportingDocuments = await listCandidateDocuments(accessToken);
         snapshot.jobGoal = await getCurrentJobGoal(accessToken);
         const agentRunStatus = await getCurrentAgentRun(accessToken);
@@ -225,9 +232,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
         if (accessToken) {
           const resumes = await listResumes(accessToken);
-          snapshot.resume = resumes[0] ?? null;
+          snapshot.resume = resumes.find((item) => item.isCurrent) ?? null;
         }
         return snapshot;
+      },
+      "resumeLoading",
+    ),
+  deleteResume: async () =>
+    runAction(
+      set,
+      async () => {
+        const current = useWorkspaceStore.getState().resume;
+        if (!current) throw new Error("当前简历不存在或已不可用。");
+        const accessToken = useAuthStore.getState().accessToken;
+        if (accessToken) {
+          await deleteResumeRequest(current.id, accessToken);
+          const resumes = await listResumes(accessToken);
+          const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+          snapshot.resume = resumes.find((item) => item.isCurrent) ?? null;
+          return snapshot;
+        }
+        await mockRepository.deleteResume(current.id);
+        return mockRepository.getSnapshot();
       },
       "resumeLoading",
     ),
@@ -282,6 +308,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       throw error;
     }
   },
+  deleteDocument: async (id) => {
+    await runAction(set, async () => {
+      const accessToken = useAuthStore.getState().accessToken;
+      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+      if (accessToken) {
+        await deleteCandidateDocument(id, accessToken);
+        snapshot.supportingDocuments = await listCandidateDocuments(accessToken);
+      } else {
+        snapshot.supportingDocuments = await mockRepository.deleteDocument(id);
+      }
+      return snapshot;
+    });
+  },
   uploadJobs: async (files) =>
     runAction(set, async () => {
       await mockRepository.uploadJobs(files);
@@ -294,6 +333,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     }),
   deleteJob: async (id) =>
     runAction(set, async () => {
+      const accessToken = useAuthStore.getState().accessToken;
+      if (accessToken && useAuthStore.getState().user?.role === "hr") {
+        await deleteHrJob(id, accessToken);
+        const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+        const refreshedJobs = await listCurrentHrJobs(accessToken);
+        // The delete command is authoritative.  Exclude the deleted ID even
+        // if a read is briefly served from a stale projection.
+        snapshot.hrJobs = refreshedJobs.filter((job) => job.id !== id);
+        snapshot.currentHrJob = snapshot.hrJobs.at(-1) ?? null;
+        return snapshot;
+      }
       await mockRepository.deleteJob(id);
       return mockRepository.getSnapshot();
     }),

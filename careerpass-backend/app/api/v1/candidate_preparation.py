@@ -6,17 +6,26 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, Header, UploadFile, status
 
 from app.api.dependencies.auth import get_current_identity
-from app.api.dependencies.services import get_candidate_preparation_service
+from app.api.dependencies.services import (
+    get_business_resource_deletion_service,
+    get_candidate_preparation_service,
+)
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
 from app.core.identity import CurrentIdentity
 from app.repositories.async_task_repository import ResumeTaskPreconditionError
+from app.repositories.business_resource_deletion_repository import (
+    DeletionNotAllowedError,
+    DeletionOwnershipError,
+    DeletionResourceNotFoundError,
+)
 from app.repositories.candidate_preparation_repository import IdempotencyConflictError
+from app.schemas.business_resource_deletion import ResourceDeletionResponse
 from app.schemas.response import success_response
+from app.services.business_resource_deletion_service import BusinessResourceDeletionService
 from app.services.candidate_preparation_service import (
     CandidatePreparationService,
     InvalidUploadError,
-    ResumeAlreadyExistsError,
 )
 
 candidate_preparation_router = APIRouter(tags=["candidate-preparation"])
@@ -42,12 +51,6 @@ async def upload_resume(
     except InvalidUploadError:
         raise AppException(
             status_code=400, code=ErrorCode.VALIDATION_ERROR, message="invalid upload"
-        ) from None
-    except ResumeAlreadyExistsError:
-        raise AppException(
-            status_code=409,
-            code=ErrorCode.PRECONDITION_NOT_MET,
-            message="a resume already exists for this candidate",
         ) from None
     except IdempotencyConflictError:
         raise AppException(
@@ -117,3 +120,61 @@ async def list_candidate_documents(
         )
     value = await service.list_documents(identity.candidate_id, page, page_size)
     return success_response(value.model_dump(mode="json"))
+
+
+@candidate_preparation_router.delete("/resumes/{resume_id}")
+async def delete_resume(
+    resume_id: UUID,
+    identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
+    service: Annotated[BusinessResourceDeletionService, Depends(get_business_resource_deletion_service)],
+) -> dict[str, object]:
+    if identity.active_role != "candidate" or identity.candidate_id is None:
+        raise AppException(status_code=403, code=ErrorCode.FORBIDDEN, message="Candidate identity required")
+    try:
+        result = await service.delete_resume(
+            candidate_id=identity.candidate_id,
+            resume_id=resume_id,
+            actor_user_id=identity.user_id,
+            actor_role=identity.active_role,
+        )
+    except DeletionResourceNotFoundError:
+        raise AppException(status_code=404, code=ErrorCode.NOT_FOUND, message="resource not found") from None
+    except DeletionOwnershipError:
+        raise AppException(status_code=403, code=ErrorCode.FORBIDDEN, message="resource is not available") from None
+    except DeletionNotAllowedError:
+        raise AppException(status_code=409, code=ErrorCode.PRECONDITION_NOT_MET, message="resume cannot be deleted in its current state") from None
+    return success_response(
+        ResourceDeletionResponse(
+            resource_type=result.resource_type,
+            resource_id=result.resource_id,
+            deleted=result.deleted,
+        ).model_dump(mode="json")
+    )
+
+
+@candidate_preparation_router.delete("/candidate_documents/{document_id}")
+async def delete_candidate_document(
+    document_id: UUID,
+    identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
+    service: Annotated[BusinessResourceDeletionService, Depends(get_business_resource_deletion_service)],
+) -> dict[str, object]:
+    if identity.active_role != "candidate" or identity.candidate_id is None:
+        raise AppException(status_code=403, code=ErrorCode.FORBIDDEN, message="Candidate identity required")
+    try:
+        result = await service.delete_candidate_document(
+            candidate_id=identity.candidate_id,
+            document_id=document_id,
+            actor_user_id=identity.user_id,
+            actor_role=identity.active_role,
+        )
+    except DeletionResourceNotFoundError:
+        raise AppException(status_code=404, code=ErrorCode.NOT_FOUND, message="resource not found") from None
+    except DeletionOwnershipError:
+        raise AppException(status_code=403, code=ErrorCode.FORBIDDEN, message="resource is not available") from None
+    return success_response(
+        ResourceDeletionResponse(
+            resource_type=result.resource_type,
+            resource_id=result.resource_id,
+            deleted=result.deleted,
+        ).model_dump(mode="json")
+    )

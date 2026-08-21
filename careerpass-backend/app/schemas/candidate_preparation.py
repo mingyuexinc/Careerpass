@@ -39,6 +39,7 @@ class ResumeListItem(BaseModel):
     type: Literal["resume"] = "resume"
     parse_status: ParseStatus
     failure_code: ParseFailureCode | None = None
+    is_current: bool = False
     created_at: datetime
 
 

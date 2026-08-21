@@ -35,6 +35,7 @@ describe("HR Job API", () => {
         companyName: "示例公司",
         createdAt: "2026-08-19T00:00:00Z",
         parseStatus: "succeeded",
+        matchStarted: false,
       },
     ]);
     expect(fetch).toHaveBeenCalledWith(

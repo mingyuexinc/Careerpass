@@ -27,6 +27,7 @@ from app.infrastructure.database.models import (
     MessageAttachment,
     ParsedJobDescriptionSnapshot,
     ProgressEvent,
+    ResourceAuditEvent,
     Resume,
     StoredFileObject,
 )
@@ -93,6 +94,7 @@ class DebugResetRepository:
             ).all()
         )
         resume_ids = tuple(value.id for value in resumes)
+        document_ids = tuple(value.id for value in documents)
         await self._assert_no_active_tasks(resource_type="resume", resource_ids=resume_ids)
 
         # Agent runs and their system-side results belong to the candidate's
@@ -136,6 +138,27 @@ class DebugResetRepository:
             await self._session.delete(match)
         for run in runs:
             await self._session.delete(run)
+
+        audit_events = list(
+            (
+                await self._session.scalars(
+                    select(ResourceAuditEvent).where(
+                        or_(
+                            (
+                                (ResourceAuditEvent.resource_type == "resume")
+                                & (ResourceAuditEvent.resource_id.in_(resume_ids))
+                            ),
+                            (
+                                (ResourceAuditEvent.resource_type == "candidate_document")
+                                & (ResourceAuditEvent.resource_id.in_(document_ids))
+                            ),
+                        )
+                    )
+                )
+            ).all()
+        ) if resume_ids or document_ids else []
+        for event in audit_events:
+            await self._session.delete(event)
 
         file_ids = {value.stored_file_object_id for value in resumes}
         file_ids.update(value.stored_file_object_id for value in documents)
@@ -181,6 +204,19 @@ class DebugResetRepository:
         job_ids = tuple(value.id for value in jobs)
         await self._assert_no_active_tasks(resource_type="job", resource_ids=job_ids)
         file_ids = {value.stored_file_object_id for value in jobs}
+
+        audit_events = list(
+            (
+                await self._session.scalars(
+                    select(ResourceAuditEvent).where(
+                        ResourceAuditEvent.resource_type == "job",
+                        ResourceAuditEvent.resource_id.in_(job_ids),
+                    )
+                )
+            ).all()
+        ) if job_ids else []
+        for event in audit_events:
+            await self._session.delete(event)
 
         # Applications, Matches and ProgressEvents reference HR-owned Jobs
         # with RESTRICT constraints. They are system-side demo results created

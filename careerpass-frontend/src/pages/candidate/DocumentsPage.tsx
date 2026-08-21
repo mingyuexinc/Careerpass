@@ -25,6 +25,11 @@ export function DocumentsPage() {
   const resumeLocked =
     state.agentStatus === "running" || state.agentStatus === "finished";
   const resumeExists = Boolean(state.resume);
+  const resumeDeleteAllowed = Boolean(
+    state.resume &&
+      ["not_started", "ready"].includes(state.agentStatus) &&
+      ["succeeded", "failed"].includes(state.resume.parseStatus),
+  );
   const resumeStatus = state.resume
     ? resumeStatusMeta[state.resume.parseStatus]
     : resumeStatusMeta.not_uploaded;
@@ -59,6 +64,25 @@ export function DocumentsPage() {
       /* controlled by store */
     }
   }
+  async function deleteResume() {
+    if (!state.resume || !resumeDeleteAllowed) return;
+    if (!window.confirm(`确认删除当前简历“${state.resume.fileName}”吗？`)) return;
+    try {
+      await state.deleteResume();
+      setToast({ message: "当前简历已删除。", tone: "success" });
+    } catch {
+      /* Store exposes the controlled error below. */
+    }
+  }
+  async function deleteDocument(id: string, fileName: string) {
+    if (!window.confirm(`确认删除资料“${fileName}”吗？`)) return;
+    try {
+      await state.deleteDocument(id);
+      setToast({ message: "资料已删除。", tone: "success" });
+    } catch {
+      /* Store exposes the controlled error below. */
+    }
+  }
   const pendingUploads = state.supportingDocumentUploads.filter(
     (item) => item.status === "ready",
   );
@@ -87,12 +111,12 @@ export function DocumentsPage() {
             ) : null}
           </div>
           <FileUpload
-            label={state.resume ? "已上传一份简历" : "上传一份简历"}
+            label={state.resume ? "上传新简历并设为当前" : "上传一份简历"}
             description={
               resumeLocked ? "当前投递轮次已绑定简历。" : "仅支持文本型 PDF 简历。"
             }
             accept=".pdf"
-            disabled={resumeLocked || resumeExists || state.resumeLoading}
+            disabled={resumeLocked || state.resumeLoading}
             onFiles={(files) => void uploadResume(files[0])}
           />
           {state.resume ? (
@@ -100,6 +124,9 @@ export function DocumentsPage() {
               fileName={state.resume.fileName}
               version={state.resume.version}
               uploadedAt={state.resume.uploadedAt}
+              deleteLabel={state.resume.fileName}
+              deleteDisabled={!resumeDeleteAllowed || state.resumeLoading}
+              onDelete={() => void deleteResume()}
             />
           ) : null}
         </article>
@@ -142,6 +169,9 @@ export function DocumentsPage() {
                     key={document.id}
                     fileName={document.fileName}
                     uploadedAt={document.uploadedAt}
+                    deleteLabel={document.fileName}
+                    deleteDisabled={state.supportingDocumentsLoading}
+                    onDelete={() => void deleteDocument(document.id, document.fileName)}
                   />
                 ))}
               </div>
@@ -159,7 +189,7 @@ export function DocumentsPage() {
             {resumeLocked
               ? "当前轮次已经绑定这份简历，历史投递记录会继续保留。"
               : resumeExists
-                ? "当前版本暂只支持一份简历，已有简历可继续查看解析状态。"
+                ? "可以上传新简历；新形成的简历会自动成为当前简历。"
                 : "上传并解析一份简历后，才能创建求职目标。"}
           </p>
         </div>

@@ -37,9 +37,17 @@ class ObjectStorageRepository:
         self, *, older_than: datetime, limit: int
     ) -> list[CleanupClaim]:
         async with self._session.begin():
-            has_resume = exists(select(1).where(Resume.stored_file_object_id == StoredFileObject.id))
+            has_resume = exists(
+                select(1).where(
+                    Resume.stored_file_object_id == StoredFileObject.id,
+                    Resume.deleted_at.is_(None),
+                )
+            )
             has_document = exists(
-                select(1).where(CandidateDocument.stored_file_object_id == StoredFileObject.id)
+                select(1).where(
+                    CandidateDocument.stored_file_object_id == StoredFileObject.id,
+                    CandidateDocument.deleted_at.is_(None),
+                )
             )
             has_active_job = exists(
                 select(1).where(
@@ -110,12 +118,26 @@ class ObjectStorageRepository:
         if active_job_exists:
             return True
         resume_exists = await self._session.scalar(
-            select(exists(select(1).where(Resume.stored_file_object_id == object_id)))
+            select(
+                exists(
+                    select(1).where(
+                        Resume.stored_file_object_id == object_id,
+                        Resume.deleted_at.is_(None),
+                    )
+                )
+            )
         )
         if resume_exists:
             return True
         document_exists = await self._session.scalar(
-            select(exists(select(1).where(CandidateDocument.stored_file_object_id == object_id)))
+            select(
+                exists(
+                    select(1).where(
+                        CandidateDocument.stored_file_object_id == object_id,
+                        CandidateDocument.deleted_at.is_(None),
+                    )
+                )
+            )
         )
         if document_exists:
             return True
