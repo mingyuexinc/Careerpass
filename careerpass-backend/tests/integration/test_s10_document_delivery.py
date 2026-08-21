@@ -189,6 +189,7 @@ def test_s10_02_postgresql_attachment_delivery_and_retention() -> None:
                 assert result.agent_turn.scene == "document_delivery"
                 assert result.agent_turn.outcome == "attachment_sent"
                 assert len(result.new_messages) == 2
+                assert result.new_messages[-1].content == ""
                 assert len(result.new_messages[-1].attachments) == 1
                 assert attachment.file_name == "学籍验证报告.pdf"
                 assert attachment.file_size_bytes == len(content)

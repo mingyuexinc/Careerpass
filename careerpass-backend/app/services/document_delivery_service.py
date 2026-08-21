@@ -105,5 +105,8 @@ def resolve_document_candidates(
     return matches[0] if len(matches) == 1 else None
 
 
-DOCUMENT_DELIVERY_REPLY = "已为你找到相关求职资料，请点击附件下载。"
+# A successful document delivery is represented by the attachment projection.
+# Keep the exported constant for callers that already import it, but do not
+# add a visible success prompt to the Agent message.
+DOCUMENT_DELIVERY_REPLY = ""
 DOCUMENT_UNAVAILABLE_REPLY = "暂时没有找到符合条件的求职资料。"

@@ -1306,6 +1306,102 @@ select:focus {
   border-radius: 14px 14px 4px 14px;
   background: var(--color-brand-soft);
 }
+.message-row.is-attachment-only {
+  align-items: flex-start;
+}
+.message-attachment-stack {
+  display: grid;
+  width: min(440px, 92%);
+  gap: 8px;
+}
+.message-attachment-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px 14px 14px 4px;
+  background: var(--color-surface);
+  box-shadow: 0 8px 22px rgb(24 32 43 / 7%);
+}
+.message-attachment-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+.message-attachment-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+.message-attachment-copy {
+  min-width: 0;
+  flex: 1;
+}
+.message-attachment-name {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.message-attachment-meta,
+.message-attachment-details {
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.message-attachment-meta {
+  display: block;
+  margin-top: 3px;
+}
+.message-attachment-status {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.message-attachment-card.is-expired .message-attachment-status,
+.message-attachment-card.is-failed .message-attachment-status {
+  color: var(--color-danger);
+}
+.message-attachment-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-line);
+}
+.message-attachment-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.message-attachment-download {
+  min-height: 34px;
+  padding: 0 13px;
+  font-size: 12px;
+}
+.message-bubble .message-attachment-card {
+  width: min(440px, 100%);
+  margin-top: 4px;
+}
+.message-attachment-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 12px;
+}
 .message-bubble strong {
   font-size: 11px;
 }
