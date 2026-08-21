@@ -152,7 +152,7 @@ def _assert_artifact_is_safe(actual: dict[str, object]) -> None:
         "password",
         "storage_key",
         "/opt/careerpass/",
-        ".careerpass-job-jd",
+        ".careerpass-objects",
     )
     leaked = [marker for marker in forbidden if marker in serialized]
     if leaked:

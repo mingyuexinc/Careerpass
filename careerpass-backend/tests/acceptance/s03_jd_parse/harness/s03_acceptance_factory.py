@@ -44,7 +44,7 @@ class S03AcceptanceFactory:
         self.fixture_root = backend_root / "tests" / "fixtures" / "job_descriptions"
         self.expected_path = self.acceptance_root / "harness" / "s03_acceptance_expected.json"
         self.object_root = Path(
-            os.environ.get("TEST_OBJECT_STORAGE_ROOT", str(backend_root / ".careerpass-job-jd"))
+            os.environ.get("TEST_OBJECT_STORAGE_ROOT", str(backend_root / ".careerpass-objects"))
         )
         self.container_fixture_root = os.environ.get(
             "S03_ACCEPTANCE_CONTAINER_JD_ROOT", "/opt/careerpass/s03-jd"

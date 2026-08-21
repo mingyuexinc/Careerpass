@@ -7,7 +7,6 @@ __pycache__/
 .pytest_cache/
 .pytest-basetemp/
 .ruff_cache/
-careerpass-backend/.careerpass-job-jd/
 careerpass-backend/.careerpass-objects/
 careerpass-backend/.pytest-tmp/
 .pytest-s07-tmp/

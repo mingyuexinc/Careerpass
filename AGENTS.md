@@ -73,7 +73,6 @@
 | `docs/business/business-baseline.md` | 跨前后端已确认业务事实唯一基线 |
 | `docs/business/business-fact-extraction.md` | 业务事实提取、冲突裁决和更新机制 |
 | `docs/integration/README.md` | 跨端契约、集成交付场景、联调、自测和整改机制 |
-| `archive/` | 旧开发包和契约历史归档，不属于当前事实源 |
 
 ## 子工程入口
 

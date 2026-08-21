@@ -62,7 +62,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./.careerpass-job-jd:/var/lib/careerpass/objects
+      - ./.careerpass-objects:/var/lib/careerpass/objects
       - ./tests/fixtures/job_descriptions:/opt/careerpass/s03-jd:ro
 
   worker:
@@ -94,7 +94,7 @@ services:
       migrate:
         condition: service_completed_successfully
     volumes:
-      - ./.careerpass-job-jd:/var/lib/careerpass/objects
+      - ./.careerpass-objects:/var/lib/careerpass/objects
 
   dispatcher:
     build: .

@@ -21,7 +21,7 @@ Careerpass 后端项目负责为正式前端提供可验证的业务能力、领
 
 本项目当前是以面向 VIP 用户进行核心功能和项目亮点演示为目标的受控演示项目（Demo）；非演示环节不纳入当前开发范围，非核心功能遵循最小必要原则设计，不因未来生产需要提前建设公开运营、多租户、高并发、灾备或通用平台能力。正式前端的页面和 Mock 数据只能作为后端能力发现线索，不能单独决定后端领域规则、资源归属、状态拥有者或数据结构。
 
-跨前后端业务语义以 [`../docs/business/business-baseline.md`](../docs/business/business-baseline.md) 为唯一基线；后端技术事实以 `docs/` 中对应事实源、当前代码、Alembic 迁移、测试和已锁定的 Slice 技术设计共同确认；归档目录和旧开发包只用于历史追溯。
+跨前后端业务语义以 [`../docs/business/business-baseline.md`](../docs/business/business-baseline.md) 为唯一基线；后端技术事实以 `docs/` 中对应事实源、当前代码、Alembic 迁移、测试和已锁定的 Slice 技术设计共同确认；历史开发材料不属于当前事实源。
 
 ## 2. 当前开发阶段
 

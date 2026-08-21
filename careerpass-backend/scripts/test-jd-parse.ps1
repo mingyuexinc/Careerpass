@@ -8,7 +8,7 @@ $backendRoot = Split-Path -Parent $PSScriptRoot
 $composeFile = Join-Path $backendRoot "docker-compose.integration.yml"
 $python = Join-Path $backendRoot ".venv\Scripts\python.exe"
 $apiBase = if ($env:S03_ACCEPTANCE_API_BASE_URL) { $env:S03_ACCEPTANCE_API_BASE_URL } else { "http://localhost:8080" }
-$objectRoot = Join-Path $backendRoot ".careerpass-job-jd"
+$objectRoot = Join-Path $backendRoot ".careerpass-objects"
 $artifactRoot = Join-Path $backendRoot "tests\acceptance\s03_jd_parse\delivery-acceptance-results"
 
 function Fail-Check {
