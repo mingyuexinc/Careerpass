@@ -4,7 +4,7 @@
 > 关联 Slice：S10 AI 求职沟通
 > Integration Contract：[`IC-S10-AI-COMMUNICATION@0.4`](./integration-contract.md)
 > 场景类型：`frontend_visible + capability_acceptance`
-> 交付状态：`integration_delivered`（仅 S10-01；S10-02/S10-03 延后）
+> 交付状态：`integration_delivered`（本场景为 S10-01；S10-02、S10-03 由独立 Scenario 交付）
 
 > 依赖交付：`APPLICATION-CONVERSATION@0.1` 已由 S-08 生产并完成开发者前后端联调复验；本场景只消费该交接，不重新定义 Conversation 初始化责任。
 
@@ -34,7 +34,8 @@ HR 简历问题 → Agent 基于绑定 Resume 回答
 | 条目 | 操作 | 预期系统结果 | 预期页面结果或验收产物 |
 | --- | --- | --- | --- |
 | S10-01 | HR 在当前 Conversation 询问候选人的经历、项目或技能 | Agent 读取 S-07 绑定 Resume，生成直接事实支持的正式消息 | HR 看到回答；不看到 Resume 原文或证据摘要 |
-| S10-02/S10-03 | 后续场景 | 暂不实现 | 不属于当前 S10-01 关闭条件 |
+| S10-02 | 独立资料附件场景 | 已由 `IS-S10-02` 完成交付 | 不属于当前 S10-01 关闭条件 |
+| S10-03 | 独立主动沟通场景 | 已由 `IS-S10-03` 交付 | 不属于当前 S10-01 关闭条件 |
 
 ## 4. 验收边界
 
@@ -55,7 +56,8 @@ HR 简历问题 → Agent 基于绑定 Resume 回答
 | S10-01 | 在同一会话询问“候选人的出生地是什么？” | 已显示固定受控模板“暂时无法从当前求职资料确认这个问题。” | 无 |
 | S10-01 | 重复提交同一 `client_message_id`，并执行并发重复请求 | PostgreSQL 集成测试确认只保留一条 HR Message、一条 AgentTurn 和一条 Agent Message；重复请求复用原结果 | 无 |
 | S10-01 | 检查页面和响应字段 | 未发现 Resume 原文、fact_refs、Prompt、模型原始响应、联系方式、文件路径或内部对象定位 | 无 |
-| S10-02/S10-03 | 后续场景不执行 | 不纳入本次关闭 | `<待后续 Slice>` |
+| S10-02 | 独立资料附件场景不在本场景执行 | 已由独立 Scenario 完成关闭 | `IS-S10-02 integration_delivered` |
+| S10-03 | 独立场景不在本次执行 | 已由独立 Scenario 完成关闭 | `IS-S10-03 integration_delivered` |
 
 ## 6. 问题与整改
 
@@ -70,4 +72,4 @@ HR 简历问题 → Agent 基于绑定 Resume 回答
 - 最小演示步骤通过：`是`；
 - Acceptance Artifact 已生成并由开发者审阅：`是`；
 - Contract、后端实现和实际消息结果一致：`是`；
-- 最终结论：开发者裁定 S10-01 交付完成，状态为 `integration_delivered`。S10-02/S10-03 继续保持未实现。
+- 最终结论：开发者裁定 S10-01 交付完成，状态为 `integration_delivered`；S10-02 已由独立 `IS-S10-02` 完成交付，S10-03 已由独立 `IS-S10-03` 完成交付，三个 Scenario 均为 `integration_delivered`。本文件仍只关闭 S10-01。

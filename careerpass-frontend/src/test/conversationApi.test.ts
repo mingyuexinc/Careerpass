@@ -1,6 +1,7 @@
 import {
   listCurrentConversations,
   sendConversationMessage,
+  startConversationProactiveQuery,
 } from "../api/conversationApi";
 
 const conversation = {
@@ -107,6 +108,7 @@ describe("S10-01 conversation API", () => {
       messages: [
         {
           ...conversation.messages[0],
+          content: "已为你找到相关求职资料，请点击附件下载。",
           attachments: [
             {
               id: "attachment-001",
@@ -136,6 +138,7 @@ describe("S10-01 conversation API", () => {
       {
         messages: [
           {
+            text: "",
             attachments: [
               {
                 id: "attachment-001",
@@ -149,5 +152,27 @@ describe("S10-01 conversation API", () => {
         ],
       },
     ]);
+  });
+
+  it("starts the proactive query through an explicit side-effect endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 200,
+          msg: "success",
+          data: { conversation_id: "conversation-001", agent_turn: null, new_messages: [] },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await startConversationProactiveQuery("application-001", "conversation-001", "hr-token");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/applications/application-001/conversation/proactive-query",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ conversation_id: "conversation-001" }),
+      }),
+    );
   });
 });

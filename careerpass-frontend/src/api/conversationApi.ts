@@ -46,14 +46,16 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 function mapMessage(value: MessageResponse): Message {
+  const attachments = (value.attachments ?? []).map(mapAttachment);
+  const attachmentOnly = value.sender === "agent" && attachments.length > 0;
   return {
     id: value.id,
     sender: value.sender,
-    text: value.content,
+    text: attachmentOnly ? "" : value.content,
     createdAt: value.created_at,
     status: value.status,
     messageType: value.message_type,
-    attachments: (value.attachments ?? []).map(mapAttachment),
+    attachments,
   };
 }
 
@@ -119,6 +121,22 @@ export async function sendConversationMessage(
     candidateName: "候选人",
     messages: data.new_messages.map(mapMessage),
   };
+}
+
+export async function startConversationProactiveQuery(
+  applicationId: string,
+  conversationId: string,
+  accessToken: string,
+): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/conversation/proactive-query`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ conversation_id: conversationId }),
+  });
+  await parseResponse<unknown>(response);
 }
 
 export async function downloadConversationAttachment(

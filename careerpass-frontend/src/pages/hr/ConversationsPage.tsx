@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
   EmptyState,
@@ -14,11 +14,25 @@ import { useWorkspaceStore } from "../../stores/workspace-store";
 export function ConversationsPage() {
   useWorkspaceRefresh();
   const state = useWorkspaceStore((store) => store);
+  const startConversationQuery = useWorkspaceStore((store) => store.startConversationQuery);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  if (!state.initialized) return <LoadingState />;
   const selected = state.conversations.find(
     (conversation) => conversation.id === (selectedId ?? state.conversations[0]?.id),
   );
+  useEffect(() => {
+    // The page and useWorkspaceRefresh mount together.  Read the live store
+    // state so the initial refresh wins the race before we trigger S10-03;
+    // otherwise its stale conversation list can overwrite the query result.
+    if (
+      state.initialized &&
+      !state.loading &&
+      !useWorkspaceStore.getState().loading &&
+      selected?.id
+    ) {
+      void startConversationQuery(selected.id).catch(() => undefined);
+    }
+  }, [selected?.id, startConversationQuery, state.initialized, state.loading]);
+  if (!state.initialized) return <LoadingState />;
   return (
     <div className="page-view">
       <PageHeader
@@ -65,6 +79,7 @@ export function ConversationsPage() {
                 </div>
                 <MessageList
                   messages={selected.messages}
+                  agentName={selected.candidateName}
                   onDownload={(message, attachment) =>
                     state.downloadAttachment(
                       selected.applicationId,

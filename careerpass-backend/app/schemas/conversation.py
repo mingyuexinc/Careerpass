@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 MessageSender = Literal["hr", "agent"]
 MessageStatus = Literal["pending", "sent", "failed"]
-AgentTurnStatus = Literal["accepted", "processing", "completed", "failed"]
+AgentTurnStatus = Literal["accepted", "processing", "waiting", "completed", "failed"]
 AttachmentStatus = Literal["preparing", "downloadable", "failed", "expired"]
 
 
@@ -63,10 +63,11 @@ class AgentTurnView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: UUID
-    scene: Literal["resume_answer", "document_delivery"]
+    scene: Literal["resume_answer", "document_delivery", "goal_query", "goal_judgement"]
     turn_status: AgentTurnStatus
     outcome: Literal[
-        "message_sent", "attachment_sent", "document_not_found", "attachment_failed", "tool_failed"
+        "message_sent", "attachment_sent", "document_not_found", "attachment_failed", "tool_failed",
+        "query_sent", "pending", "continue", "stop", "silent_end"
     ]
     retryable: bool
 
@@ -78,3 +79,17 @@ class SendMessageResponse(BaseModel):
     received_message: MessageView
     agent_turn: AgentTurnView
     new_messages: list[MessageView]
+
+
+class StartProactiveQueryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conversation_id: UUID
+
+
+class StartProactiveQueryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    conversation_id: UUID
+    agent_turn: AgentTurnView | None = None
+    new_messages: list[MessageView] = Field(default_factory=list)

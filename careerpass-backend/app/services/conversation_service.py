@@ -23,6 +23,7 @@ from app.schemas.conversation import (
     MessageAttachmentView,
     MessageView,
     SendMessageResponse,
+    StartProactiveQueryResponse,
 )
 from app.schemas.job_description import ParsedJobDescriptionFields
 from app.services.document_delivery_service import (
@@ -32,9 +33,16 @@ from app.services.document_delivery_service import (
     detect_document_intent,
     resolve_document_candidates,
 )
+from app.services.s10_03_goal_communication import (
+    GoalConditionGap,
+    find_goal_condition_gap,
+    parse_binary_answer,
+)
 
 FALLBACK_REPLY = "暂时无法从当前求职资料确认这个问题。"
 NEGATIVE_TRAINING_REPLY = "从当前求职资料看，没有大模型训练相关经历。"
+CONTINUE_REPLY = "好的，了解"
+STOP_REPLY = "感谢沟通，当前不考虑这个岗位了"
 _TRAINING_QUERY_TERMS = (
     "大模型训练",
     "模型训练",
@@ -101,6 +109,47 @@ class ConversationService:
             messages = await self._repository.list_messages(conversation_id=conversation_id)
         return [_message_view(message) for message in messages]
 
+    async def start_proactive_query(
+        self, *, application_id: UUID, conversation_id: UUID, hr_profile_id: UUID
+    ) -> StartProactiveQueryResponse:
+        """Idempotently start the single S10-03 question for a conversation."""
+        async with self._repository.transaction():
+            context = await self._repository.get_for_hr(
+                application_id=application_id,
+                conversation_id=conversation_id,
+                hr_profile_id=hr_profile_id,
+            )
+            if context is None:
+                raise ConversationNotFoundError
+            gap = find_goal_condition_gap(context.job_goal, context.snapshot)
+            if gap is None:
+                return StartProactiveQueryResponse(conversation_id=conversation_id)
+            key = f"s10-03:{application_id}:{conversation_id}:{gap.signature}"
+            turn = await self._repository.get_turn_by_idempotency_key(idempotency_key=key)
+            if turn is None:
+                try:
+                    turn = await self._repository.add_proactive_turn(
+                        conversation_id=conversation_id, idempotency_key=key
+                    )
+                except ConversationIdempotencyRaceError:
+                    turn = await self._repository.get_turn_by_idempotency_key(idempotency_key=key)
+                    if turn is None:
+                        raise
+                if turn.status == "processing":
+                    message = await self._repository.add_agent_message(
+                        conversation_id=conversation_id,
+                        content=gap.question,
+                        turn=turn,
+                        scene="goal_query",
+                        outcome="query_sent",
+                        status="waiting",
+                    )
+                else:
+                    message = await self._repository.get_result_message_for_turn(turn=turn)
+            else:
+                message = await self._repository.get_result_message_for_turn(turn=turn)
+            return _proactive_response(conversation_id, turn, message)
+
     async def download_attachment(
         self,
         *,
@@ -149,6 +198,8 @@ class ConversationService:
         content: str,
     ) -> SendMessageResponse:
         pending_existing: tuple[object, object] | None = None
+        pending_goal_turn = None
+        goal_gap: GoalConditionGap | None = None
         document_intent = None
         candidate_id: UUID | None = None
         facts: dict[str, object] | None = None
@@ -173,7 +224,7 @@ class ConversationService:
                     if turn.status == "processing":
                         pending_existing = (existing, turn)
                     else:
-                        result = await self._repository.get_result_message(source_message_id=existing.id)
+                        result = await self._repository.get_result_message_for_turn(turn=turn)
                         return _send_response(
                             conversation_id,
                             existing,
@@ -181,13 +232,29 @@ class ConversationService:
                             [existing] + ([result] if result is not None else []),
                         )
                 else:
-                    document_intent = detect_document_intent(content)
+                    pending_goal_turn = await self._repository.get_pending_goal_query(
+                        conversation_id=conversation_id
+                    )
+                    goal_gap = find_goal_condition_gap(context.job_goal, context.snapshot)
+                    document_intent = (
+                        None
+                        if pending_goal_turn is not None
+                        else detect_document_intent(content)
+                    )
                     inbound, turn = await self._repository.add_inbound_turn(
                         conversation_id=conversation_id,
                         client_message_id=client_message_id,
                         content=content,
                         idempotency_key=f"s10-01:{conversation_id}:{client_message_id}",
-                        scene="document_delivery" if document_intent is not None else "resume_answer",
+                        scene=(
+                            "goal_judgement"
+                            if pending_goal_turn is not None
+                            else (
+                                "document_delivery"
+                                if document_intent is not None
+                                else "resume_answer"
+                            )
+                        ),
                     )
                     if document_intent is None:
                         facts = resume_facts(context.profile)
@@ -207,7 +274,7 @@ class ConversationService:
                 if turn.status == "processing":
                     pending_existing = (existing, turn)
                 else:
-                    result = await self._repository.get_result_message(source_message_id=existing.id)
+                    result = await self._repository.get_result_message_for_turn(turn=turn)
                     return _send_response(
                         conversation_id,
                         existing,
@@ -220,6 +287,16 @@ class ConversationService:
                 conversation_id=conversation_id,
                 inbound=pending_existing[0],
                 turn_id=pending_existing[1].id,
+            )
+
+        if pending_goal_turn is not None:
+            return await self._judge_goal_answer(
+                conversation_id=conversation_id,
+                inbound=inbound,
+                turn=turn,
+                pending_query=pending_goal_turn,
+                gap=goal_gap,
+                content=content,
             )
 
         if document_intent is not None:
@@ -251,7 +328,7 @@ class ConversationService:
             if current_turn is None:
                 raise ConversationNotFoundError
             if current_turn.status == "completed":
-                result = await self._repository.get_result_message(source_message_id=inbound.id)
+                result = await self._repository.get_result_message_for_turn(turn=current_turn)
                 return _send_response(
                     conversation_id,
                     inbound,
@@ -291,7 +368,7 @@ class ConversationService:
                 if current_turn is None:
                     raise ConversationNotFoundError
                 if current_turn.status == "completed":
-                    result = await self._repository.get_result_message(source_message_id=inbound.id)
+                    result = await self._repository.get_result_message_for_turn(turn=current_turn)
                     return _send_response(
                         conversation_id,
                         inbound,
@@ -352,7 +429,7 @@ class ConversationService:
                 if turn is None:
                     raise ConversationNotFoundError
                 if turn.status != "processing":
-                    result = await self._repository.get_result_message(source_message_id=inbound.id)
+                    result = await self._repository.get_result_message_for_turn(turn=turn)
                     return _send_response(
                         conversation_id,
                         inbound,
@@ -361,6 +438,56 @@ class ConversationService:
                     )
             await asyncio.sleep(0.05)
         raise ConversationNotFoundError
+
+    async def _judge_goal_answer(
+        self,
+        *,
+        conversation_id: UUID,
+        inbound: object,
+        turn: object,
+        pending_query: object,
+        gap: GoalConditionGap | None,
+        content: str,
+    ) -> SendMessageResponse:
+        answer = parse_binary_answer(content)
+        if gap is None or answer is None:
+            async with self._repository.transaction():
+                current_turn = await self._repository.get_turn(turn_id=turn.id)
+                current_query = await self._repository.get_turn(turn_id=pending_query.id)
+                if current_turn is None or current_query is None:
+                    raise ConversationNotFoundError
+                if current_turn.status != "completed":
+                    await self._repository.complete_turn_without_message(
+                        turn=current_turn, outcome="pending"
+                    )
+                    await self._repository.mark_turn_waiting(turn=current_query, outcome="pending")
+                return _send_response(conversation_id, inbound, current_turn, [inbound])
+
+        stop = answer.value == gap.stop_on_yes
+        outcome = "stop" if stop else "continue"
+        reply = STOP_REPLY if stop else CONTINUE_REPLY
+        async with self._repository.transaction():
+            current_turn = await self._repository.get_turn(turn_id=turn.id)
+            current_query = await self._repository.get_turn(turn_id=pending_query.id)
+            if current_turn is None or current_query is None:
+                raise ConversationNotFoundError
+            if current_turn.status == "completed":
+                result = await self._repository.get_result_message_for_turn(turn=current_turn)
+                return _send_response(
+                    conversation_id,
+                    inbound,
+                    current_turn,
+                    [inbound] + ([result] if result is not None else []),
+                )
+            agent_message = await self._repository.add_agent_message(
+                conversation_id=conversation_id,
+                content=reply,
+                turn=current_turn,
+                scene="goal_judgement",
+                outcome=outcome,
+            )
+            await self._repository.complete_goal_query(turn=current_query, outcome=outcome)
+            return _send_response(conversation_id, inbound, current_turn, [inbound, agent_message])
 
 
 def _validated_reply(
@@ -411,12 +538,19 @@ def _safe_download_name(file_name: str) -> str:
 def _message_view(message: object, attachments: list[object] | None = None) -> MessageView:
     if attachments is None:
         attachments = list(getattr(message, "attachments", []))
+    content = message.content
+    if message.sender == "agent" and attachments:
+        # Older successful deliveries may have persisted a prompt before the
+        # S10-02 contract was tightened.  The attachment projection is the
+        # only visible result for every successful delivery, including those
+        # historical messages.
+        content = ""
     return MessageView(
         id=message.id,
         sender=message.sender,
         message_type=message.message_type,
         status=message.status,
-        content=message.content,
+        content=content,
         created_at=message.created_at,
         attachments=[
             MessageAttachmentView.model_validate(item, from_attributes=True)
@@ -450,6 +584,19 @@ def _send_response(
         new_messages=[
             _message_view(message, attachment_map.get(message.id, [])) for message in messages
         ],
+    )
+
+
+def _proactive_response(
+    conversation_id: UUID, turn: object, message: object | None
+) -> StartProactiveQueryResponse:
+    return StartProactiveQueryResponse(
+        conversation_id=conversation_id,
+        agent_turn=_turn_view(turn),
+        # Proactive goal queries never create attachments.  Pass the empty
+        # collection explicitly because the repository-created Message is
+        # still in the current session and its relationship uses lazy="raise".
+        new_messages=[] if message is None else [_message_view(message, [])],
     )
 
 

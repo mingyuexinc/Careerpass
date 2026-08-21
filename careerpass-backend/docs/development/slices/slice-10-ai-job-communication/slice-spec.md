@@ -1,10 +1,10 @@
 # Slice：S10 AI 求职沟通
 
-> 当前状态：S10-01 已完成 Verify/Close 并标记为 `integration_delivered`；S10-02 核心能力已完成 Implement/Verify，但补充真实前端复测发现成功提示语和附件卡片展示问题，当前回退为 `integration_blocked`，待整改回归；S10-03 保持设计状态。
+> 当前状态：S10 整体已完成 Verify/Close 并标记为 `integration_delivered`；S10-01、S10-02、S10-03 均已完成独立场景交付。
 >
 > 本文档只记录业务范围和业务规则，不定义 API、数据库、类、方法或具体 Tool。跨端场景地图见 [`../../../../docs/integration/slices/slice-10-ai-job-communication/delivery-map.md`](../../../../docs/integration/slices/slice-10-ai-job-communication/delivery-map.md)。
 >
-> Integration Scenario：[`IS-S10-01`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario.md)、[`IS-S10-02`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario-s10-02.md)；Integration Contract：[`IC-S10-AI-COMMUNICATION@0.4`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-contract.md)。
+> Integration Scenario：[`IS-S10-01`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario.md)、[`IS-S10-02`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario-s10-02.md)、[`IS-S10-03`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario-s10-03.md)；Integration Contract：[`IC-S10-AI-COMMUNICATION@0.5`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-contract.md)。
 >
 > Technical Design：[`technical-design.md`](./technical-design.md)。
 >
@@ -23,7 +23,7 @@
 - 当前岗位的受控结构化 JD 信息；
 - 当前 Application 对应 Conversation 的历史消息，仅作为当前问题上下文。
 
-当前已交付增量消费 S-08 已初始化的 Conversation 容器；S10-02 后端资料附件交付核心能力已完成，但展示整改待回归；S10-03 仍不进入当前代码实现。
+当前已交付增量消费 S-08 已初始化的 Conversation 容器；S10-02 后端资料附件交付和前端文件卡片展示已完成；S10-03 主动 query、回答判断、前端触发和开发者场景复测已完成。
 
 ## 3. 输出
 
@@ -84,10 +84,11 @@
 ### 5.5 主动补齐岗位信息并调整沟通行为（S10-03）
 
 - 主动获取的信息来源于当前 JobGoal 的求职过滤条件；已经在岗位匹配/筛选阶段完成判断的条件不再主动获取。
-- Agent 对未处理的过滤条件进行语义识别，并与当前受控 JD 信息对比；当前演示的受控 JD 不包含“是否外包”等岗位性质信息。
-- 对未被筛选阶段处理且无法由 JD 确认的条件，当前演示只生成一个 query，并由 Agent 写入当前 Application 对应 Conversation。
-- 当前演示的问题是二元问题，HR 回答按“是/否”处理，不验收模糊回答。
-- HR 未回答时视为尚未回复，Agent 不主动追问；解析失败时不自动判断为继续或停止，不发送错误结论，query 保持待处理，技术层可进行有限重试。
+- Agent 对未处理的过滤条件进行语义识别，并与当前受控 JD 信息对比；“是否外包”只是可使用的受控示例，不限定 S10-03 的条件类型。
+- HR 进入当前 Application Conversation 后自动触发；对未被筛选阶段处理且无法由 JD 确认的条件只生成一个 query，并由 Agent 写入当前 Application 对应 Conversation。没有可提问条件时静默结束，不发送消息。
+- S10-03 的问题采用二元表达；回答识别包括“是/不是”“对/不对”“属于/不属于”等常见表述。回答带额外说明时只识别其中的二元答案；同时包含肯定和否定、或无法明确判断的回答不纳入当前业务范围。
+- 在 HR 回复前 Agent 不主动追问并保持等待；HR 回复但未识别到二元答案时视为没有有效回复，解析失败后 query 保持待处理，不发送额外提示，不作继续或停止判断。解析失败后 HR 再次发送明确二元答案时，仍视为对原 query 的有效回答。
+- S10-03 根据同一 Conversation 历史判断是否已触发和处理；同一未确认条件最多发送一次 query，重复进入或重复触发不重复发送。
 - 判断为停止推进时，Agent 回复“感谢沟通，当前不考虑这个岗位了”；判断为继续推进时，Agent 回复“好的，了解”。
 - 判断结果只服务于当前 Conversation 和后续沟通行为，不修改 Application、匹配结果或其它投递状态。
 - 当前演示不处理多个未确认条件，也不在一个 query 完成后继续发起其它 query。
@@ -106,7 +107,7 @@
 - Agent 根据 HR 二元回答判断继续或停止推进，并发送对应沟通消息；
 - 无证据、生成失败和发送失败的受控结果。
 
-S10-01 已完成纵向交付；S10-02 核心纵向能力已完成，成功消息语义和附件卡片展示整改待回归；S10-03 主动 query 继续保留在后续 Slice。
+S10 整体已完成当前范围内的纵向交付，包含 S10-01、S10-02、S10-03 三个独立场景。
 
 ### 非目标 / 延期
 
@@ -115,7 +116,7 @@ S10-01 已完成纵向交付；S10-02 核心纵向能力已完成，成功消息
 - 将历史 Agent 回答作为独立事实来源；
 - 外部招聘平台或真实招聘方消息发送；
 - HR 重复问题的语义去重和本场景专门验收；
-- 多个未确认条件、连续主动发起多个 query 和复杂/模糊回答；
+- 多个未确认条件、连续主动发起多个 query，以及同时包含肯定和否定或无法明确判断的回答；
 - 判断结果对 Application、匹配结果或其它投递状态的改变；
 - HR 未回答时的主动催促。
 
@@ -133,18 +134,21 @@ S10-01 已完成纵向交付；S10-02 核心纵向能力已完成，成功消息
 - 一次资料请求产生一条 `content` 为空的 Agent 消息并关联一个附件；前端以仿微信接收文件效果展示文件名、格式、大小和必要时间信息。
 - 附件自创建时间起 7 天有效；CandidateDocument 删除不影响有效期内的已发送附件；资料附件交付不改变 Application 状态，并产生最小不可见审计记录。
 - Agent 能从未被岗位筛选阶段处理的求职过滤条件中识别一个 JD 缺口，并在当前 Conversation 中发送唯一 query。
-- HR 以二元答案回复后，Agent 能形成继续推进或停止推进判断，并分别发送“好的，了解”或“感谢沟通，当前不考虑这个岗位了”。
-- HR 未回答时 Agent 不主动追问；解析失败时不产生错误推进结论，query 保持待处理。
+- HR 进入当前 Application Conversation 后自动触发；没有可提问条件时不发送消息；同一 Conversation 重复触发时根据历史不重复发送 query。
+- HR 以“是/不是”“对/不对”“属于/不属于”等明确二元表达回复后，Agent 能形成继续推进或停止推进判断，并分别发送“好的，了解”或“感谢沟通，当前不考虑这个岗位了”；额外说明只提取其中的二元答案。
+- HR 未回答或回复未识别到二元答案时 Agent 不主动追问、不发送额外提示，query 保持待处理；解析失败后 HR 再次发送明确二元答案时，仍作为原 query 的有效回答。
 - S10-03 判断结果只影响当前 Conversation，不改变 Application、匹配结果或其它投递状态。
 
 ## 8. 开发者需裁决事项
 
 ### 已确认
 
-- S10-01 上述业务事实已由开发者确认并完成交付；S10-02 业务事实已确认，核心能力已交付但展示整改尚未关闭；S10-03 仅保留后续设计事实。
+- S10-01、S10-02 上述业务事实已由开发者确认并完成交付。
+- S10-03 业务事实已完成裁决：进入当前 Application Conversation 后自动触发；没有可提问条件时静默结束；条件不限定为“是否外包”；支持常见二元表达识别；未回答和解析失败均不追问并保持待处理；解析失败后的后续明确二元答案仍可回答原 query；重复触发根据同一 Conversation 历史去重；判断结果不改变 Application、匹配结果或其它投递状态。
 
 ### 已同步的交付事实
 
 - S10-02 新增的成功消息“只显示附件、不显示额外提示语”和仿微信文件卡片展示事实已同步到业务基线、Integration Contract 和前端事实源；S-08 Conversation Handoff、S10-01 Contract、Qwen 真实能力证据、验收 Fixture、数据库/权限/幂等集成和前端演示均已记录并通过。
 - S10-01 已完成 Slice Select、Slice Design、Readiness Check、Implement、Verify 和 Close；`IS-S10-01` 已裁定为 `integration_delivered`。
-- S10-02 已完成业务裁决和核心代码交付：确定性文件名语义匹配、单资料交付、一条 `content` 为空的 Agent 消息关联一个附件、7 天有效期、删除后的独立下载、跨 Application 复用和无 LLM 内容读取；后端代码、迁移和核心联调已通过，但真实前端复测发现成功提示语和附件卡片展示问题，场景待整改回归。
+- S10-02 已完成业务裁决和纵向交付：确定性文件名语义匹配、单资料交付、一条 `content` 为空的 Agent 消息关联一个附件、7 天有效期、删除后的独立下载、跨 Application 复用、仿微信文件卡片和无 LLM 内容读取；后端代码、迁移和前后端联调已通过。
+- S10-03 已完成 Slice Select、Slice Design、Readiness Check、Implement、Verify 和 Close；开发者重启后端并完成前端场景复测，主动 query、静默、等待、解析失败、后续有效回答、继续/停止回复、重复触发去重、权限隔离和 Application/Match/投递状态不变均通过；`IS-S10-03` 已标记为 `integration_delivered`。

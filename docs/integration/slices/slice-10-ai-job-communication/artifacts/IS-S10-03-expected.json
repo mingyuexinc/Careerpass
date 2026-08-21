@@ -1,0 +1,17 @@
+{
+  "scenario_id": "IS-S10-03",
+  "fixture": "careerpass-backend/tests/fixtures/s10_03_goal_communication.json",
+  "required_assertions": {
+    "unique_query": true,
+    "silent_without_condition": true,
+    "waiting_without_answer": true,
+    "parse_failure_has_no_extra_message": true,
+    "later_binary_answer_completes_original_query": true,
+    "continue_reply": "好的，了解",
+    "stop_reply": "感谢沟通，当前不考虑这个岗位了",
+    "duplicate_trigger_deduplicated": true,
+    "application_match_status_unchanged": true,
+    "ownership_isolation": true
+  },
+  "actual": "artifacts/IS-S10-03-acceptance/actual.json"
+}

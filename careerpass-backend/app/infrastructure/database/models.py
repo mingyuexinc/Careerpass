@@ -613,9 +613,13 @@ class AgentTurn(Base):
         PostgreSQLUUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"),
         nullable=False,
     )
-    source_message_id: Mapped[UUID] = mapped_column(
+    source_message_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("messages.id", ondelete="CASCADE"),
-        nullable=False, unique=True,
+        nullable=True, unique=True,
+    )
+    result_message_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("messages.id", ondelete="SET NULL"),
+        nullable=True, unique=True,
     )
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     scene: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'resume_answer'"))

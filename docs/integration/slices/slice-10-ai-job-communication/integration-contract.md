@@ -1,8 +1,8 @@
 # Integration Contract：S10 AI 求职沟通
 
-> Contract ID：`IC-S10-AI-COMMUNICATION@0.4`
+> Contract ID：`IC-S10-AI-COMMUNICATION@0.5`
 > 关联 Slice：S10 AI 求职沟通
-> 关联 Scenario：`IS-S10-01`、`IS-S10-02`
+> 关联 Scenario：`IS-S10-01`、`IS-S10-02`、`IS-S10-03`
 > 状态：`locked`
 
 ## 1. 用户场景与边界
@@ -12,7 +12,7 @@
 - 触发：S-08 成功创建 Application 后初始化 Conversation，HR 在当前 Conversation 发送消息；
 - 结果：HR 看到 S10-01 Agent 正式文本消息，或看到 S10-02 仅包含安全附件投影的 Agent 消息；S10-02 匹配成功时不显示“已为你找到”等额外成功提示语；
 - 会话范围：只读取和写入当前 Application 对应的 Conversation；
-- 不包含：主动 query、其它岗位/Candidate/Application 会话、真实外部消息和 Application 状态变化；S10-02 附件交付仅限本 Contract 定义的文件名语义检索和单附件下载。
+- 不包含：其它岗位/Candidate/Application 会话、真实外部消息和 Application 状态变化；S10-02 附件交付仅限本 Contract 定义的文件名语义检索和单附件下载。
 
 业务语义引用 [`business-baseline.md`](../../../business/business-baseline.md) 的 `BF-RULE-045` 至 `BF-RULE-057`，Slice 细化引用 [`slice-spec.md`](../../../../careerpass-backend/docs/development/slices/slice-10-ai-job-communication/slice-spec.md)。
 
@@ -130,7 +130,7 @@ S10-02 复用 `POST /api/v1/applications/{application_id}/conversation/messages`
 | --- | --- | --- | --- |
 | S10-01 简历问答 | HR 关于经历、项目、技能的问题 | Agent 文本消息 | HR 只看到回答，不看到简历原文或证据摘要 |
 | S10-02 资料附件 | HR 请求证书、照片或证明等资料 | `content` 为空的 Agent 消息 + 一个附件安全投影 | HR 只看到仿微信文件接收效果的附件卡片，可查看元数据并重复下载，不可预览或看到内部定位 |
-| S10-03 主动 query | 后续 Slice | 本版本不实现 | 不纳入当前验收 |
+| S10-03 主动 query | 进入当前 Conversation 后幂等触发，按会话历史最多保留一个 query | Agent 唯一 query 或静默结果；后续继续/停止固定回复 | HR 可见 query 和固定判断回复；等待/解析失败不可见额外提示 |
 
 ## 5. 状态与错误
 
@@ -146,6 +146,11 @@ accepted → processing → completed
 | --- | --- |
 | `completed/message_sent` | Agent 文本消息已写入并可见 |
 | `completed/tool_failed` | Qwen 失败时已写入受控模板消息；`failure_code` 仅在内部 AgentTurn 保存 |
+| `waiting/query_sent` | 主动 query 已发送，等待 HR 回答 |
+| `waiting/pending` | 未收到或未识别到有效二元回答；不追问、不判断，后续明确回答仍可完成 |
+| `completed/continue` | HR 明确回答后发送“好的，了解” |
+| `completed/stop` | HR 明确回答后发送“感谢沟通，当前不考虑这个岗位了” |
+| 无 AgentTurn/空消息 | 没有可提问条件时静默结束 |
 
 ### 5.2 错误语义
 
@@ -157,7 +162,10 @@ accepted → processing → completed
 | S10-01 绑定 Resume-derived 经历范围完整，且存在性问题的目标能力未出现在该范围 | 200，Agent 否定事实消息 | 明确说明“没有相关经历”；允许补充已记录的其它相关经历，但不得展示证据摘要 |
 | S10-01 检索、生成或校验失败且通道可用 | 200，Agent 模板消息 | “暂时无法回答当前问题” |
 | S10-01 消息通道失败且重试耗尽 | 业务失败 | 不追加 Agent 回复 |
-| S10-03 主动 query | 后续 Slice | 不纳入当前验收 |
+| S10-03 没有可提问条件 | 200，`agent_turn=null`、`new_messages=[]` | 静默，不发送消息 |
+| S10-03 重复触发 | 原 `goal_query` 结果幂等返回 | 不重复追加 query |
+| S10-03 未回答/解析失败 | 200，当前 HR turn 为 `pending`，不追加 Agent 消息 | 保持待处理，不追问、不作继续/停止判断 |
+| S10-03 明确二元回答 | 200，继续或停止固定回复 | 不改变 Application、Match 或投递状态 |
 | 请求重复 | 原结果幂等返回 | 不重复追加消息或附件 |
 | S10-02 未找到或资料失效 | 200，Agent 友好受控文本消息 | 不创建附件，不泄露内部原因 |
 | S10-02 匹配成功 | 200，Agent 消息 `content` 为空并带一个附件 | 不展示额外成功提示语；页面只展示附件文件卡片 |
@@ -182,4 +190,17 @@ accepted → processing → completed
 
 - 新增可选字段保持向后兼容；删除字段、改变状态含义或改变附件预览/下载能力必须升 Major 版本；
 - API、状态、权限、附件能力或 Application 影响范围变化时，必须回退 Slice Design 并同步业务基线、技术设计和 Scenario；
-- `0.4` 在保持 S10-01 请求/响应字段兼容的前提下，新增 S10-02 文件名确定性语义匹配、单 Agent 消息单附件、7 天有效期、删除后的独立下载和安全附件投影；不包含文件内容检索、LLM、主动 query、Application 状态改变或真实外部沟通。
+- `0.4` 保持 S10-01 请求/响应字段兼容并承载 S10-02 附件交付；
+- `0.5` 在保持 `0.4` 兼容的前提下新增 S10-03 主动触发、AgentTurn `goal_query/goal_judgement`、等待/待处理/继续/停止结果和无消息静默结果；不改变 Application、Match 或投递状态。
+
+## 8. S10-03 主动触发接口
+
+```text
+POST /api/v1/applications/{application_id}/conversation/proactive-query
+```
+
+请求体为 `{ "conversation_id": "uuid" }`。该动作由前端在 HR 进入当前会话后调用，GET 消息接口保持只读。返回数据包含 `conversation_id`、可选 `agent_turn` 和 `new_messages`；没有可提问条件时三者分别返回会话 ID、`null`、空数组。
+
+AgentTurn 允许主动轮次没有 `source_message_id`，使用唯一幂等键 `application_id + conversation_id + goal_condition_signature`。主动轮次状态为 `processing → waiting/query_sent`，HR 消息进入后为 `goal_judgement`；解析失败为 `waiting/pending`，后续明确二元回答仍完成同一 query。
+
+二元识别仅接受明确的“是/不是、对/不对、属于/不属于”等表达；额外说明不影响提取，混合肯定/否定和无法明确判断的回答保持待处理。判断只追加固定沟通消息，不更新 Application、Match 或投递状态。

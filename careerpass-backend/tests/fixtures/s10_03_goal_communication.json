@@ -1,0 +1,34 @@
+{
+  "scenario_id": "IS-S10-03",
+  "hr": {"id": "fixture-hr-001", "role": "hr"},
+  "candidate": {"id": "fixture-candidate-001", "name": "候选人甲"},
+  "job": {"id": "fixture-job-001", "title": "AI 应用开发工程师"},
+  "application": {"id": "fixture-application-001", "status": "submitted"},
+  "conversation": {"id": "fixture-conversation-001"},
+  "job_goal": {
+    "status": "active",
+    "filters": "不考虑外包岗位",
+    "condition_is_replaceable": true
+  },
+  "parsed_jd": {
+    "job_nature": null,
+    "employment_type": null,
+    "jd_cannot_confirm_condition": true
+  },
+  "answers": [
+    "是",
+    "不是",
+    "对",
+    "不对",
+    "属于外包岗位",
+    "不属于外包岗位",
+    "是，补充说明",
+    "无法确认",
+    "无法确认 -> 是"
+  ],
+  "expected": {
+    "query_count": 1,
+    "silent_without_condition": true,
+    "application_match_status_unchanged": true
+  }
+}

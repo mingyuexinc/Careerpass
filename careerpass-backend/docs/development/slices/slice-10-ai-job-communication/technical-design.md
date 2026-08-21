@@ -11,7 +11,7 @@
 | Slice 目标、范围和业务规则 | [`slice-spec.md`](./slice-spec.md) |
 | 跨前后端业务事实 | [`../../../../docs/business/business-baseline.md`](../../../../docs/business/business-baseline.md) |
 | 跨端契约 | [`../../../../docs/integration/slices/slice-10-ai-job-communication/integration-contract.md`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-contract.md) |
-| 演示场景 | [`IS-S10-01`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario.md)、[`IS-S10-02`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario-s10-02.md) |
+| 演示场景 | [`IS-S10-01`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario.md)、[`IS-S10-02`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario-s10-02.md)、[`IS-S10-03`](../../../../docs/integration/slices/slice-10-ai-job-communication/integration-scenario-s10-03.md) |
 | 领域模型 | [`../../domain/domain-model.md`](../../domain/domain-model.md) |
 | 数据库设计 | [`../../data/database-design.md`](../../data/database-design.md) |
 | Agent 架构边界 | [`../../architecture/agent-workflow-architecture.md`](../../architecture/agent-workflow-architecture.md) |
@@ -19,12 +19,12 @@
 | 项目 | 当前约定 |
 | --- | --- |
 | Integration Scenario | `IS-S10-01`、`IS-S10-02` |
-| Integration Contract | `IC-S10-AI-COMMUNICATION@0.4`，状态 `locked` |
-| 后端状态 | S10-01、S10-02 `implemented` |
-| 跨端交付状态 | S10-01 `integration_delivered`；S10-02 `integration_blocked`（核心能力已通过，展示整改待回归） |
-| 当前技术设计状态 | S10-01 `closed`；S10-02 `reopened_verify` |
+| Integration Contract | `IC-S10-AI-COMMUNICATION@0.5`，状态 `locked` |
+| 后端状态 | S10-01、S10-02、S10-03 `implemented` |
+| 跨端交付状态 | S10-01、S10-02、S10-03 `integration_delivered` |
+| 当前技术设计状态 | S10-01、S10-02、S10-03 `closed` |
 
-当前文档同时承接已关闭的 S10-01 和 S10-02 核心实现。S10-02 已完成文件名确定性语义匹配、单资料附件交付和下载，但补充前端联调发现成功消息仍有额外提示语且附件卡片未达到仿微信文件接收效果，需完成展示整改后再关闭；S10-03 的主动 query 保留设计，不进入当前迁移、API、Tool 或验收。
+当前文档承接已完成交付的 S10-01、S10-02、S10-03；S10-03 使用扩展 AgentTurn，不新增 Query 表；主动轮次允许没有 HR `source_message_id`，通过 `result_message_id` 关联可见 Agent 消息，幂等键为 `application_id + conversation_id + goal_condition_signature`。
 
 S10-01 不新增通用 Agent 平台或 LangChain；S10-02 不使用 LLM、文件正文、OCR 或 Embedding，使用确定性资料匹配 Service/Repository 和现有消息事务能力。
 
@@ -54,7 +54,7 @@ Agent 不直接访问 ORM Session、Repository、对象存储或消息表。Agen
 | 触发类型 | 来源 | 允许场景 | 说明 |
 | --- | --- | --- | --- |
 | `hr_message_received` | HR 当前 Conversation 新消息 | S10-01、S10-02、S10-03 回答处理 | 先持久化并校验 HR 消息，再进入 Agent Turn |
-| `proactive_query_start` | S10 Agent/Workflow 入口 | S10-03 | 读取 JobGoal 和 JD，最多生成一个 query |
+| `proactive_query_start` | HR 进入当前 Application Conversation 后的 S10 Agent/Workflow 入口 | S10-03 | 先读取当前 Conversation 历史，再读取 JobGoal 和 JD；没有可提问条件时不产生消息，同一未确认条件最多生成一个 query |
 | `agent_retry` | 同一 Agent Turn 的有限重试 | 原失败场景 | 必须复用原幂等键，不创建第二个业务结果 |
 
 ### 2.3 统一上下文
@@ -157,7 +157,7 @@ S-08 通过 `APPLICATION-CONVERSATION@0.1` 交接唯一 Conversation 容器。S1
 | `prepare_downloadable_attachment` | 已授权 CandidateDocument、Message 关联 | 附件元数据和下载句柄 | `attachment_failed` | 准备附件，不直接发送消息 |
 | `extract_goal_condition` | JobGoal 过滤条件 | 结构化求职条件 | `semantic_extraction_failed` | 无 |
 | `detect_jd_gap` | 求职条件、已校验 JD | 单一缺口或无缺口 | `validation_failed` | 无 |
-| `parse_binary_answer` | 原问题、HR 当前回复 | `yes` 或 `no` | `answer_parse_failed` | 无 |
+| `parse_binary_answer` | 原问题、HR 当前或后续回复 | `yes` 或 `no` | `answer_parse_failed` | 无 |
 
 Tool 输入由 Pydantic 校验；Tool 不接收 SQL、Shell、ORM Session、对象路径或未经验证的外部 URL。Tool 失败不能直接驱动消息、Application 状态或其它副作用。
 
@@ -178,7 +178,7 @@ Agent 输出必须符合受限 Schema，至少包含：
 }
 ```
 
-`scene`、`tool_calls`、`binary_answer` 和 `draft_message` 由业务校验共同约束：不允许 Agent 自行选择未注册 Tool；S10-03 的 `binary_answer` 不是 `yes/no` 时不得形成推进判断；任何输出不得直接修改 Application。
+`scene`、`tool_calls`、`binary_answer` 和 `draft_message` 由业务校验共同约束：不允许 Agent 自行选择未注册 Tool；S10-03 只将“是/不是”“对/不对”“属于/不属于”等明确二元表达归一为 `yes/no`，带额外说明时只提取其中的二元答案；`binary_answer` 不是 `yes/no` 时不得形成推进判断；任何输出不得直接修改 Application。
 
 S10-02 匹配成功时 `draft_message` 和持久化 Agent Message 的 `content` 必须为空字符串；附件卡片是唯一用户可见结果，不发送“已为你找到”等成功提示语。
 
@@ -205,7 +205,7 @@ S10-02 匹配成功时 `draft_message` 和持久化 Agent Message 的 `content` 
 | AgentTurn | `accepted`、`processing`、`completed`、`waiting`、`failed` | Agent Workflow Service | `accepted → processing → completed/waiting/failed` |
 | Message | `pending`、`sent`、`failed` | Conversation Message Service | `pending → sent/failed` |
 | MessageAttachment | `preparing`、`downloadable`、`failed`、`expired` | Attachment Service | `preparing → downloadable/failed`；`downloadable → expired`（创建后 7 天） |
-| S10-03 query 语义 | `not_created`、`awaiting_answer`、`judged`、`pending` | Agent Workflow Service | `not_created → awaiting_answer → judged`；解析失败保持 `pending` |
+| S10-03 query 语义 | `not_created`、`awaiting_answer`、`judged`、`pending` | Agent Workflow Service | `not_created → awaiting_answer → judged`；未识别到有效二元答案时保持 `pending`，后续明确二元答案可由 `pending → judged`；`pending` 不是终态 |
 
 Conversation 本身当前不新增独立业务状态；Agent 编排状态不等于 Application 或 AgentRunContext 状态。
 
@@ -216,7 +216,7 @@ Conversation 本身当前不新增独立业务状态；Agent 编排状态不等�
 | HR 入站消息 | `conversation_id + client_message_id` | 返回已有入站消息和 Agent Turn 结果 |
 | S10-01 | 入站消息关联的 Agent Turn | 复用已有回答，不重复追加 Agent 消息 |
 | S10-02 | `application_id + conversation_id + source_message_id + document_intent` | 复用已有 Agent 消息和一个附件，不重复发送 |
-| S10-03 query | `application_id + conversation_id + goal_condition_signature` | 当前演示最多保留一个 query，不重复追加问题 |
+| S10-03 query | `application_id + conversation_id + goal_condition_signature`，并以当前 Conversation 历史复核 | 同一未确认条件最多保留一个 query；重复进入或重复触发不重复追加问题 |
 
 ### 5.3 事务边界
 
@@ -237,7 +237,10 @@ Conversation 本身当前不新增独立业务状态；Agent 编排状态不等�
 | S10-02 未找到或资料失效 | 返回友好受控 Agent 文本，不暴露文件状态、正文或内部定位 | 是，仅文本消息；不追加附件 |
 | S10-02 附件过期 | 下载返回受控失败；历史消息保留安全元数据 | 否，不重新创建附件 |
 | S10-03 HR 未回答 | query 保持等待，不主动追问 | 否 |
-| S10-03 HR 回复解析失败 | 不判断继续/停止，query 保持待处理；技术层有限重试 | 否 |
+| S10-03 没有可提问条件 | 静默结束，不创建 query | 否 |
+| S10-03 HR 回复解析失败 | 视为没有有效回复；不判断继续/停止，query 保持待处理，不发送额外提示 | 否 |
+| S10-03 解析失败后再次收到明确二元答案 | 将后续明确答案视为原 query 的有效回答并继续判断 | 继续或停止时是 |
+| S10-03 重复触发 | 根据当前 Conversation 历史复用已有业务结果或静默结束 | 否，不重复追加 query |
 | S10-03 判断为继续推进 | 写入固定沟通回复 | 是，“好的，了解” |
 | S10-03 判断为停止推进 | 写入固定沟通回复 | 是，“感谢沟通，当前不考虑这个岗位了” |
 
@@ -263,7 +266,7 @@ Conversation 本身当前不新增独立业务状态；Agent 编排状态不等�
 
 ### 7.2 数据库影响
 
-- 当前增量已实现 `conversations`、`messages` 和 `agent_turns`，迁移为 `20260820_0015`；`message_attachments` 已由迁移 `20260820_0016`、Repository 和真实下载联调落地。
+- 当前增量已实现 `conversations`、`messages` 和 `agent_turns`，迁移为 `20260820_0015`；`message_attachments` 已由迁移 `20260820_0016`、Repository 和真实下载联调落地；S10-03 AgentTurn 主动轮次扩展由迁移 `20260821_0017` 落地。
 - `Application`、`AgentRunContext`、`JobGoal`、Resume、CandidateProfile、CandidateDocument 和 JD 快照不新增 S10 业务字段。
 - `MessageAttachment` 保存下载所需的安全元数据、来源 CandidateDocument 关系、有效期和独立下载引用，不保存文件正文或内部对象定位作为 API 响应；有效期内不依赖 CandidateDocument 当前记录才能下载。
 - `AgentTurn` 只保存幂等键、场景、状态、结果分类和脱敏失败信息，不保存 Prompt、模型原始响应或消息原文。
@@ -281,7 +284,7 @@ Conversation 本身当前不新增独立业务状态；Agent 编排状态不等�
 | 依赖 | 用途 | 当前状态 |
 | --- | --- | --- |
 | 现有认证与当前身份 | HR/Application/资源归属校验 | 已有能力，待 S10 接入验证 |
-| PostgreSQL | Conversation、Message、Attachment、AgentTurn 持久化 | S10-01/S10-02 已完成迁移和联调验证 |
+| PostgreSQL | Conversation、Message、Attachment、AgentTurn 持久化 | S10-01/S10-02/S10-03 已完成迁移和联调验证 |
 | CandidateDocument 对象存储 | 附件下载和 7 天独立保留 | 已验证删除交接、重复下载和过期清理引用保护 |
 | Qwen Plus HTTP 适配 | S10-01 基于 Resume-derived facts 的结构化回答 | 代码已接入；2026-08-20 脱敏结构化事实最小真实调用通过 |
 | Agent Workflow 运行模块 | 统一执行骨架 | 当前尚未实现 |
@@ -321,15 +324,22 @@ Readiness 证据（2026-08-20）：从后端根目录执行 `scripts/backend-rea
 
 ### 8.5 S10-02 Verify/Close 记录
 
-- 业务基线、Slice Spec、领域/数据设计和 `IC-S10-AI-COMMUNICATION@0.4` 已锁定；
+- 业务基线、Slice Spec、领域/数据设计和 `IC-S10-AI-COMMUNICATION@0.5` 已锁定；
 - `IS-S10-02`、固定文件名 Fixture、验收命令和 Artifact 路径已建立；
 - 文件名确定性匹配不依赖 LLM，S05 → S10 CandidateDocument 交接边界已确认；
 - PostgreSQL `MessageAttachment` 迁移、对象存储下载、7 天有效期和 CandidateDocument 删除交接已验证；
-- 后端匹配、单消息单附件、7 天有效期、删除交接、下载权限和跨 Application 复用已通过；补充真实前端复测发现两个待整改问题：成功交付仍显示额外提示语，附件卡片未达到仿微信文件接收效果。`IS-S10-02` 当前回退为 `integration_blocked`，待前后端整改和开发者回归验收。
+- 后端匹配、空正文单消息单附件、7 天有效期、删除交接、下载权限、跨 Application 复用和前端仿微信文件卡片已通过；`IS-S10-02` 已完成整改回归并标记为 `integration_delivered`。
+
+### 8.6 S10-03 Verify/Close 记录
+
+- Capability Acceptance 通过 13 项；前端 `npm run typecheck` 和 `conversationsPage.test.tsx` 通过。
+- 开发者重启后端后完成真实前端场景复测：有缺口时发送唯一 query，无条件时静默，未回答/解析失败不追问，后续明确二元回答完成原 query，继续/停止回复、重复触发去重、权限隔离和状态不变均符合 Contract。
+- 运行数据库已应用迁移 `20260821_0017`；主动 query 入口返回 HTTP 200，重复触发复用同一 AgentTurn，不重复追加消息。
+- 已整改运行数据库未迁移导致的 404，以及主动 query 响应读取未预加载附件导致的 500；回归后 `IS-S10-03` 标记为 `integration_delivered`。
 
 ## 9. 设计锁定与回退
 
 - 本技术设计锁定统一 Agent Turn、场景路由、Tool 边界、消息/附件状态、幂等、失败和审计语义。
 - API 字段、消息状态、附件下载能力、Conversation 归属或 Application 影响范围变化时，必须回退到 Slice Design，并同步业务基线、Integration Contract 和 Scenario。
 - S10-02 不依赖 LLM；对象存储、消息链路、数据库迁移和前端下载证据已写入 `IS-S10-02` Acceptance Artifact。
-- 当前结论：S10-01 `integration_delivered`；S10-02 核心代码能力已实现但因前端展示问题回退为 `integration_blocked`，S10-03 仍为设计状态。
+- 当前结论：S10 整体为 `integration_delivered`；S10-01、S10-02、S10-03 均已完成 Verify/Close。

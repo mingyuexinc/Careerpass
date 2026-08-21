@@ -21,6 +21,7 @@ from app.infrastructure.database.models import (
     CandidateProfile,
     Conversation,
     Job,
+    JobGoal,
     Message,
     MessageAttachment,
     ParsedJobDescriptionSnapshot,
@@ -43,6 +44,8 @@ class ConversationContext:
     conversation: Conversation
     application: Application
     profile: CandidateProfile
+    job_goal: JobGoal | None = None
+    snapshot: ParsedJobDescriptionSnapshot | None = None
 
 
 @dataclass(frozen=True)
@@ -133,7 +136,26 @@ class ConversationRepository:
         if value is None:
             return None
         conversation, application, profile = value
-        return ConversationContext(conversation=conversation, application=application, profile=profile)
+        job_goal = await self._session.scalar(
+            select(JobGoal)
+            .join(AgentRunContext, AgentRunContext.job_goal_id == JobGoal.id)
+            .where(
+                AgentRunContext.id == application.run_id,
+                JobGoal.candidate_id == application.candidate_id,
+            )
+        )
+        snapshot = await self._session.scalar(
+            select(ParsedJobDescriptionSnapshot).where(
+                ParsedJobDescriptionSnapshot.job_id == application.job_id,
+            )
+        )
+        return ConversationContext(
+            conversation=conversation,
+            application=application,
+            profile=profile,
+            job_goal=job_goal,
+            snapshot=snapshot,
+        )
 
     async def list_messages(self, *, conversation_id: UUID) -> list[Message]:
         result = await self._session.scalars(
@@ -167,6 +189,35 @@ class ConversationRepository:
             .execution_options(populate_existing=True)
         )
 
+    async def get_turn_by_idempotency_key(self, *, idempotency_key: str) -> AgentTurn | None:
+        return await self._session.scalar(
+            select(AgentTurn).where(AgentTurn.idempotency_key == idempotency_key)
+        )
+
+    async def get_pending_goal_query(self, *, conversation_id: UUID) -> AgentTurn | None:
+        return await self._session.scalar(
+            select(AgentTurn)
+            .where(
+                AgentTurn.conversation_id == conversation_id,
+                AgentTurn.scene == "goal_query",
+                AgentTurn.status == "waiting",
+            )
+            .order_by(desc(AgentTurn.created_at), desc(AgentTurn.id))
+            .limit(1)
+            .with_for_update()
+        )
+
+    async def get_result_message_for_turn(self, *, turn: AgentTurn) -> Message | None:
+        if turn.result_message_id is not None:
+            return await self._session.scalar(
+                select(Message)
+                .where(Message.id == turn.result_message_id)
+                .options(selectinload(Message.attachments))
+            )
+        if turn.source_message_id is None:
+            return None
+        return await self.get_result_message(source_message_id=turn.source_message_id)
+
     async def get_result_message(self, *, source_message_id: UUID) -> Message | None:
         source = await self._session.get(Message, source_message_id)
         if source is None:
@@ -194,6 +245,7 @@ class ConversationRepository:
             )
             .where(
                 CandidateDocument.candidate_id == candidate_id,
+                CandidateDocument.deleted_at.is_(None),
                 StoredFileObject.status == "ready",
             )
             .order_by(CandidateDocument.created_at, CandidateDocument.id)
@@ -273,6 +325,26 @@ class ConversationRepository:
             raise ConversationIdempotencyRaceError from exc
         return message, turn
 
+    async def add_proactive_turn(
+        self, *, conversation_id: UUID, idempotency_key: str
+    ) -> AgentTurn:
+        now = datetime.now(UTC)
+        turn = AgentTurn(
+            conversation_id=conversation_id,
+            source_message_id=None,
+            idempotency_key=idempotency_key,
+            scene="goal_query",
+            status="processing",
+            created_at=now,
+            updated_at=now,
+        )
+        self._session.add(turn)
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            raise ConversationIdempotencyRaceError from exc
+        return turn
+
     async def add_agent_message(
         self,
         *,
@@ -282,6 +354,7 @@ class ConversationRepository:
         failure_code: str | None = None,
         outcome: str = "message_sent",
         scene: str = "resume_answer",
+        status: str = "completed",
     ) -> Message:
         now = datetime.now(UTC)
         message = Message(
@@ -293,14 +366,37 @@ class ConversationRepository:
             created_at=now,
         )
         self._session.add(message)
-        turn.status = "completed"
+        turn.status = status
         turn.scene = scene
         turn.outcome = outcome
         turn.retryable = False
         turn.failure_code = failure_code
         turn.updated_at = now
         await self._session.flush()
+        turn.result_message_id = message.id
+        await self._session.flush()
         return message
+
+    async def mark_turn_waiting(self, *, turn: AgentTurn, outcome: str = "query_sent") -> None:
+        turn.status = "waiting"
+        turn.outcome = outcome
+        turn.retryable = False
+        turn.updated_at = datetime.now(UTC)
+        await self._session.flush()
+
+    async def complete_goal_query(self, *, turn: AgentTurn, outcome: str) -> None:
+        turn.status = "completed"
+        turn.outcome = outcome
+        turn.retryable = False
+        turn.updated_at = datetime.now(UTC)
+        await self._session.flush()
+
+    async def complete_turn_without_message(self, *, turn: AgentTurn, outcome: str) -> None:
+        turn.status = "completed"
+        turn.outcome = outcome
+        turn.retryable = False
+        turn.updated_at = datetime.now(UTC)
+        await self._session.flush()
 
     async def add_message_attachment(
         self,

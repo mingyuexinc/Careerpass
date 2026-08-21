@@ -11,7 +11,7 @@ from app.api.dependencies.services import get_conversation_service
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
 from app.core.identity import CurrentIdentity
-from app.schemas.conversation import SendMessageRequest
+from app.schemas.conversation import SendMessageRequest, StartProactiveQueryRequest
 from app.schemas.response import success_response
 from app.services.conversation_service import (
     AttachmentExpiredError,
@@ -81,6 +81,24 @@ async def send_conversation_message(
             code=ErrorCode.INTERNAL_ERROR,
             message="attachment delivery unavailable",
         ) from None
+    return success_response(result.model_dump(mode="json"))
+
+
+@conversations_router.post("/applications/{application_id}/conversation/proactive-query")
+async def start_conversation_proactive_query(
+    application_id: UUID,
+    value: StartProactiveQueryRequest,
+    identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
+    service: Annotated[ConversationService, Depends(get_conversation_service)],
+) -> dict[str, object]:
+    try:
+        result = await service.start_proactive_query(
+            application_id=application_id,
+            conversation_id=value.conversation_id,
+            hr_profile_id=_hr_profile_id(identity),
+        )
+    except ConversationNotFoundError:
+        raise AppException(status_code=404, code=ErrorCode.NOT_FOUND, message="conversation not found") from None
     return success_response(result.model_dump(mode="json"))
 
 

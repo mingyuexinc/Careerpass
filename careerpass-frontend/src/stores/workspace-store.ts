@@ -20,6 +20,7 @@ import {
   downloadConversationAttachment,
   listCurrentConversations,
   sendConversationMessage,
+  startConversationProactiveQuery,
 } from "../api/conversationApi";
 import type {
   DeliveryProgress,
@@ -46,6 +47,7 @@ interface WorkspaceState extends WorkspaceSnapshot {
   startAgent: () => Promise<void>;
   updateApplicationStatus: (id: string, status: DeliveryProgress) => Promise<void>;
   sendMessage: (id: string, content: string, clientMessageId?: string) => Promise<void>;
+  startConversationQuery: (id: string) => Promise<void>;
   downloadAttachment: (applicationId: string, messageId: string, attachmentId: string, fileName: string) => Promise<void>;
   resetData: () => Promise<void>;
   clearLocalState: () => Promise<void>;
@@ -404,6 +406,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       await mockRepository.sendConversationMessage(id, content, clientMessageId);
       return mockRepository.getSnapshot();
     }),
+  startConversationQuery: async (id) => {
+    const accessToken = useAuthStore.getState().accessToken;
+    if (!accessToken || useAuthStore.getState().user?.role !== "hr") return;
+    const current = useWorkspaceStore.getState().conversations.find((item) => item.id === id);
+    if (!current) return;
+    try {
+      await startConversationProactiveQuery(current.applicationId, current.id, accessToken);
+      const conversations = await listCurrentConversations(accessToken);
+      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+      snapshot.conversations = conversations;
+      set({ ...snapshot, initialized: true });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : "主动沟通提问失败，请稍后重试。" });
+      throw error;
+    }
+  },
   downloadAttachment: async (applicationId, messageId, attachmentId, fileName) => {
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken || useAuthStore.getState().user?.role !== "hr") {
