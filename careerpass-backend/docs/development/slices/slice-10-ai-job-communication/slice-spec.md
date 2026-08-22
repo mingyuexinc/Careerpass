@@ -72,7 +72,7 @@
 
 - HR 可以请求当前 Candidate 已成功保存的任意 CandidateDocument，不限制为证书、照片或证明。
 - 当前投递会话默认可以使用当前 Candidate 的 CandidateDocument，不设置候选人二次授权；同一资料可被多个 Application 复用。
-- 资料意图只通过 HR 消息和 CandidateDocument 文件名进行确定性语义匹配；使用文件名标准化、关键词和受控别名，不读取文件内容，不使用 OCR、Embedding 或 LLM。
+- 资料意图只通过 HR 消息和 CandidateDocument 文件名进行确定性语义匹配；使用文件名标准化、关键词和受控别名，不读取文件内容，不使用 OCR、Embedding 或 LLM；“学籍证明”“学籍材料”“学籍验证报告”及带“材料”的同类表述可匹配对应学籍验证报告资料。
 - 每次请求最多交付一个资料；主演示 Fixture 保证每个请求只有一个符合项，不验收多命中选择。
 - 成功请求产生一条 `content` 为空的 Agent 消息，并关联一个 `MessageAttachment`；用户可见内容只有附件，HR 只能下载，不能在线预览或查看文件内容。
 - 附件只展示文件名、格式、大小和必要时间信息；附件自创建时间起 7 天有效，CandidateDocument 删除不影响有效期内的已发送附件。

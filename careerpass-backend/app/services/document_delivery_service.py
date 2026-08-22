@@ -13,6 +13,13 @@ DocumentIntent = str
 DOCUMENT_ALIASES: dict[DocumentIntent, tuple[str, ...]] = {
     "certificate": ("证书", "资格证", "认证", "certificate", "certification"),
     "photo": ("照片", "证件照", "photo", "picture"),
+    "academic_status": (
+        "学籍证明",
+        "学籍材料",
+        "学籍验证报告",
+        "学籍证明材料",
+        "学籍验证报告材料",
+    ),
     "proof": ("证明", "证明材料", "proof", "document"),
 }
 REQUEST_MARKERS = (

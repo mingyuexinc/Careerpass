@@ -161,7 +161,7 @@ S-08 通过 `APPLICATION-CONVERSATION@0.1` 交接唯一 Conversation 容器。S1
 
 Tool 输入由 Pydantic 校验；Tool 不接收 SQL、Shell、ORM Session、对象路径或未经验证的外部 URL。Tool 失败不能直接驱动消息、Application 状态或其它副作用。
 
-S10-02 的 `retrieve_candidate_document` 只读取当前 CandidateDocument 的安全元数据和文件名，不读取文件正文；资料意图通过明确请求语句提取资料名称，再结合文件名标准化、关键词和受控别名进行确定性匹配。证书、照片、证明等常用类别使用受控别名，未预置类别（例如“学籍验证报告”）直接使用请求名称与文件名匹配。主演示 Fixture 保证每次请求只有一个符合项；匹配成功后只创建一个 MessageAttachment。
+S10-02 的 `retrieve_candidate_document` 只读取当前 CandidateDocument 的安全元数据和文件名，不读取文件正文；资料意图通过明确请求语句提取资料名称，再结合文件名标准化、关键词和受控别名进行确定性匹配。证书、照片、证明等常用类别使用受控别名；“学籍证明”“学籍材料”“学籍验证报告”及带“材料”的同类表述归入同一受控学籍资料意图。主演示 Fixture 保证每次请求只有一个符合项；匹配成功后只创建一个 MessageAttachment。
 
 ### 4.2 Agent 结构化输出
 

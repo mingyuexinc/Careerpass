@@ -24,7 +24,24 @@ def test_detects_supported_document_request_intents() -> None:
     assert detect_document_intent("请提供候选人的证书") == "certificate"
     assert detect_document_intent("Can you provide the candidate photo?") == "photo"
     assert detect_document_intent("请发送证明材料") == "proof"
-    assert detect_document_intent("请把你的学籍验证报告发一下。") == "学籍验证报告"
+    assert detect_document_intent("请把你的学籍验证报告发一下。") == "academic_status"
+
+
+def test_detects_academic_status_aliases_and_matches_report_filename() -> None:
+    messages = (
+        "将你的学籍证明发一下",
+        "请发送你的学籍材料",
+        "将你的学籍验证报告材料发一下",
+        "请把你的学籍验证报告发一下",
+    )
+
+    for message in messages:
+        intent = detect_document_intent(message)
+        assert intent == "academic_status"
+        assert resolve_document_candidates(
+            intent=intent,
+            candidates=[_candidate("学籍验证报告.pdf")],
+        ) is not None
 
 
 def test_requires_request_language_and_does_not_read_file_content() -> None:
@@ -42,6 +59,6 @@ def test_resolves_one_filename_match_and_fails_closed_on_multiple_matches() -> N
         candidates=[_candidate("certificate_a.pdf"), _candidate("certificate_b.pdf")],
     ) is None
     assert resolve_document_candidates(
-        intent="学籍验证报告",
+        intent="academic_status",
         candidates=[_candidate("学籍验证报告.pdf")],
     ) is not None
