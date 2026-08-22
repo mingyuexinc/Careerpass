@@ -5,9 +5,10 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.api.dependencies.auth import get_current_identity
-from app.api.dependencies.services import get_job_upload_service
+from app.api.dependencies.services import get_job_description_service, get_job_upload_service
 from app.core.identity import CurrentIdentity
 from app.main import create_app
+from app.schemas.job_description import JobDescriptionParseRetryData
 from app.schemas.job_upload import JobUploadResponse, JobUploadResult
 
 
@@ -30,6 +31,15 @@ class FakeJobUploadService:
                 for index in range(len(uploads))
             ]
         )
+
+
+class FakeJobDescriptionService:
+    def __init__(self) -> None:
+        self.call = None
+
+    async def retry_failed_job(self, *, hr_profile_id, job_id):
+        self.call = (hr_profile_id, job_id)
+        return JobDescriptionParseRetryData(job_id=job_id, task_id=uuid4(), status="queued")
 
 
 def _identity(*, role: str, hr_profile_id):
@@ -85,3 +95,23 @@ def test_jobs_upload_rejects_non_hr_identity_before_service_call() -> None:
     assert response.status_code == 403
     assert response.json()["data"] is None
     assert service.upload_count == 0
+
+
+def test_job_parse_retry_uses_owned_hr_identity() -> None:
+    app = create_app()
+    upload_service = FakeJobUploadService()
+    parse_service = FakeJobDescriptionService()
+    hr_profile_id = uuid4()
+    job_id = uuid4()
+    app.dependency_overrides[get_current_identity] = lambda: _identity(
+        role="hr", hr_profile_id=hr_profile_id
+    )
+    app.dependency_overrides[get_job_upload_service] = lambda: upload_service
+    app.dependency_overrides[get_job_description_service] = lambda: parse_service
+
+    with TestClient(app) as client:
+        response = client.post(f"/api/v1/jobs/{job_id}/parse/retry")
+
+    assert response.status_code == 200
+    assert response.json()["data"]["job_id"] == str(job_id)
+    assert parse_service.call == (hr_profile_id, job_id)

@@ -47,7 +47,20 @@ def test_current_applications_uses_identity_and_uniform_envelope() -> None:
     assert response.json() == {
         "code": 200,
         "msg": "success",
-        "data": {"run": None, "applications": [], "total": 0},
+            "data": {
+                "run": None,
+                "applications": [],
+                "total": 0,
+                "matching": {
+                    "active_job_count": 0,
+                    "eligible_job_count": 0,
+                    "pending_job_count": 0,
+                    "failed_job_count": 0,
+                    "evaluated_job_count": 0,
+                    "filtered_out_job_count": 0,
+                    "matched_job_count": 0,
+                },
+            },
     }
     assert service.candidate_id == candidate_id
 

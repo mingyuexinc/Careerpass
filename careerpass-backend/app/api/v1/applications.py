@@ -44,6 +44,7 @@ async def get_current_applications(
         "run": result.run.model_dump(mode="json", exclude_none=True) if result.run else None,
         "applications": [item.model_dump(mode="json") for item in result.applications],
         "total": len(result.applications),
+        "matching": result.summary.model_dump(mode="json"),
     }
     return success_response(data)
 

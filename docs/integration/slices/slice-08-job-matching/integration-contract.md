@@ -20,10 +20,10 @@
 ## 2. 业务边界
 
 - 前端不提交匹配命令，不轮询匹配任务状态；
-- Candidate 使用关联 HR 的全部可用结构化 JD；
+- Candidate 只使用关联 HR 中未删除、解析状态为 `succeeded` 且存在结构化快照的 JD；过滤后最多取 20 个；
 - Match 独立持久化，Application 只由通过投递筛选的 Match 创建；
 - 进度页只读取 Application，不读取未投递 Match；
-- 全部岗位筛选完成且 Application 数量为 0 时，返回 `finished/no_match` 和“当前没有可供匹配的岗位”；
+- 没有任何有效 JD 时，S-07 返回 `409`，不创建运行；至少一个有效 JD 进入算法后全部未形成 Application 时，才返回 `finished/no_match`；
 - 同一 `run_id + job_id` 只允许一条 Match 和一条 Application；
 - 不处理真实外部投递、异步匹配和匹配失败业务分支。
 
@@ -87,7 +87,16 @@ Authorization: Bearer <access-token>
       "finish_reason": "no_match"
     },
     "applications": [],
-    "total": 0
+    "total": 0,
+    "matching": {
+      "active_job_count": 7,
+      "eligible_job_count": 5,
+      "pending_job_count": 1,
+      "failed_job_count": 1,
+      "evaluated_job_count": 5,
+      "filtered_out_job_count": 2,
+      "matched_job_count": 0
+    }
   }
 }
 ```
@@ -109,7 +118,7 @@ Authorization: Bearer <access-token>
 
 ### 4.3 空结果语义
 
-仅当本轮全部可用岗位已筛选完成且 Application 数量为 0 时，前端展示“当前没有可供匹配的岗位”。未启动时展示“求职进程尚未开始”，不能混用两个空状态。
+前端根据 `matching` 摘要区分：有 `pending_job_count` 或 `failed_job_count` 且无有效岗位时展示“岗位尚未准备完成”；存在有效岗位但部分未参与时展示未参与数量；至少一个岗位已进入算法且 Application 为 0 时展示“本轮暂未产生匹配结果”。
 
 ## 5. 错误与安全
 

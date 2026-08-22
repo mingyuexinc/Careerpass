@@ -37,7 +37,7 @@ parse_failed    → 受控失败分类，不产生可用 fields
 core fields missing → parse_failed + matching_not_ready，不创建快照
 ```
 
-本地路径只允许解析受控存储根目录内的文件；路径不得进入公开响应、异步任务持久化字段、普通日志或追踪。当前 S-03 只定义三种失败语义：临时技术失败、输入不可用、核心字段缺失。结构校验失败不属于当前受控演示版本的 JD 失败分支。
+本地路径只允许解析受控存储根目录内的文件；路径不得进入公开响应、异步任务持久化字段、普通日志或追踪。失败语义区分存储暂不可用、临时技术失败、可读内容非法和核心字段缺失；前两类有限次自动重试，耗尽后进入手动处理，后两类直接进入手动处理。
 
 ## 3. 结果契约
 
@@ -49,8 +49,8 @@ core fields missing → parse_failed + matching_not_ready，不创建快照
 | `snapshot_id` | 成功解析快照标识 |
 | `parse_status` | `succeeded` 或 `failed` |
 | `matching_status` | 成功时为 `matching_ready`；核心字段缺失失败时为 `matching_not_ready` |
-| `failure_semantics` | 临时技术失败、输入不可用或核心字段缺失 |
-| `failure_reason` | 失败的脱敏具体原因；临时技术失败重试耗尽时为 `retry_exhausted` |
+| `failure_semantics` | `input_unavailable`、`temporary_technical_failure`、`input_invalid` 或 `core_fields_missing` |
+| `failure_reason` | 失败的脱敏具体原因；自动重试耗尽时为 `retry_exhausted` |
 | `missing_core_fields` | 缺失的核心字段标识；无缺失时为空 |
 | `schema_version` | `fields` 结构版本 |
 | `fields` | 结构化岗位字段，符合 [`fields.schema.json`](fields.schema.json) |
@@ -71,7 +71,8 @@ core fields missing → parse_failed + matching_not_ready，不创建快照
 - 原始 JD 正文只在解析所需范围内读取，不进入普通日志或追踪；
 - 解析成功结果必须经过 Schema 和业务规则校验，五项核心字段有效后才能创建快照；
 - 临时技术失败表示本次执行尝试失败，不是立即终态；任务自动重试，重试耗尽后进入 `failed`，失败原因标记为 `retry_exhausted`；
-- 输入不可用立即进入 `failed`；核心字段缺失立即进入 `failed + matching_not_ready`，不创建快照；
+- 存储暂不可用和临时技术失败按有限次数自动重试，耗尽后进入 `failed`；可读内容非法直接进入 `failed`；核心字段缺失立即进入 `failed + matching_not_ready`，不创建快照；
+- HR 只能对归属、有效且尚未开始匹配的失败岗位调用 `POST /api/v1/jobs/{job_id}/parse/retry`；接口只生成下一代任务，重复调用保持幂等。
 - 重试、幂等和任务终态由 S-03 Technical Design 锁定。
 
 ## 6. 解析失败后的再次上传

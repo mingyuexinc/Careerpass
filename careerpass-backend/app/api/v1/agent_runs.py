@@ -42,10 +42,10 @@ async def start_current_agent_run(
 ) -> dict[str, object]:
     try:
         value = await service.start(candidate_id=_candidate_id(identity))
-    except AgentRunPreconditionError:
+    except AgentRunPreconditionError as exc:
         raise AppException(
             status_code=409,
             code=ErrorCode.PRECONDITION_NOT_MET,
-            message="agent startup prerequisites are not met",
+            message=exc.reason,
         ) from None
     return success_response(value.model_dump(mode="json"))

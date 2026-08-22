@@ -14,8 +14,10 @@ from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
+    Application,
     AsyncTaskRun,
     Job,
+    Match,
     ParsedJobDescriptionSnapshot,
     StoredFileObject,
 )
@@ -27,8 +29,16 @@ class JobDescriptionTaskPreconditionError(Exception):
     """The requested Job cannot safely receive or execute an S-03 task."""
 
 
+class JobDescriptionRetryNotAllowedError(Exception):
+    """The requested Job has no safe manual parsing retry transition."""
+
+
 class JobDescriptionStorageUnavailableError(Exception):
     """The registered JD object cannot be read through the controlled storage port."""
+
+
+class JobDescriptionContentInvalidError(Exception):
+    """The registered JD object is readable but is not valid UTF-8 content."""
 
 
 @dataclass(frozen=True)
@@ -117,6 +127,39 @@ class JobDescriptionRepository:
             raise JobDescriptionTaskPreconditionError
         return task, task.id not in {item.id for item in existing_tasks}
 
+    async def retry_failed_task(
+        self, *, hr_profile_id: UUID, job_id: UUID
+    ) -> tuple[AsyncTaskRun, bool]:
+        """Create one new generation only for an owned, failed, unstarted Job."""
+        job = await self._locked_job_with_file(job_id=job_id, hr_profile_id=hr_profile_id)
+        if job is None:
+            raise JobDescriptionTaskPreconditionError
+        has_match = await self._session.scalar(
+            select(Match.id).where(Match.job_id == job_id).limit(1)
+        )
+        has_application = await self._session.scalar(
+            select(Application.id).where(Application.job_id == job_id).limit(1)
+        )
+        if has_match is not None or has_application is not None:
+            raise JobDescriptionRetryNotAllowedError
+        latest = await self._session.scalar(
+            select(AsyncTaskRun)
+            .where(
+                AsyncTaskRun.task_type == "job_jd_parse",
+                AsyncTaskRun.resource_type == "job",
+                AsyncTaskRun.resource_id == job_id,
+            )
+            .order_by(desc(AsyncTaskRun.task_generation), desc(AsyncTaskRun.created_at))
+            .with_for_update()
+        )
+        if latest is None or latest.status != "failed":
+            raise JobDescriptionRetryNotAllowedError
+        return await self.create_or_get_queued_task(
+            hr_profile_id=hr_profile_id,
+            job_id=job_id,
+            task_version=latest.task_version,
+        )
+
     async def get_task_for_hr(
         self, *, task_id: UUID, hr_profile_id: UUID
     ) -> JobDescriptionTaskView | None:
@@ -157,8 +200,10 @@ class JobDescriptionRepository:
             content = storage_key_reader(file_object.storage_key)
             hashlib.sha256(content).hexdigest()
             content.decode("utf-8")
-        except (OSError, UnicodeDecodeError, ValueError) as exc:
+        except OSError as exc:
             raise JobDescriptionStorageUnavailableError from exc
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise JobDescriptionContentInvalidError from exc
         return content
 
     async def read_for_worker(
@@ -181,8 +226,10 @@ class JobDescriptionRepository:
         try:
             content = storage_key_reader(file_object.storage_key)
             content.decode("utf-8")
-        except (OSError, UnicodeDecodeError, ValueError) as exc:
+        except OSError as exc:
             raise JobDescriptionStorageUnavailableError from exc
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise JobDescriptionContentInvalidError from exc
         return content
 
     async def complete_for_execution(

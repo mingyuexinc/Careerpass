@@ -8,10 +8,12 @@ from uuid import UUID
 from app.infrastructure.storage.controlled import ControlledJobDescriptionStorage
 from app.repositories.job_description_repository import (
     JobDescriptionRepository,
+    JobDescriptionRetryNotAllowedError,
     JobDescriptionTaskPreconditionError,
 )
 from app.schemas.job_description import (
     JobDescriptionParseResult,
+    JobDescriptionParseRetryData,
     JobDescriptionParseSubmitData,
 )
 
@@ -82,3 +84,20 @@ class JobDescriptionService:
             missing_core_fields=task.missing_core_fields or [],
         )
         return result
+
+    async def retry_failed_job(
+        self, *, hr_profile_id: UUID, job_id: UUID
+    ) -> JobDescriptionParseRetryData:
+        async with self._repository.transaction():
+            try:
+                task, _ = await self._repository.retry_failed_task(
+                    hr_profile_id=hr_profile_id,
+                    job_id=job_id,
+                )
+            except (JobDescriptionRetryNotAllowedError, JobDescriptionTaskPreconditionError):
+                raise
+        return JobDescriptionParseRetryData(
+            job_id=job_id,
+            task_id=task.id,
+            status=task.status,
+        )

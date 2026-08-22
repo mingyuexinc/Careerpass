@@ -8,7 +8,10 @@ from uuid import UUID
 
 from app.parsers.job_description import JobDescriptionParseError
 from app.repositories.async_task_repository import ExecutionLease
-from app.repositories.job_description_repository import JobDescriptionStorageUnavailableError
+from app.repositories.job_description_repository import (
+    JobDescriptionContentInvalidError,
+    JobDescriptionStorageUnavailableError,
+)
 from app.schemas.job_description import ParsedJobDescriptionFields
 
 
@@ -53,7 +56,16 @@ class JobDescriptionParseWorkerService:
             content = await self._read_job(lease.resource_id)
         except JobDescriptionStorageUnavailableError:
             return await self._resolve_failure(
-                lease, "input_unavailable", "file_unavailable", None, False, retry_count
+                lease,
+                "input_unavailable",
+                "retry_exhausted" if retry_count >= self._max_retries else "file_unavailable",
+                None,
+                True,
+                retry_count,
+            )
+        except JobDescriptionContentInvalidError:
+            return await self._resolve_failure(
+                lease, "input_invalid", "invalid_content", None, False, retry_count
             )
         try:
             parsed = self._parse(content)

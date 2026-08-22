@@ -25,9 +25,13 @@ def _goal():
     )
 
 
-def _run():
+def _run(*, status="running", finish_reason=None):
     return SimpleNamespace(
-        id=uuid4(), status="running", started_at=datetime.now(timezone.utc)
+        id=uuid4(),
+        status=status,
+        started_at=datetime.now(timezone.utc),
+        finished_at=datetime.now(timezone.utc) if status == "finished" else None,
+        finish_reason=finish_reason,
     )
 
 
@@ -95,3 +99,25 @@ def test_current_status_exposes_only_safe_projection() -> None:
     assert isinstance(value, AgentRunStatusResponse)
     assert value.state == "not_started"
     assert value.can_start is True
+
+
+def test_finished_no_match_without_applications_can_start_a_new_run() -> None:
+    conditions = _startable_conditions()
+    existing = _run(status="finished", finish_reason="no_match")
+    repository = FakeAgentRunRepository(
+        StartPreconditions(
+            conditions.goal,
+            conditions.resume,
+            conditions.resume_count,
+            conditions.profile,
+            existing,
+            eligible_job_count=2,
+            restartable=True,
+        )
+    )
+    service = AgentRunService(repository=repository)
+
+    value = asyncio.run(service.start(candidate_id=uuid4()))
+
+    assert value.run.status == "running"
+    assert repository.created is not None

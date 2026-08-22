@@ -87,7 +87,7 @@ Application 必须绑定 Candidate、Job、AgentRunContext 和通过筛选的 Ma
 - 评分未达阈值的岗位保存为 `not_matched`；
 - 通过筛选的岗位创建 Application，进度页展示得分和推荐理由；
 - 仅有 Match、没有 Application 的岗位不出现在进度页；
-- 所有岗位均未创建 Application 时，AgentRun 以 `no_match` 结束并展示“当前没有可供匹配的岗位”；
+- 至少一个成功解析岗位进入算法且未创建 Application 时，AgentRun 以 `no_match` 结束；没有成功解析岗位时阻断启动并展示“岗位尚未准备完成”；
 - 重复启动或重入不产生重复 Match/Application；
 - 岗位池为 20 个时仍使用同步路径完成；
 - `offer_target` 改变不改变本轮岗位筛选数量上限。

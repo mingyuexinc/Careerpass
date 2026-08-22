@@ -28,10 +28,25 @@ class ApplicationItem(BaseModel):
     applied_at: datetime
 
 
+class MatchingRoundSummary(BaseModel):
+    """Safe counts explaining which Job inputs entered the current round."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    active_job_count: int = 0
+    eligible_job_count: int = 0
+    pending_job_count: int = 0
+    failed_job_count: int = 0
+    evaluated_job_count: int = 0
+    filtered_out_job_count: int = 0
+    matched_job_count: int = 0
+
+
 class ApplicationListResponse(BaseModel):
     run: dict[str, object] | None
     applications: list[ApplicationItem]
     total: int
+    matching: MatchingRoundSummary
 
 
 class HrApplicationItem(BaseModel):

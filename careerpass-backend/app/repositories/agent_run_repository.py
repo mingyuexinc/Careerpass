@@ -12,9 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
     AgentRunContext,
+    Application,
+    AsyncTaskRun,
     Candidate,
     CandidateProfile,
+    Job,
     JobGoal,
+    ParsedJobDescriptionSnapshot,
     Resume,
 )
 
@@ -26,6 +30,19 @@ class StartPreconditions:
     resume_count: int
     profile: CandidateProfile | None
     run: AgentRunContext | None
+    active_job_count: int = 0
+    eligible_job_count: int = 1
+    pending_job_count: int = 0
+    failed_job_count: int = 0
+    restartable: bool = False
+
+
+@dataclass(frozen=True)
+class JobReadiness:
+    active_job_count: int
+    eligible_job_count: int
+    pending_job_count: int
+    failed_job_count: int
 
 
 class AgentRunRepository:
@@ -83,8 +100,84 @@ class AgentRunRepository:
                 AgentRunContext.candidate_id == candidate_id,
                 AgentRunContext.job_goal_id == goal.id if goal is not None else False,
             )
+            .order_by(AgentRunContext.created_at.desc(), AgentRunContext.id.desc())
+            .limit(1)
         )
-        return StartPreconditions(goal, resume, resume_count, profile, run)
+        restartable = False
+        if (
+            run is not None
+            and run.status == "finished"
+            and run.finish_reason == "no_match"
+        ):
+            application_count = int(
+                await self._session.scalar(
+                    select(func.count())
+                    .select_from(Application)
+                    .where(
+                        Application.run_id == run.id,
+                        Application.candidate_id == candidate_id,
+                    )
+                )
+                or 0
+            )
+            restartable = application_count == 0
+        readiness = await self.get_job_readiness()
+        return StartPreconditions(
+            goal,
+            resume,
+            resume_count,
+            profile,
+            run,
+            readiness.active_job_count,
+            readiness.eligible_job_count,
+            readiness.pending_job_count,
+            readiness.failed_job_count,
+            restartable,
+        )
+
+    async def get_job_readiness(self) -> JobReadiness:
+        rows = (
+            await self._session.execute(
+                select(Job.id, ParsedJobDescriptionSnapshot.id)
+                .outerjoin(
+                    ParsedJobDescriptionSnapshot,
+                    ParsedJobDescriptionSnapshot.job_id == Job.id,
+                )
+                .where(Job.deleted_at.is_(None))
+            )
+        ).all()
+        task_rows = (
+            await self._session.execute(
+                select(AsyncTaskRun)
+                .where(
+                    AsyncTaskRun.task_type == "job_jd_parse",
+                    AsyncTaskRun.resource_type == "job",
+                )
+                .order_by(
+                    AsyncTaskRun.task_generation.desc(),
+                    AsyncTaskRun.created_at.desc(),
+                    AsyncTaskRun.id.desc(),
+                )
+            )
+        ).scalars().all()
+        latest_tasks: dict[UUID, AsyncTaskRun] = {}
+        for task in task_rows:
+            latest_tasks.setdefault(task.resource_id, task)
+        eligible = pending = failed = 0
+        for job_id, snapshot_id in rows:
+            task = latest_tasks.get(job_id)
+            if task is not None and task.status == "succeeded" and snapshot_id is not None:
+                eligible += 1
+            elif task is None or task.status in {"queued", "running"}:
+                pending += 1
+            elif task.status == "failed":
+                failed += 1
+        return JobReadiness(
+            active_job_count=len(rows),
+            eligible_job_count=eligible,
+            pending_job_count=pending,
+            failed_job_count=failed,
+        )
 
     async def create_running(
         self,

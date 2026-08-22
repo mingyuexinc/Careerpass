@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
     AgentRunContext,
     Application,
+    AsyncTaskRun,
     CandidateProfile,
     Conversation,
     Job,
@@ -22,7 +23,7 @@ from app.infrastructure.database.models import (
     ProgressEvent,
 )
 from app.schemas.agent_run import AgentRunSummary
-from app.schemas.application import ApplicationItem
+from app.schemas.application import ApplicationItem, MatchingRoundSummary
 from app.schemas.job_description import ParsedJobDescriptionFields
 from app.services.matching_algorithm_v0_1 import (
     CandidateMatchingSummary,
@@ -37,12 +38,14 @@ class MatchingRunInput:
     goal: JobGoalMatchingSummary
     candidate: CandidateMatchingSummary
     jobs: list[JobMatchingSummary]
+    summary: MatchingRoundSummary
 
 
 @dataclass(frozen=True)
 class ApplicationQueryResult:
     run: AgentRunSummary | None
     applications: list[ApplicationItem]
+    summary: MatchingRoundSummary = field(default_factory=MatchingRoundSummary)
 
 
 class MatchingRepository:
@@ -77,22 +80,14 @@ class MatchingRepository:
         )
         if goal is None or profile is None:
             return None
-        rows = (
-            await self._session.execute(
-                select(Job, ParsedJobDescriptionSnapshot)
-                .join(ParsedJobDescriptionSnapshot, ParsedJobDescriptionSnapshot.job_id == Job.id)
-                .where(Job.deleted_at.is_(None))
-                .order_by(Job.created_at, Job.id)
-                .limit(20)
-            )
-        ).all()
+        job_rows, summary = await self._load_job_inputs()
         jobs = [
             JobMatchingSummary(
                 job_id=job.id,
                 created_at=job.created_at,
                 fields=ParsedJobDescriptionFields.model_validate(snapshot.fields),
             )
-            for job, snapshot in rows
+            for job, snapshot, task in job_rows
         ]
         candidate_data = CandidateMatchingSummary(
             target_job_titles=list(profile.target_job_titles or []),
@@ -110,7 +105,61 @@ class MatchingRepository:
             goal=JobGoalMatchingSummary(title=goal.title, filters=goal.filters),
             candidate=candidate_data,
             jobs=jobs,
+            summary=summary,
         )
+
+    async def _load_job_inputs(
+        self,
+    ) -> tuple[list[tuple[Job, ParsedJobDescriptionSnapshot, AsyncTaskRun]], MatchingRoundSummary]:
+        rows = (
+            await self._session.execute(
+                select(Job, ParsedJobDescriptionSnapshot)
+                .outerjoin(
+                    ParsedJobDescriptionSnapshot,
+                    ParsedJobDescriptionSnapshot.job_id == Job.id,
+                )
+                .where(Job.deleted_at.is_(None))
+                .order_by(Job.created_at, Job.id)
+            )
+        ).all()
+        task_rows = (
+            await self._session.execute(
+                select(AsyncTaskRun)
+                .where(
+                    AsyncTaskRun.task_type == "job_jd_parse",
+                    AsyncTaskRun.resource_type == "job",
+                )
+                .order_by(
+                    AsyncTaskRun.task_generation.desc(),
+                    AsyncTaskRun.created_at.desc(),
+                    AsyncTaskRun.id.desc(),
+                )
+            )
+        ).scalars().all()
+        latest_tasks: dict[UUID, AsyncTaskRun] = {}
+        for task in task_rows:
+            latest_tasks.setdefault(task.resource_id, task)
+        eligible_rows: list[tuple[Job, ParsedJobDescriptionSnapshot, AsyncTaskRun]] = []
+        pending = failed = 0
+        for job, snapshot in rows:
+            task = latest_tasks.get(job.id)
+            if task is not None and task.status == "succeeded" and snapshot is not None:
+                eligible_rows.append((job, snapshot, task))
+            elif task is None or task.status in {"queued", "running"}:
+                pending += 1
+            elif task.status == "failed":
+                failed += 1
+        eligible_count = len(eligible_rows)
+        summary = MatchingRoundSummary(
+            active_job_count=len(rows),
+            eligible_job_count=eligible_count,
+            pending_job_count=pending,
+            failed_job_count=failed,
+            evaluated_job_count=0,
+            filtered_out_job_count=0,
+            matched_job_count=0,
+        )
+        return eligible_rows[:20], summary
 
     async def get_match(self, *, run_id: UUID, job_id: UUID) -> Match | None:
         return await self._session.scalar(
@@ -223,7 +272,8 @@ class MatchingRepository:
             .limit(1)
         )
         if run is None:
-            return ApplicationQueryResult(run=None, applications=[])
+            _, summary = await self._load_job_inputs()
+            return ApplicationQueryResult(run=None, applications=[], summary=summary)
         rows = (
             await self._session.execute(
                 select(Application, Job, ParsedJobDescriptionSnapshot, Match)
@@ -241,9 +291,25 @@ class MatchingRepository:
             _application_item(application, job, snapshot, match)
             for application, job, snapshot, match in rows
         ]
+        _, summary = await self._load_job_inputs()
+        match_counts = await self._session.execute(
+            select(Match.status, func.count(Match.id))
+            .where(Match.run_id == run.id)
+            .group_by(Match.status)
+        )
+        counts = {status: int(count) for status, count in match_counts.all()}
+        summary = summary.model_copy(
+            update={
+                "evaluated_job_count": sum(counts.values()),
+                "filtered_out_job_count": counts.get("filtered_out", 0),
+                "matched_job_count": counts.get("matched", 0)
+                + counts.get("application_created", 0),
+            }
+        )
         return ApplicationQueryResult(
             run=AgentRunSummary.model_validate(run, from_attributes=True),
             applications=applications,
+            summary=summary,
         )
 
 

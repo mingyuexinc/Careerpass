@@ -251,7 +251,7 @@ S-06 的目标保存接口必须在 AgentRunContext 为 `running` 或 `finished`
 | 当前运行状态查询 | `GET /api/v1/agent_runs/current` | 与 S-06 `current` 资源命名一致，支持刷新后恢复页面状态 |
 | 启动命令 | `POST /api/v1/agent_runs/current/start`，空对象请求体 | 明确命令语义，禁止客户端提交资源标识，便于幂等重试 |
 | 启动方式 | 同步事务创建运行上下文，不新增 S-07 异步任务 | S-07 的唯一结果是持久化 `running`，匹配和投递由 S-08 决定 |
-| 运行上下文唯一性 | `candidate_id + job_goal_id` 唯一 | 当前版本一个 Candidate 只有一个当前目标，且重复启动不产生新运行 |
+| 运行上下文幂等性 | 当前运行上下文内重复启动不产生新运行；无投递 `no_match` 且岗位状态改善时允许创建下一轮 | 保留历史运行记录，不覆盖既有结果 |
 | 页面成功投影 | 只返回运行摘要 | 满足页面状态恢复，避免暴露简历、画像和内部数据 |
 
 ### 6.2 开发者需裁决事项
@@ -262,7 +262,7 @@ S-06 的目标保存接口必须在 AgentRunContext 为 `running` 或 `finished`
 
 | 发现的变化 | 影响 | 回退 Gate | 处理结果 |
 | --- | --- | --- | --- |
-| S-07 不检查可用结构化 JD | S-07/S-08 边界、启动条件和交接 | Slice Design | 已同步业务基线、前后端流程和 S-06 交接 |
+| S-07 启动前检查至少一个可匹配 JD | S-07/S-08 边界、启动条件和交接 | Slice Design | S-07 只做就绪门禁，岗位过滤、Match 和 Application 仍由 S-08 负责 |
 | 前端不展示匹配资格详情 | 页面状态和响应投影 | Slice Design | 已同步前端页面、设计规范和 Contract |
 | 启动成功不创建匹配/投递数据 | 数据实体和场景验收 | Slice Design | 已在 S-07 技术设计、Contract 和 Scenario 明确 |
 

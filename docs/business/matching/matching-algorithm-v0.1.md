@@ -147,7 +147,7 @@ total_score =
 
 Application 的安全展示结果包括对应 Match 的推荐匹配得分和推荐理由。
 
-当本轮全部可用岗位均已筛选完成且 Application 数量为 0 时，Agent 以 `no_match` 原因结束，并在求职进度页展示“当前没有可供匹配的岗位”。
+当至少一个有效岗位进入本轮算法、全部有效岗位均已筛选且 Application 数量为 0 时，Agent 以 `no_match` 原因结束；未准备好的岗位不参与算法，也不触发 `no_match`。
 
 ## 9. 推荐理由
 

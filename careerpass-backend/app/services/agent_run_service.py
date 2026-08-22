@@ -18,6 +18,10 @@ from app.services.matching_service import MatchingService
 class AgentRunPreconditionError(Exception):
     """The current candidate cannot start S-07 under the locked business rules."""
 
+    def __init__(self, reason: str = "agent startup prerequisites are not met") -> None:
+        self.reason = reason
+        super().__init__(reason)
+
 
 class AgentRunService:
     """Validate S-07 prerequisites and create only the downstream handoff context."""
@@ -37,7 +41,7 @@ class AgentRunService:
         if conditions.run is not None:
             return AgentRunStatusResponse(
                 state=conditions.run.status,
-                can_start=False,
+                can_start=conditions.restartable and _has_prerequisites(conditions),
                 run=_to_summary(conditions.run),
             )
         return AgentRunStatusResponse(
@@ -49,11 +53,18 @@ class AgentRunService:
         run: AgentRunContext | None = None
         async with self._repository.transaction():
             conditions = await self._repository.get_start_preconditions(candidate_id=candidate_id)
-            if conditions.run is not None:
+            if conditions.run is not None and not (
+                conditions.restartable and _has_prerequisites(conditions)
+            ):
                 run = conditions.run
             else:
-                if not _is_startable(conditions):
-                    raise AgentRunPreconditionError
+                if not _has_prerequisites(conditions):
+                    reason = (
+                        "job inputs are not ready"
+                        if conditions.eligible_job_count == 0
+                        else "agent startup prerequisites are not met"
+                    )
+                    raise AgentRunPreconditionError(reason)
                 assert conditions.goal is not None
                 assert conditions.resume is not None
                 assert conditions.profile is not None
@@ -77,12 +88,19 @@ class AgentRunService:
 def _is_startable(conditions: StartPreconditions) -> bool:
     return (
         conditions.run is None
-        and conditions.goal is not None
+        and _has_prerequisites(conditions)
+    )
+
+
+def _has_prerequisites(conditions: StartPreconditions) -> bool:
+    return (
+        conditions.goal is not None
         and conditions.goal.status == "active"
         and conditions.resume is not None
         and conditions.resume.parse_status == "succeeded"
         and conditions.profile is not None
         and conditions.profile.matching_readiness == "matching_ready"
+        and conditions.eligible_job_count > 0
     )
 
 

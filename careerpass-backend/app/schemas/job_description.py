@@ -86,6 +86,12 @@ class JobDescriptionParseSubmitData(BaseModel):
     status: TaskStatus
 
 
+class JobDescriptionParseRetryData(BaseModel):
+    job_id: UUID
+    task_id: UUID
+    status: TaskStatus
+
+
 class JobDescriptionParseResult(BaseModel):
     task_id: UUID
     job_id: UUID

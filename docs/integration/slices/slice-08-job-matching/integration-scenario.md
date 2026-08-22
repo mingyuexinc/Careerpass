@@ -11,7 +11,7 @@
 
 ## 1. 交付目标
 
-在受控 HR 和 Candidate 场景下，Candidate 完成简历、画像和求职目标准备后启动 Agent。S-07 提交运行上下文并完成事务后，S-08 同步筛选关联 HR 的全部可用结构化 JD，独立保存 Match，为通过投递筛选的岗位创建 Application。Candidate 在求职进度页查看投递记录、推荐匹配得分和推荐理由。
+在受控 HR 和 Candidate 场景下，Candidate 完成简历、画像和求职目标准备后启动 Agent。S-07 先确认至少一个关联岗位 JD 已成功解析并存在快照，提交运行上下文并完成事务后，S-08 只筛选未删除、解析成功的岗位，独立保存 Match，为通过投递筛选的岗位创建 Application。Candidate 在求职进度页查看投递记录、推荐匹配得分、推荐理由和本轮岗位摘要。
 
 ```text
 HR 准备并上传岗位 JD
@@ -19,7 +19,7 @@ HR 准备并上传岗位 JD
 → Candidate 完成简历解析和求职目标
 → Candidate 点击启动 Agent
 → S-07 提交运行上下文
-→ S-08 同步逐个筛选最多 20 个岗位
+→ S-08 过滤出成功解析的岗位后逐个筛选最多 20 个岗位
 → 保存 Match，并为通过筛选的岗位创建 Application
 → Candidate 进入求职进度页查看投递结果、匹配得分和推荐理由
 ```
@@ -31,7 +31,7 @@ HR 准备并上传岗位 JD
 - 当前 Candidate 有 `active` 求职目标；
 - 当前岗位 JD 已由 S-03 解析成功，且五项核心字段有效；
 - 当前演示只覆盖一个 HR 和一个 Candidate；
-- 关联 HR 的可用岗位不超过 20 个；
+- 关联 HR 的有效岗位可超过 20 个，但匹配输入在过滤后最多取 20 个；
 - 演示只产生系统内 Match、Application 和 ProgressEvent，不产生真实外部投递。
 
 最小演示数据集：
@@ -42,20 +42,23 @@ HR 准备并上传岗位 JD
 | `s08-no-application` | 所有可用岗位被硬过滤或评分未达阈值 | 验证 `finished/no_match` 和空状态 |
 | `s08-twenty-jobs` | 20 个可用结构化岗位 | 验证同步岗位池边界 |
 | `s08-repeat-start` | 当前 Candidate 已存在运行上下文 | 验证重复启动、重复筛选和投递幂等 |
+| `s08-jd-not-ready` | 岗位均未成功解析 | 验证启动返回 `409`，不创建 Agent 运行或 `no_match` |
+| `s08-partial-jd` | 至少一个岗位成功解析，其余岗位解析中或失败 | 验证只匹配成功解析岗位并返回未参与摘要 |
 
 ## 3. 演示步骤与预期结果
 
 | 步骤 | 操作 | 预期系统结果 | 预期页面结果 |
 | --- | --- | --- | --- |
 | 1 | Candidate 完成简历解析和求职目标创建 | S-07 启动条件满足；目标、简历和画像归属校验通过 | 启动按钮可用 |
-| 2 | Candidate 点击启动 Agent | S-07 提交运行上下文并提交事务；S-08 同步读取关联 HR 的全部可用岗位，最多 20 个 | 不展示匹配中间过程 |
+| 2 | Candidate 点击启动 Agent | S-07 检查至少一个有效 JD 后提交运行上下文；S-08 读取过滤后的岗位，最多 20 个 | 不展示匹配中间过程 |
 | 3 | S-08 逐个筛选岗位 | 每个 `run_id + job_id` 最多保存一条 Match；不采用 Top-N 截断 | 页面不伪造未查询到的匹配结果 |
 | 4 | 岗位命中硬过滤条件 | 保存 `filtered_out` Match，不计算三维评分，不创建 Application | 该岗位不出现在求职进度页 |
 | 5 | 岗位进入评分但总分未达阈值 | 保存 `not_matched` Match，不创建 Application | 该岗位不出现在求职进度页 |
 | 6 | 岗位达到匹配阈值 | 保存完整评分和推荐理由，创建 `submitted` Application，记录初始 `application_created` ProgressEvent，并幂等初始化当前 Conversation 容器 | 进度页展示岗位、投递状态、匹配得分和推荐理由；HR 沟通页可加载对应会话 |
 | 7 | Candidate 进入求职进度页 | 只查询当前 Candidate 的 Application，不查询未投递 Match | 展示已投递结果 |
-| 8 | 全部岗位筛选完成且 Application 数量为 0 | AgentRun 进入 `finished`，`finish_reason=no_match` | 展示“当前没有可供匹配的岗位”及 Agent 已结束 |
-| 9 | 重复提交启动或重入 S-08 | 复用当前运行上下文；不重复生成 Match、Application 或 ProgressEvent | 页面结果不重复 |
+| 8 | 没有任何有效 JD 时启动 | 返回 `409`，不创建 AgentRun 或 `no_match` | 展示“岗位尚未准备完成” |
+| 9 | 至少一个有效岗位进入算法且 Application 数量为 0 | AgentRun 进入 `finished`，`finish_reason=no_match` | 展示“本轮暂未产生匹配结果”及本轮摘要 |
+| 10 | 重复提交启动或重入 S-08 | 复用当前运行上下文；不重复生成 Match、Application 或 ProgressEvent | 页面结果不重复 |
 
 ## 4. 最小演示验证结果
 

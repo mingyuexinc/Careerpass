@@ -16,7 +16,7 @@ from app.infrastructure.database.models import (
     Match,
     ParsedJobDescriptionSnapshot,
 )
-from app.schemas.job import HrJobItem, JobParseStatus
+from app.schemas.job import HrJobItem, JobParseFailureKind, JobParseStatus
 from app.schemas.job_description import ParsedJobDescriptionFields
 
 
@@ -27,6 +27,11 @@ class HrJobRecord:
     job: Job
     snapshot: ParsedJobDescriptionSnapshot | None
     parse_status: JobParseStatus | None
+    parse_failure_kind: JobParseFailureKind | None
+    parse_failure_reason: str | None
+    parse_missing_core_fields: list[str]
+    parse_can_retry: bool
+    matching_eligible: bool
     match_started: bool
 
 
@@ -85,6 +90,11 @@ class JobRepository:
                     parse_status=task_status
                     if task_status in {"queued", "running", "succeeded", "failed"}
                     else None,
+                    parse_failure_kind=_failure_kind(task),
+                    parse_failure_reason=task.failure_reason if task is not None else None,
+                    parse_missing_core_fields=(task.missing_core_fields or []) if task is not None else [],
+                    parse_can_retry=bool(task is not None and task.status == "failed" and not match_started),
+                    matching_eligible=bool(task is not None and task.status == "succeeded" and snapshot is not None),
                     match_started=match_started,
                 )
             )
@@ -110,5 +120,22 @@ def to_hr_item(record: HrJobRecord) -> HrJobItem:
         company_name=company,
         created_at=record.job.created_at,
         parse_status=record.parse_status,
+        parse_failure_kind=record.parse_failure_kind,
+        parse_failure_reason=record.parse_failure_reason,
+        parse_missing_core_fields=record.parse_missing_core_fields,
+        parse_can_retry=record.parse_can_retry,
+        matching_eligible=record.matching_eligible,
         match_started=record.match_started,
     )
+
+
+def _failure_kind(task: AsyncTaskRun | None) -> JobParseFailureKind | None:
+    if task is None or task.status != "failed":
+        return None
+    if task.failure_semantics in {"input_unavailable", "storage_unavailable"}:
+        return "storage_unavailable"
+    if task.failure_semantics == "input_invalid":
+        return "invalid_content"
+    if task.failure_semantics == "core_fields_missing":
+        return "missing_core_fields"
+    return "retry_exhausted"

@@ -4,6 +4,10 @@ import asyncio
 from uuid import uuid4
 
 from app.repositories.async_task_repository import ExecutionLease
+from app.repositories.job_description_repository import (
+    JobDescriptionContentInvalidError,
+    JobDescriptionStorageUnavailableError,
+)
 from app.schemas.job_description import ParsedJobDescriptionFields
 from app.services.job_description_worker_service import (
     JobDescriptionParseResult,
@@ -133,6 +137,83 @@ def test_temporary_failure_retries_then_becomes_retry_exhausted() -> None:
     assert final.action == "failed"
     assert releases == 1
     assert failures[0][1:3] == ("temporary_technical_failure", "retry_exhausted")
+
+
+def test_storage_unavailable_is_retried_then_exposed_as_manual_failure() -> None:
+    lease = _lease()
+    releases = 0
+    failures: list[tuple[object, ...]] = []
+
+    async def claim(_):
+        return lease
+
+    async def release(_):
+        nonlocal releases
+        releases += 1
+        return True
+
+    async def read(_):
+        raise JobDescriptionStorageUnavailableError
+
+    async def succeed(*_):
+        raise AssertionError
+
+    async def fail(*args):
+        failures.append(args)
+        return True
+
+    worker = JobDescriptionParseWorkerService(
+        claim=claim,
+        release_for_retry=release,
+        read_job=read,
+        parse=lambda _: _result(),
+        succeed=succeed,
+        fail=fail,
+        max_retries=2,
+    )
+    first = asyncio.run(worker.process(task_run_id=lease.task_run_id, retry_count=0))
+    final = asyncio.run(worker.process(task_run_id=lease.task_run_id, retry_count=2))
+
+    assert first.action == "retry"
+    assert final.action == "failed"
+    assert releases == 1
+    assert failures[0][1:] == ("input_unavailable", "retry_exhausted", None)
+
+
+def test_invalid_content_is_manual_failure_without_retry() -> None:
+    lease = _lease()
+    failures: list[tuple[object, ...]] = []
+
+    async def claim(_):
+        return lease
+
+    async def release(_):
+        raise AssertionError("invalid content must not retry")
+
+    async def read(_):
+        raise JobDescriptionContentInvalidError
+
+    async def succeed(*_):
+        raise AssertionError
+
+    async def fail(*args):
+        failures.append(args)
+        return True
+
+    outcome = asyncio.run(
+        JobDescriptionParseWorkerService(
+            claim=claim,
+            release_for_retry=release,
+            read_job=read,
+            parse=lambda _: _result(),
+            succeed=succeed,
+            fail=fail,
+            max_retries=2,
+        ).process(task_run_id=lease.task_run_id, retry_count=0)
+    )
+
+    assert outcome.action == "failed"
+    assert failures[0][1:] == ("input_invalid", "invalid_content", None)
 
 
 def test_success_returns_validated_parse_result() -> None:

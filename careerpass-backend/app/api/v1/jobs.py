@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from app.api.dependencies.auth import get_current_identity
 from app.api.dependencies.services import (
     get_business_resource_deletion_service,
+    get_job_description_service,
     get_job_service,
     get_job_upload_service,
 )
@@ -19,11 +20,16 @@ from app.repositories.business_resource_deletion_repository import (
     DeletionOwnershipError,
     DeletionResourceNotFoundError,
 )
+from app.repositories.job_description_repository import (
+    JobDescriptionRetryNotAllowedError,
+    JobDescriptionTaskPreconditionError,
+)
 from app.schemas.business_resource_deletion import ResourceDeletionResponse
 from app.schemas.job import HrJobListResponse
 from app.schemas.job_upload import JobUploadResponse
 from app.schemas.response import success_response
 from app.services.business_resource_deletion_service import BusinessResourceDeletionService
+from app.services.job_description_service import JobDescriptionService
 from app.services.job_service import JobService
 from app.services.job_upload_service import JobUploadInput, JobUploadService
 
@@ -86,6 +92,34 @@ async def upload_jobs(
         msg="job upload processed",
         code=ErrorCode.SUCCESS,
     )
+
+
+@jobs_router.post("/jobs/{job_id}/parse/retry")
+async def retry_job_parse(
+    job_id: UUID,
+    identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
+    service: Annotated[JobDescriptionService, Depends(get_job_description_service)],
+) -> dict[str, object]:
+    if identity.active_role != "hr" or identity.hr_profile_id is None:
+        raise AppException(status_code=403, code=ErrorCode.FORBIDDEN, message="HR identity required")
+    try:
+        result = await service.retry_failed_job(
+            hr_profile_id=identity.hr_profile_id,
+            job_id=job_id,
+        )
+    except JobDescriptionTaskPreconditionError:
+        raise AppException(
+            status_code=404,
+            code=ErrorCode.NOT_FOUND,
+            message="岗位不存在或不可用",
+        ) from None
+    except JobDescriptionRetryNotAllowedError:
+        raise AppException(
+            status_code=409,
+            code=ErrorCode.PRECONDITION_NOT_MET,
+            message="该岗位当前不可重新解析",
+        ) from None
+    return success_response(result.model_dump(mode="json"), msg="job JD parse retry queued")
 
 
 @jobs_router.delete("/jobs/{job_id}")
