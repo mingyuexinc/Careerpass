@@ -1,4 +1,9 @@
-import type { Application, DeliveryProgress, HrApplication } from "../domain/types";
+import type {
+  Application,
+  DeliveryProgress,
+  HrApplication,
+  MatchingRoundSummary,
+} from "../domain/types";
 
 export class ApiRequestError extends Error {
   constructor(
@@ -28,6 +33,11 @@ interface ApplicationResponse {
   match_score: number;
   recommendation_reason: string;
   applied_at: string;
+}
+
+export interface CurrentApplicationsResult {
+  applications: Application[];
+  matching: MatchingRoundSummary;
 }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
@@ -73,28 +83,49 @@ async function parseHrResponse<T>(response: Response): Promise<T> {
 
 export async function listCurrentApplications(
   accessToken: string,
-): Promise<Application[]> {
+): Promise<CurrentApplicationsResult> {
   const response = await fetch(`${apiBaseUrl}/applications/current`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const data = await parseResponse<{
     applications: ApplicationResponse[];
     total: number;
+    matching?: {
+      active_job_count?: number;
+      eligible_job_count?: number;
+      pending_job_count?: number;
+      failed_job_count?: number;
+      evaluated_job_count?: number;
+      filtered_out_job_count?: number;
+      matched_job_count?: number;
+    };
   }>(response);
-  return data.applications.map((value) => ({
-    id: value.id,
-    jobId: value.job_id,
-    candidateId: value.candidate_id,
-    jobTitle: value.job_title,
-    company: value.company_name ?? "受控岗位",
-    location: value.location,
-    salary: value.salary,
-    status: value.status,
-    appliedAt: value.applied_at,
-    lastContactAt: null,
-    matchScore: value.match_score,
-    recommendationReason: value.recommendation_reason,
-  }));
+  const matching = data.matching ?? {};
+  return {
+    applications: data.applications.map((value) => ({
+      id: value.id,
+      jobId: value.job_id,
+      candidateId: value.candidate_id,
+      jobTitle: value.job_title,
+      company: value.company_name ?? "受控岗位",
+      location: value.location,
+      salary: value.salary,
+      status: value.status,
+      appliedAt: value.applied_at,
+      lastContactAt: null,
+      matchScore: value.match_score,
+      recommendationReason: value.recommendation_reason,
+    })),
+    matching: {
+      activeJobCount: matching.active_job_count ?? 0,
+      eligibleJobCount: matching.eligible_job_count ?? 0,
+      pendingJobCount: matching.pending_job_count ?? 0,
+      failedJobCount: matching.failed_job_count ?? 0,
+      evaluatedJobCount: matching.evaluated_job_count ?? 0,
+      filteredOutJobCount: matching.filtered_out_job_count ?? 0,
+      matchedJobCount: matching.matched_job_count ?? 0,
+    },
+  };
 }
 
 interface HrApplicationResponse {

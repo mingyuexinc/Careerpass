@@ -35,6 +35,11 @@ describe("HR Job API", () => {
         companyName: "示例公司",
         createdAt: "2026-08-19T00:00:00Z",
         parseStatus: "succeeded",
+        parseFailureKind: null,
+        parseFailureReason: null,
+        parseMissingCoreFields: [],
+        parseCanRetry: false,
+        matchingEligible: false,
         matchStarted: false,
       },
     ]);

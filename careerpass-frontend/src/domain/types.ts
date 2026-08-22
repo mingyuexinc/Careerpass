@@ -77,6 +77,11 @@ export interface Job {
 }
 
 export type HrJobParseStatus = "queued" | "running" | "succeeded" | "failed";
+export type HrJobParseFailureKind =
+  | "storage_unavailable"
+  | "invalid_content"
+  | "missing_core_fields"
+  | "retry_exhausted";
 
 export interface HrJob {
   id: string;
@@ -85,7 +90,22 @@ export interface HrJob {
   companyName: string | null;
   createdAt: string;
   parseStatus: HrJobParseStatus | null;
+  parseFailureKind?: HrJobParseFailureKind | null;
+  parseFailureReason?: string | null;
+  parseMissingCoreFields?: string[];
+  parseCanRetry?: boolean;
+  matchingEligible?: boolean;
   matchStarted?: boolean;
+}
+
+export interface MatchingRoundSummary {
+  activeJobCount: number;
+  eligibleJobCount: number;
+  pendingJobCount: number;
+  failedJobCount: number;
+  evaluatedJobCount: number;
+  filteredOutJobCount: number;
+  matchedJobCount: number;
 }
 
 export interface JobGoal {
@@ -166,6 +186,7 @@ export interface WorkspaceSnapshot {
   applications: Application[];
   hrApplications: HrApplication[];
   conversations: Conversation[];
+  matchingSummary?: MatchingRoundSummary;
 }
 
 export interface JobGoalInput {

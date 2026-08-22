@@ -4,6 +4,7 @@ import { useAuthStore } from "../../stores/auth-store";
 
 export function useWorkspaceRefresh() {
   const resumeStatus = useWorkspaceStore((state) => state.resume?.parseStatus);
+  const hrJobs = useWorkspaceStore((state) => state.hrJobs);
   const refresh = useWorkspaceStore((state) => state.refresh);
   const accessToken = useAuthStore((state) => state.accessToken);
   const activeRole = useAuthStore((state) => state.user?.role);
@@ -27,11 +28,14 @@ export function useWorkspaceRefresh() {
   }, [accessToken, activeRole, runRefresh]);
 
   useEffect(() => {
-    if (!accessToken || resumeStatus !== "processing") return;
+    const hasPendingHrJobs = hrJobs.some(
+      (job) => job.parseStatus === "queued" || job.parseStatus === "running",
+    );
+    if (!accessToken || (resumeStatus !== "processing" && !hasPendingHrJobs)) return;
     const timer = window.setInterval(
       () => void runRefresh({ preserveView: true }),
       1500,
     );
     return () => window.clearInterval(timer);
-  }, [accessToken, resumeStatus, runRefresh]);
+  }, [accessToken, resumeStatus, hrJobs, runRefresh]);
 }

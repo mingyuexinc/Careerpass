@@ -885,6 +885,17 @@ select:focus {
   min-width: 0;
   flex: 1;
 }
+.file-info-trailing {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin-left: auto;
+}
+.file-info-trailing .status-badge {
+  white-space: nowrap;
+}
 .file-info-name {
   display: block;
   overflow: hidden;
@@ -1566,6 +1577,13 @@ select:focus {
   .status-editor label {
     max-width: none;
     margin-bottom: 10px;
+  }
+  .file-info-card {
+    align-items: flex-start;
+  }
+  .file-info-trailing {
+    flex-direction: column;
+    align-items: flex-end;
   }
   .application-card {
     overflow-x: auto;

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { mockRepository } from "../api/mock/mockRepository";
-import { deleteHrJob, listCurrentHrJobs } from "../api/hrJobApi";
+import { deleteHrJob, listCurrentHrJobs, retryHrJobParse } from "../api/hrJobApi";
 import {
   deleteResume as deleteResumeRequest,
   listResumes,
@@ -33,6 +33,7 @@ import type {
   JobGoalInput,
   SupportingDocumentUploadResult,
   WorkspaceSnapshot,
+  MatchingRoundSummary,
 } from "../domain/types";
 
 interface WorkspaceState extends WorkspaceSnapshot {
@@ -50,6 +51,7 @@ interface WorkspaceState extends WorkspaceSnapshot {
   uploadJobs: (files: File[]) => Promise<void>;
   uploadJob: (file: File) => Promise<void>;
   deleteJob: (id: string) => Promise<void>;
+  retryJobParse: (id: string) => Promise<void>;
   saveGoal: (input: JobGoalInput) => Promise<void>;
   startAgent: () => Promise<void>;
   updateApplicationStatus: (id: string, status: DeliveryProgress) => Promise<void>;
@@ -63,7 +65,18 @@ interface WorkspaceState extends WorkspaceSnapshot {
   agentRunCanStart: boolean;
   savingGoal: boolean;
   startingAgent: boolean;
+  matchingSummary: MatchingRoundSummary;
 }
+
+const emptyMatchingSummary: MatchingRoundSummary = {
+  activeJobCount: 0,
+  eligibleJobCount: 0,
+  pendingJobCount: 0,
+  failedJobCount: 0,
+  evaluatedJobCount: 0,
+  filteredOutJobCount: 0,
+  matchedJobCount: 0,
+};
 
 function toWorkspaceSnapshot(state: WorkspaceState): WorkspaceSnapshot {
   return {
@@ -80,6 +93,7 @@ function toWorkspaceSnapshot(state: WorkspaceState): WorkspaceSnapshot {
     applications: state.applications,
     hrApplications: state.hrApplications,
     conversations: state.conversations,
+    matchingSummary: state.matchingSummary,
   };
 }
 
@@ -97,6 +111,7 @@ const emptySnapshot: WorkspaceSnapshot = {
   applications: [],
   hrApplications: [],
   conversations: [],
+  matchingSummary: emptyMatchingSummary,
 };
 
 async function runAction(
@@ -139,6 +154,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   agentRunCanStart: false,
   savingGoal: false,
   startingAgent: false,
+  matchingSummary: emptyMatchingSummary,
   refresh: async (options = {}) => {
     const preserveView = options.preserveView ?? false;
     set({
@@ -167,7 +183,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         snapshot.supportingDocuments = await listCandidateDocuments(accessToken);
         snapshot.jobGoal = await getCurrentJobGoal(accessToken);
         const agentRunStatus = await getCurrentAgentRun(accessToken);
-        snapshot.applications = await listCurrentApplications(accessToken);
+        const applicationsResult = await listCurrentApplications(accessToken);
+        snapshot.applications = applicationsResult.applications;
+        snapshot.matchingSummary = applicationsResult.matching;
         snapshot.agentStatus =
           agentRunStatus.run?.status ??
           (agentRunStatus.canStart ? "ready" : "not_started");
@@ -347,6 +365,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       await mockRepository.deleteJob(id);
       return mockRepository.getSnapshot();
     }),
+  retryJobParse: async (id) => {
+    const accessToken = useAuthStore.getState().accessToken;
+    if (!accessToken || useAuthStore.getState().user?.role !== "hr") {
+      throw new Error("当前账号无权重新解析岗位 JD。");
+    }
+    await runAction(set, async () => {
+      await retryHrJobParse(id, accessToken);
+      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+      snapshot.hrJobs = await listCurrentHrJobs(accessToken);
+      snapshot.currentHrJob = snapshot.hrJobs.at(-1) ?? null;
+      return snapshot;
+    });
+  },
   saveGoal: async (input) => {
     if (useWorkspaceStore.getState().savingGoal) return;
     const accessToken = useAuthStore.getState().accessToken;
@@ -398,14 +429,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       const run = accessToken
         ? await startCurrentAgentRun(accessToken)
         : await mockRepository.startAgent();
-      const applications = accessToken
+      const applicationsResult = accessToken
         ? await listCurrentApplications(accessToken)
-        : (await mockRepository.getSnapshot()).applications;
+        : {
+            applications: (await mockRepository.getSnapshot()).applications,
+            matching: emptyMatchingSummary,
+          };
       set({
         agentRun: run,
         agentRunCanStart: false,
         agentStatus: run.status,
-        applications,
+        applications: applicationsResult.applications,
+        matchingSummary: applicationsResult.matching,
         loading: false,
         startingAgent: false,
         initialized: true,

@@ -1,5 +1,6 @@
 import { PageHeader } from "../../components/PageHeader";
 import {
+  Button,
   EmptyState,
   LoadingState,
   ProgressTimeline,
@@ -26,6 +27,21 @@ export function ProgressPage() {
   const terminatedCount = state.applications.filter(
     (application) => application.status === "terminated",
   ).length;
+  const matching = state.matchingSummary;
+  const noReadyJobs = matching.eligibleJobCount === 0 &&
+    (matching.pendingJobCount > 0 || matching.failedJobCount > 0);
+  const hasExcludedJobs = matching.pendingJobCount > 0 || matching.failedJobCount > 0;
+  const canRetryNoMatch =
+    state.agentStatus === "finished" &&
+    state.agentRun?.finishReason === "no_match" &&
+    state.agentRunCanStart;
+  async function retryMatching() {
+    try {
+      await state.startAgent();
+    } catch {
+      // The store exposes the controlled user-facing error.
+    }
+  }
   return (
     <div className="page-view">
       <PageHeader
@@ -39,18 +55,33 @@ export function ProgressPage() {
         }
       />
       {!state.applications.length ? (
-        <EmptyState
-          title={
-            state.agentStatus === "not_started"
-              ? "求职进程尚未开始"
-              : "当前没有可供匹配的岗位"
-          }
-          description={
-            state.agentStatus === "not_started"
-              ? "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"
-              : "本轮岗位均已筛选完成，暂未产生投递记录。"
-          }
-        />
+        <>
+          <EmptyState
+            title={
+              state.agentStatus === "not_started"
+                ? "求职进程尚未开始"
+                : noReadyJobs
+                  ? "岗位尚未准备完成"
+                  : "本轮暂未产生匹配结果"
+            }
+            description={
+              state.agentStatus === "not_started"
+                ? "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"
+                : noReadyJobs
+                  ? `当前有 ${matching.pendingJobCount + matching.failedJobCount} 个岗位未完成解析，请先处理岗位 JD。`
+                  : hasExcludedJobs
+                    ? `本轮已筛选 ${matching.evaluatedJobCount} 个岗位，另有 ${matching.pendingJobCount + matching.failedJobCount} 个岗位未参与匹配。`
+                    : `本轮已筛选 ${matching.evaluatedJobCount} 个岗位，暂未产生投递记录。`
+            }
+          />
+          {canRetryNoMatch ? (
+            <div className="form-action-row">
+              <Button type="button" onClick={() => void retryMatching()} disabled={state.startingAgent}>
+                {state.startingAgent ? "重新匹配中…" : "重新启动匹配"}
+              </Button>
+            </div>
+          ) : null}
+        </>
       ) : (
         <>
           <section className="offer-progress-panel">

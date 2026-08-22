@@ -1,4 +1,4 @@
-import type { HrJob, HrJobParseStatus } from "../domain/types";
+import type { HrJob, HrJobParseFailureKind, HrJobParseStatus } from "../domain/types";
 import { ApiRequestError } from "./applicationApi";
 
 interface ApiEnvelope<T> {
@@ -14,6 +14,11 @@ interface HrJobResponse {
   company_name: string | null;
   created_at: string;
   parse_status: HrJobParseStatus | null;
+  parse_failure_kind?: HrJobParseFailureKind | null;
+  parse_failure_reason?: string | null;
+  parse_missing_core_fields?: string[];
+  parse_can_retry?: boolean;
+  matching_eligible?: boolean;
   match_started?: boolean;
 }
 
@@ -31,6 +36,11 @@ function mapHrJob(value: HrJobResponse): HrJob {
     companyName: value.company_name,
     createdAt: value.created_at,
     parseStatus: isHrJobParseStatus(value.parse_status) ? value.parse_status : null,
+    parseFailureKind: value.parse_failure_kind ?? null,
+    parseFailureReason: value.parse_failure_reason ?? null,
+    parseMissingCoreFields: value.parse_missing_core_fields ?? [],
+    parseCanRetry: value.parse_can_retry ?? false,
+    matchingEligible: value.matching_eligible ?? false,
     matchStarted: value.match_started ?? false,
   };
 }
@@ -58,4 +68,15 @@ export async function listCurrentHrJobs(accessToken: string): Promise<HrJob[]> {
     throw new ApiRequestError(payload.msg || "岗位列表加载失败，请稍后重试。", response.status);
   }
   return payload.data.jobs.map(mapHrJob);
+}
+
+export async function retryHrJobParse(jobId: string, accessToken: string): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}/jobs/${jobId}/parse/retry`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const payload = (await response.json()) as ApiEnvelope<unknown>;
+  if (!response.ok || payload.data === null) {
+    throw new ApiRequestError(payload.msg || "岗位 JD 重新解析失败，请稍后重试。", response.status);
+  }
 }

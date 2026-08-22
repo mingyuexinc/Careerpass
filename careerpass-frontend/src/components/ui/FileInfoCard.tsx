@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 interface FileInfoCardProps {
   fileName: string;
   version?: number;
@@ -7,6 +9,7 @@ interface FileInfoCardProps {
   deleteLabel?: string;
   onDelete?: () => void;
   deleteDisabled?: boolean;
+  trailingContent?: ReactNode;
 }
 
 function getFileType(fileName: string): string {
@@ -36,6 +39,7 @@ export function FileInfoCard({
   deleteLabel,
   onDelete,
   deleteDisabled = false,
+  trailingContent,
 }: FileInfoCardProps) {
   const displayText = primaryText ?? fileName;
   return (
@@ -52,6 +56,9 @@ export function FileInfoCard({
           {formatUploadTime(uploadedAt)}
         </span>
       </div>
+      {trailingContent ? (
+        <div className="file-info-trailing">{trailingContent}</div>
+      ) : null}
       {onDelete ? (
         <button
           type="button"

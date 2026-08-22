@@ -325,7 +325,8 @@ S-08 真实接入时，Candidate 进度页的 `ApplicationRepository.list()` 对
 | 启动 Agent | 既有 Agent 启动接口 | 不展示匹配中间过程 |
 | 有投递记录 | `GET /api/v1/applications/current` | 展示 Application、匹配得分和推荐理由 |
 | Match 未形成 Application | 不向前端提供 Match 查询 | 进度页不展示 |
-| 全部岗位筛选完成且 Application 为 0 | Application 查询返回 `finished/no_match` | 展示“当前没有可供匹配的岗位” |
+| 无有效岗位可参与匹配 | Agent 启动返回 `409` 或查询摘要显示岗位未准备完成 | 展示“岗位尚未准备完成” |
+| 至少一个岗位已筛选且 Application 为 0 | Application 查询返回 `finished/no_match` 并附 `matching` 摘要 | 展示“本轮暂未产生匹配结果” |
 
 ### 8.4 Fixture 组织
 
