@@ -103,7 +103,7 @@ export function DocumentsPage() {
         <article className="panel upload-panel">
           <div className="panel-heading">
             <div>
-              <h2>正式简历</h2>
+              <h2>个人简历</h2>
               <p className="muted-text">简历解析成功后才能创建求职目标。</p>
             </div>
             {state.resume ? (
@@ -113,7 +113,7 @@ export function DocumentsPage() {
           <FileUpload
             label={state.resume ? "上传新简历并设为当前" : "上传一份简历"}
             description={
-              resumeLocked ? "当前投递轮次已绑定简历。" : "仅支持文本型 PDF 简历。"
+              resumeLocked ? "当前投递轮次已绑定简历。" : "简历仅支持PDF格式。"
             }
             accept=".pdf"
             disabled={resumeLocked || state.resumeLoading}
@@ -134,7 +134,7 @@ export function DocumentsPage() {
           <div className="panel-heading">
             <div>
               <h2>其它求职资料</h2>
-              <p className="muted-text">PDF、Markdown、JPG、PNG 资料只保存上传结果。</p>
+              <p className="muted-text">上传你的其它求职材料或证明</p>
             </div>
             <StatusBadge tone="neutral">
               {state.supportingDocuments.length
