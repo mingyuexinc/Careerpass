@@ -1,6 +1,7 @@
 node_modules/
 .venv/
 .env
+.env.production
 __pycache__/
 *.py[cod]
 .coverage
@@ -8,6 +9,7 @@ __pycache__/
 .pytest-basetemp/
 .ruff_cache/
 careerpass-backend/.careerpass-objects/
+careerpass-backend/backups/
 careerpass-backend/.pytest-tmp/
 .pytest-s07-tmp/
 careerpass-backend/tests/acceptance/s03_jd_parse/delivery-acceptance-results/

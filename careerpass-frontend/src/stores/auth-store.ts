@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { UserProfile, UserRole } from "../domain/types";
 import { loginRequest } from "../api/authApi";
 import { userFixtures } from "../api/mock/fixtures/users";
+import { isMockMode } from "../config/runtime-mode";
 
 interface AuthState {
   user: UserProfile | null;
@@ -45,7 +46,7 @@ function clearPersistedSession(): void {
   window.sessionStorage.removeItem(AUTH_SESSION_KEY);
 }
 
-const persistedSession = readPersistedSession();
+const persistedSession = isMockMode() ? null : readPersistedSession();
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: persistedSession?.user ?? null,
@@ -55,6 +56,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (username, password, role) => {
     set({ submitting: true, error: null });
     try {
+      if (isMockMode()) {
+        if (!username.trim() || !password.trim()) {
+          throw new Error("请输入账号和密码");
+        }
+        const mockUser = userFixtures.find((item) => item.role === role);
+        if (!mockUser) throw new Error("演示身份不存在");
+        set({ user: mockUser, accessToken: null, submitting: false });
+        return mockUser;
+      }
       const response = await loginRequest(username, password, role);
       const authenticatedUser: UserProfile = {
         id: response.user.user_id,

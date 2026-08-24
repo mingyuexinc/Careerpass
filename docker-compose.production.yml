@@ -1,0 +1,212 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=20
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - production_postgres_data:/var/lib/postgresql/data
+    mem_limit: 256m
+    networks: [internal]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - production_redis_data:/data
+    mem_limit: 96m
+    networks: [internal]
+
+  migrate:
+    profiles: ["ops"]
+    build:
+      context: ./careerpass-backend
+      dockerfile: Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DEBUG_RESET_ENABLED: "false"
+      REGISTRATION_ENABLED: "false"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      DEMO_CANDIDATE_USERNAME: ${DEMO_CANDIDATE_USERNAME:?DEMO_CANDIDATE_USERNAME is required}
+      DEMO_CANDIDATE_PASSWORD: ${DEMO_CANDIDATE_PASSWORD:?DEMO_CANDIDATE_PASSWORD is required}
+      DEMO_HR_USERNAME: ${DEMO_HR_USERNAME:?DEMO_HR_USERNAME is required}
+      DEMO_HR_PASSWORD: ${DEMO_HR_PASSWORD:?DEMO_HR_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    networks: [internal]
+
+  backend:
+    build:
+      context: ./careerpass-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "5"]
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DEBUG_RESET_ENABLED: "false"
+      REGISTRATION_ENABLED: "false"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DATABASE_POOL_SIZE: "2"
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:?DASHSCOPE_API_KEY is required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      DEMO_CANDIDATE_USERNAME: ${DEMO_CANDIDATE_USERNAME:?DEMO_CANDIDATE_USERNAME is required}
+      DEMO_CANDIDATE_PASSWORD: ${DEMO_CANDIDATE_PASSWORD:?DEMO_CANDIDATE_PASSWORD is required}
+      DEMO_HR_USERNAME: ${DEMO_HR_USERNAME:?DEMO_HR_USERNAME is required}
+      DEMO_HR_PASSWORD: ${DEMO_HR_PASSWORD:?DEMO_HR_PASSWORD is required}
+      READINESS_TIMEOUT_SECONDS: "2"
+      CELERY_TASK_TIME_LIMIT_SECONDS: "150"
+      CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"
+      CELERY_EXECUTION_LEASE_SECONDS: "180"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose: ["8080"]
+    volumes:
+      - production_objects:/var/lib/careerpass/objects
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/live', timeout=2)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+
+  worker:
+    build:
+      context: ./careerpass-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["celery", "-A", "app.infrastructure.tasks.worker:celery_app", "worker", "--loglevel=INFO", "--pool=prefork", "--concurrency=1", "--max-tasks-per-child=1"]
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DEBUG_RESET_ENABLED: "false"
+      REGISTRATION_ENABLED: "false"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DATABASE_POOL_SIZE: "2"
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
+      MINERU_API_KEY: ${MINERU_API_KEY:?MINERU_API_KEY is required}
+      MINERU_MCP_COMMAND: mineru-open-mcp
+      MINERU_MCP_COMMAND_ARGS: "[]"
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:?DASHSCOPE_API_KEY is required}
+      DEMO_CANDIDATE_USERNAME: ${DEMO_CANDIDATE_USERNAME:?DEMO_CANDIDATE_USERNAME is required}
+      DEMO_CANDIDATE_PASSWORD: ${DEMO_CANDIDATE_PASSWORD:?DEMO_CANDIDATE_PASSWORD is required}
+      DEMO_HR_USERNAME: ${DEMO_HR_USERNAME:?DEMO_HR_USERNAME is required}
+      DEMO_HR_PASSWORD: ${DEMO_HR_PASSWORD:?DEMO_HR_PASSWORD is required}
+      HTTP_PROXY: ${CAREERPASS_CONTAINER_PROXY:-}
+      HTTPS_PROXY: ${CAREERPASS_CONTAINER_PROXY:-}
+      ALL_PROXY: ${CAREERPASS_CONTAINER_PROXY:-}
+      NO_PROXY: ${CAREERPASS_CONTAINER_NO_PROXY:-localhost,127.0.0.1,postgres,redis}
+      CELERY_TASK_TIME_LIMIT_SECONDS: "150"
+      CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"
+      CELERY_EXECUTION_LEASE_SECONDS: "180"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - production_objects:/var/lib/careerpass/objects
+    mem_limit: 896m
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+
+  dispatcher:
+    build:
+      context: ./careerpass-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "app.infrastructure.tasks.dispatcher"]
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DEBUG_RESET_ENABLED: "false"
+      REGISTRATION_ENABLED: "false"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DATABASE_POOL_SIZE: "2"
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      DEMO_CANDIDATE_USERNAME: ${DEMO_CANDIDATE_USERNAME:?DEMO_CANDIDATE_USERNAME is required}
+      DEMO_CANDIDATE_PASSWORD: ${DEMO_CANDIDATE_PASSWORD:?DEMO_CANDIDATE_PASSWORD is required}
+      DEMO_HR_USERNAME: ${DEMO_HR_USERNAME:?DEMO_HR_USERNAME is required}
+      DEMO_HR_PASSWORD: ${DEMO_HR_PASSWORD:?DEMO_HR_PASSWORD is required}
+      CELERY_TASK_TIME_LIMIT_SECONDS: "150"
+      CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"
+      CELERY_EXECUTION_LEASE_SECONDS: "180"
+      CELERY_DISPATCHER_POLL_SECONDS: "5"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: 96m
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+
+  web:
+    build:
+      context: ./careerpass-frontend
+      dockerfile: Dockerfile.production
+    restart: unless-stopped
+    environment:
+      CAREERPASS_DOMAIN: ${CAREERPASS_DOMAIN:?CAREERPASS_DOMAIN is required}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - production_caddy_data:/data
+      - production_caddy_config:/config
+    mem_limit: 64m
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal]
+
+volumes:
+  production_postgres_data:
+  production_redis_data:
+  production_objects:
+  production_caddy_data:
+  production_caddy_config:
+
+networks:
+  internal:
+    driver: bridge

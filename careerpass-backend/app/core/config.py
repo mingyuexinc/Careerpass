@@ -43,10 +43,15 @@ class Settings(BaseSettings):
     app_env: AppEnvironment = AppEnvironment.DEVELOPMENT
     debug: bool = False
     debug_reset_enabled: bool = False
+    registration_enabled: bool = True
     log_level: LogLevel = LogLevel.INFO
     database_url: PostgresDsn
     database_pool_size: int = Field(default=5, ge=1, le=20)
     redis_url: RedisDsn
+    demo_candidate_username: str | None = Field(default=None, min_length=1, max_length=64)
+    demo_candidate_password: SecretStr | None = Field(default=None, min_length=1, max_length=128, repr=False)
+    demo_hr_username: str | None = Field(default=None, min_length=1, max_length=64)
+    demo_hr_password: SecretStr | None = Field(default=None, min_length=1, max_length=128, repr=False)
     readiness_timeout_seconds: float = Field(default=2, gt=0, le=10)
     celery_task_time_limit_seconds: int = Field(default=150, ge=1, le=300)
     celery_task_soft_time_limit_seconds: int = Field(default=120, ge=1, le=299)
@@ -90,6 +95,23 @@ class Settings(BaseSettings):
             raise ValueError("DEBUG must be false when APP_ENV is production")
         if self.app_env is AppEnvironment.PRODUCTION and self.debug_reset_enabled:
             raise ValueError("DEBUG_RESET_ENABLED must be false when APP_ENV is production")
+        if self.app_env is AppEnvironment.PRODUCTION and self.registration_enabled:
+            raise ValueError("REGISTRATION_ENABLED must be false when APP_ENV is production")
+        if self.app_env is AppEnvironment.PRODUCTION:
+            missing = [
+                name
+                for name, value in (
+                    ("DEMO_CANDIDATE_USERNAME", self.demo_candidate_username),
+                    ("DEMO_CANDIDATE_PASSWORD", self.demo_candidate_password),
+                    ("DEMO_HR_USERNAME", self.demo_hr_username),
+                    ("DEMO_HR_PASSWORD", self.demo_hr_password),
+                )
+                if value is None or (isinstance(value, SecretStr) and not value.get_secret_value())
+            ]
+            if missing:
+                raise ValueError(
+                    "production demo account settings are required: " + ", ".join(missing)
+                )
         if self.celery_task_soft_time_limit_seconds >= self.celery_task_time_limit_seconds:
             raise ValueError("CELERY_TASK_SOFT_TIME_LIMIT_SECONDS must be below the hard limit")
         return self

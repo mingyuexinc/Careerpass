@@ -12,6 +12,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    volumes:
+      - integration_postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7.4-alpine
@@ -22,12 +24,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    volumes:
+      - integration_redis_data:/data
 
   migrate:
     build: .
     command: ["alembic", "upgrade", "head"]
     environment:
-      APP_ENV: production
+      APP_ENV: development
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
@@ -42,12 +46,14 @@ services:
       APP_ENV: development
       DEBUG: "false"
       DEBUG_RESET_ENABLED: "true"
+      REGISTRATION_ENABLED: "true"
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
       OBJECT_STORAGE_ROOT: /var/lib/careerpass/objects
       S03_JD_ROOT: /opt/careerpass/s03-jd
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       READINESS_TIMEOUT_SECONDS: "2"
+      DATABASE_POOL_SIZE: "5"
       CELERY_TASK_TIME_LIMIT_SECONDS: "150"
       CELERY_TASK_SOFT_TIME_LIMIT_SECONDS: "120"
       CELERY_EXECUTION_LEASE_SECONDS: "180"
@@ -67,9 +73,9 @@ services:
 
   worker:
     build: .
-    command: ["celery", "-A", "app.infrastructure.tasks.worker:celery_app", "worker", "--loglevel=INFO"]
+    command: ["celery", "-A", "app.infrastructure.tasks.worker:celery_app", "worker", "--loglevel=INFO", "--pool=prefork", "--concurrency=1", "--max-tasks-per-child=1"]
     environment:
-      APP_ENV: production
+      APP_ENV: development
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
@@ -100,7 +106,7 @@ services:
     build: .
     command: ["python", "-m", "app.infrastructure.tasks.dispatcher"]
     environment:
-      APP_ENV: production
+      APP_ENV: development
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://careerpass:careerpass_test_only@postgres:5432/careerpass
       REDIS_URL: redis://redis:6379/0
@@ -116,3 +122,7 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+
+volumes:
+  integration_postgres_data:
+  integration_redis_data:

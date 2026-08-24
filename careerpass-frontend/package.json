@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run typecheck && vite build",
+    "build:demo": "npm run typecheck && vite build --mode demo",
+    "build:production": "npm run typecheck && vite build --mode production",
     "preview": "vite preview",
+    "preview:demo": "vite preview --mode demo",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

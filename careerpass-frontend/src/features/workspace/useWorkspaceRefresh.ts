@@ -7,6 +7,7 @@ export function useWorkspaceRefresh() {
   const hrJobs = useWorkspaceStore((state) => state.hrJobs);
   const refresh = useWorkspaceStore((state) => state.refresh);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const user = useAuthStore((state) => state.user);
   const activeRole = useAuthStore((state) => state.user?.role);
   const refreshInFlight = useRef(false);
   const runRefresh = useCallback(
@@ -23,9 +24,9 @@ export function useWorkspaceRefresh() {
   );
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken && !user) return;
     void runRefresh();
-  }, [accessToken, activeRole, runRefresh]);
+  }, [accessToken, activeRole, runRefresh, user]);
 
   useEffect(() => {
     const hasPendingHrJobs = hrJobs.some(

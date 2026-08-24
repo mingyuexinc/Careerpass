@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { mockRepository } from "../api/mock/mockRepository";
 import { deleteHrJob, listCurrentHrJobs, retryHrJobParse } from "../api/hrJobApi";
+import { uploadJobsWithApi } from "../api/jobUploadApi";
 import {
   deleteResume as deleteResumeRequest,
   listResumes,
@@ -13,6 +14,7 @@ import {
   uploadCandidateDocuments,
 } from "../api/candidateDocumentApi";
 import { useAuthStore } from "./auth-store";
+import { isMockMode as isConfiguredMockMode } from "../config/runtime-mode";
 import { getCurrentJobGoal, saveCurrentJobGoal } from "../api/jobGoalApi";
 import { getCurrentAgentRun, startCurrentAgentRun } from "../api/agentRunApi";
 import {
@@ -114,6 +116,19 @@ const emptySnapshot: WorkspaceSnapshot = {
   matchingSummary: emptyMatchingSummary,
 };
 
+function requireAccessToken(): string {
+  const accessToken = useAuthStore.getState().accessToken;
+  if (!accessToken) throw new Error("登录状态已失效，请重新登录。");
+  return accessToken;
+}
+
+function isMockMode(): boolean {
+  return (
+    isConfiguredMockMode() ||
+    (import.meta.env.MODE === "test" && !useAuthStore.getState().accessToken)
+  );
+}
+
 async function runAction(
   set: (partial: Partial<WorkspaceState>) => void,
   action: () => Promise<WorkspaceSnapshot>,
@@ -177,6 +192,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       };
       const accessToken = useAuthStore.getState().accessToken;
       const activeRole = useAuthStore.getState().user?.role;
+      if (isMockMode()) {
+        const mockSnapshot = await mockRepository.getSnapshot();
+        set({
+          ...mockSnapshot,
+          agentRun: null,
+          agentRunCanStart: mockSnapshot.agentStatus === "ready",
+          loading: false,
+          initialized: true,
+        });
+        return;
+      }
       if (accessToken && activeRole === "candidate") {
         const resumes = await listResumes(accessToken);
         snapshot.resume = resumes.find((item) => item.isCurrent) ?? null;
@@ -242,14 +268,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set,
       async () => {
         const accessToken = useAuthStore.getState().accessToken;
-        if (accessToken) {
-          await uploadResumeRequest(file, accessToken);
-        } else {
+        if (isMockMode()) {
           await mockRepository.uploadResume(file);
+        } else {
+          await uploadResumeRequest(file, accessToken ?? requireAccessToken());
         }
         const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
-        if (accessToken) {
-          const resumes = await listResumes(accessToken);
+        if (!isMockMode()) {
+          const resumes = await listResumes(accessToken ?? requireAccessToken());
           snapshot.resume = resumes.find((item) => item.isCurrent) ?? null;
         }
         return snapshot;
@@ -262,16 +288,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       async () => {
         const current = useWorkspaceStore.getState().resume;
         if (!current) throw new Error("当前简历不存在或已不可用。");
-        const accessToken = useAuthStore.getState().accessToken;
-        if (accessToken) {
-          await deleteResumeRequest(current.id, accessToken);
-          const resumes = await listResumes(accessToken);
-          const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
-          snapshot.resume = resumes.find((item) => item.isCurrent) ?? null;
-          return snapshot;
+        if (isMockMode()) {
+          await mockRepository.deleteResume(current.id);
+          return mockRepository.getSnapshot();
         }
-        await mockRepository.deleteResume(current.id);
-        return mockRepository.getSnapshot();
+        const accessToken = requireAccessToken();
+        await deleteResumeRequest(current.id, accessToken);
+        const resumes = await listResumes(accessToken);
+        const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+        snapshot.resume = resumes.find((item) => item.isCurrent) ?? null;
+        return snapshot;
       },
       "resumeLoading",
     ),
@@ -279,6 +305,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     runAction(
       set,
       async () => {
+        if (!isMockMode()) throw new Error("简历解析结果由后端任务生成。");
         await mockRepository.setParseResult(result);
         return mockRepository.getSnapshot();
       },
@@ -292,8 +319,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       supportingDocumentUploads: files.map(createReadyDocumentResult),
     });
     try {
-      const accessToken = useAuthStore.getState().accessToken;
-      if (accessToken) {
+      if (!isMockMode()) {
+        const accessToken = requireAccessToken();
         const results = await uploadCandidateDocuments(files, accessToken);
         const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
         snapshot.supportingDocuments = await listCandidateDocuments(accessToken);
@@ -328,9 +355,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   },
   deleteDocument: async (id) => {
     await runAction(set, async () => {
-      const accessToken = useAuthStore.getState().accessToken;
       const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
-      if (accessToken) {
+      if (!isMockMode()) {
+        const accessToken = requireAccessToken();
         await deleteCandidateDocument(id, accessToken);
         snapshot.supportingDocuments = await listCandidateDocuments(accessToken);
       } else {
@@ -341,18 +368,37 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   },
   uploadJobs: async (files) =>
     runAction(set, async () => {
-      await mockRepository.uploadJobs(files);
-      return mockRepository.getSnapshot();
+      if (isMockMode()) {
+        await mockRepository.uploadJobs(files);
+        return mockRepository.getSnapshot();
+      }
+      const accessToken = requireAccessToken();
+      await uploadJobsWithApi(files);
+      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+      snapshot.hrJobs = await listCurrentHrJobs(accessToken);
+      snapshot.currentHrJob = snapshot.hrJobs.at(-1) ?? null;
+      return snapshot;
     }),
   uploadJob: async (file) =>
     runAction(set, async () => {
-      await mockRepository.uploadJob(file);
-      return mockRepository.getSnapshot();
+      if (isMockMode()) {
+        await mockRepository.uploadJob(file);
+        return mockRepository.getSnapshot();
+      }
+      const accessToken = requireAccessToken();
+      await uploadJobsWithApi([file]);
+      const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
+      snapshot.hrJobs = await listCurrentHrJobs(accessToken);
+      snapshot.currentHrJob = snapshot.hrJobs.at(-1) ?? null;
+      return snapshot;
     }),
   deleteJob: async (id) =>
     runAction(set, async () => {
-      const accessToken = useAuthStore.getState().accessToken;
-      if (accessToken && useAuthStore.getState().user?.role === "hr") {
+      if (!isMockMode()) {
+        const accessToken = requireAccessToken();
+        if (useAuthStore.getState().user?.role !== "hr") {
+          throw new Error("当前账号无权删除岗位 JD。");
+        }
         await deleteHrJob(id, accessToken);
         const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
         const refreshedJobs = await listCurrentHrJobs(accessToken);
@@ -366,8 +412,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       return mockRepository.getSnapshot();
     }),
   retryJobParse: async (id) => {
-    const accessToken = useAuthStore.getState().accessToken;
-    if (!accessToken || useAuthStore.getState().user?.role !== "hr") {
+    if (isMockMode()) throw new Error("Mock Demo 不支持重新解析岗位 JD。");
+    const accessToken = requireAccessToken();
+    if (useAuthStore.getState().user?.role !== "hr") {
       throw new Error("当前账号无权重新解析岗位 JD。");
     }
     await runAction(set, async () => {
@@ -397,13 +444,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
           filters: input.filters.trim(),
         };
         const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
-        snapshot.jobGoal = accessToken
-          ? await saveCurrentJobGoal(normalizedInput, accessToken)
-          : await mockRepository.saveGoal(normalizedInput);
+        snapshot.jobGoal = isMockMode()
+          ? await mockRepository.saveGoal(normalizedInput)
+          : await saveCurrentJobGoal(normalizedInput, accessToken ?? requireAccessToken());
         return snapshot;
       });
-      if (accessToken) {
-        const agentRunStatus = await getCurrentAgentRun(accessToken);
+      if (!isMockMode()) {
+        const currentAccessToken = accessToken ?? requireAccessToken();
+        const agentRunStatus = await getCurrentAgentRun(currentAccessToken);
         set({
           agentRun: agentRunStatus.run,
           agentRunCanStart: agentRunStatus.canStart,
@@ -426,11 +474,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     set({ startingAgent: true });
     try {
       const accessToken = useAuthStore.getState().accessToken;
-      const run = accessToken
-        ? await startCurrentAgentRun(accessToken)
-        : await mockRepository.startAgent();
-      const applicationsResult = accessToken
-        ? await listCurrentApplications(accessToken)
+      const run = isMockMode()
+        ? await mockRepository.startAgent()
+        : await startCurrentAgentRun(accessToken ?? requireAccessToken());
+      const applicationsResult = !isMockMode()
+        ? await listCurrentApplications(accessToken ?? requireAccessToken())
         : {
             applications: (await mockRepository.getSnapshot()).applications,
             matching: emptyMatchingSummary,
@@ -456,23 +504,26 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   },
   updateApplicationStatus: async (id, status) =>
     runAction(set, async () => {
-      const accessToken = useAuthStore.getState().accessToken;
       const activeRole = useAuthStore.getState().user?.role;
       const snapshot = toWorkspaceSnapshot(useWorkspaceStore.getState());
-      if (accessToken && activeRole === "hr") {
+      if (!isMockMode() && activeRole === "hr") {
+        const accessToken = requireAccessToken();
         const updated = await updateCurrentHrApplicationStatus(id, status, accessToken);
         snapshot.hrApplications = snapshot.hrApplications.map((item) =>
           item.id === updated.id ? updated : item,
         );
         return snapshot;
       }
-      await mockRepository.updateHrApplicationStatus(id, status);
-      return mockRepository.getSnapshot();
+      if (isMockMode()) {
+        await mockRepository.updateHrApplicationStatus(id, status);
+        return mockRepository.getSnapshot();
+      }
+      throw new Error("当前账号无权更新投递状态。");
     }),
   sendMessage: async (id, content, clientMessageId) =>
     runAction(set, async () => {
       const accessToken = useAuthStore.getState().accessToken;
-      if (accessToken && useAuthStore.getState().user?.role === "hr") {
+      if (!isMockMode() && accessToken && useAuthStore.getState().user?.role === "hr") {
         const current = useWorkspaceStore.getState().conversations.find((item) => item.id === id);
         if (!current) throw new Error("沟通会话不存在或已不可用。");
         const updated = await sendConversationMessage(
@@ -488,10 +539,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
         );
         return snapshot;
       }
-      await mockRepository.sendConversationMessage(id, content, clientMessageId);
-      return mockRepository.getSnapshot();
+      if (isMockMode()) {
+        await mockRepository.sendConversationMessage(id, content, clientMessageId);
+        return mockRepository.getSnapshot();
+      }
+      throw new Error("当前账号无权发送沟通消息。");
     }),
   startConversationQuery: async (id) => {
+    if (isMockMode()) {
+      set({ conversations: await mockRepository.listConversations(), initialized: true });
+      return;
+    }
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken || useAuthStore.getState().user?.role !== "hr") return;
     const current = useWorkspaceStore.getState().conversations.find((item) => item.id === id);
@@ -508,13 +566,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     }
   },
   downloadAttachment: async (applicationId, messageId, attachmentId, fileName) => {
+    if (isMockMode()) return;
     const accessToken = useAuthStore.getState().accessToken;
     if (!accessToken || useAuthStore.getState().user?.role !== "hr") {
       throw new Error("当前身份无权下载附件。");
     }
     await downloadConversationAttachment(applicationId, messageId, attachmentId, fileName, accessToken);
   },
-  resetData: async () => runAction(set, () => mockRepository.resetData()),
+  resetData: async () => {
+    if (!isMockMode() && import.meta.env.MODE !== "test") {
+      throw new Error("生产环境不支持本地数据重置。");
+    }
+    await runAction(set, () => mockRepository.resetData());
+  },
   clearLocalState: async () => {
     set({
       ...emptySnapshot,

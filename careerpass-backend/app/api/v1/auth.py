@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.dependencies.auth import get_current_identity
 from app.api.dependencies.services import get_login_service, get_registration_service
+from app.core.config import get_settings
 from app.core.errors import ErrorCode
 from app.core.exceptions import AppException
 from app.core.identity import CurrentIdentity
@@ -28,6 +29,12 @@ async def register(
     service: Annotated[RegistrationService, Depends(get_registration_service)],
 ) -> dict[str, object]:
     """Register an account and atomically initialize its Candidate identity."""
+    if not get_settings().registration_enabled:
+        raise AppException(
+            status_code=403,
+            code=ErrorCode.FORBIDDEN,
+            message="registration is disabled",
+        )
     try:
         response = await service.register(payload)
     except UsernameAlreadyExistsError:

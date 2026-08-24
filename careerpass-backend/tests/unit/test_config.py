@@ -23,10 +23,25 @@ def test_settings_accept_production_without_debug() -> None:
     settings = Settings(
         app_env=AppEnvironment.PRODUCTION,
         debug=False,
+        registration_enabled=False,
+        demo_candidate_username="candidate_prod",
+        demo_candidate_password="candidate-pass",
+        demo_hr_username="hr_prod",
+        demo_hr_password="hr-pass",
         _env_file=None,
     )
 
     assert settings.app_env is AppEnvironment.PRODUCTION
+
+
+def test_settings_reject_production_without_demo_accounts() -> None:
+    with pytest.raises(ValidationError, match="production demo account settings"):
+        Settings(
+            app_env=AppEnvironment.PRODUCTION,
+            debug=False,
+            registration_enabled=False,
+            _env_file=None,
+        )
 
 
 def test_settings_reject_debug_reset_in_production() -> None:

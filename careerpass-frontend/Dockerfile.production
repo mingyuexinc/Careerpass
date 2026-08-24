@@ -1,0 +1,17 @@
+FROM node:22-alpine AS build
+
+WORKDIR /src
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+ENV VITE_DATA_MODE=api
+ENV VITE_API_BASE_URL=/api/v1
+RUN npm run build:production
+
+FROM caddy:2-alpine
+
+COPY --from=build /src/dist /srv
+COPY Caddyfile /etc/caddy/Caddyfile
+
+EXPOSE 80 443

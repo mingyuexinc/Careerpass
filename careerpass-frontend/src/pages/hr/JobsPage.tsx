@@ -2,12 +2,13 @@ import { useState } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import { Button, ErrorState, FileInfoCard, FileUpload, StatusBadge } from "../../components/ui";
 import { uploadJobsWithApi } from "../../api/jobUploadApi";
+import { isMockMode } from "../../config/runtime-mode";
 import { useWorkspaceRefresh } from "../../features/workspace/useWorkspaceRefresh";
 import { useWorkspaceStore } from "../../stores/workspace-store";
 
 export function JobsPage() {
   useWorkspaceRefresh();
-  const { hrJobs, refresh, deleteJob, retryJobParse } = useWorkspaceStore((state) => state);
+  const { hrJobs, refresh, deleteJob, retryJobParse, uploadJobs } = useWorkspaceStore((state) => state);
   const [uploading, setUploading] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +18,11 @@ export function JobsPage() {
     setUploading(true);
     setError(null);
     try {
+      if (isMockMode()) {
+        await uploadJobs(files);
+        await refresh();
+        return;
+      }
       const results = await uploadJobsWithApi(files);
       const failedUploads = results.filter((result) => result.outcome === "failed");
       if (failedUploads.length) {
