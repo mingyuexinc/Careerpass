@@ -1,6 +1,7 @@
 """Optional integration tests against isolated PostgreSQL and Redis services."""
 
 import asyncio
+import hashlib
 import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -24,14 +25,17 @@ from app.infrastructure.database.models import (
     Resume,
     StoredFileObject,
     User,
+    UserRole,
 )
 from app.infrastructure.storage import LocalObjectStorage
+from app.infrastructure.storage.local import StoredUpload
 from app.infrastructure.tasks.celery_app import create_celery_app
 from app.infrastructure.tasks.dispatcher import TaskDispatcher, celery_publication
 from app.main import create_app
 from app.repositories import CandidateRepository, UserRepository
 from app.repositories.async_task_repository import AsyncTaskRepository
 from app.repositories.document_parsing_repository import DocumentParsingRepository
+from app.repositories.job_upload_repository import JobUploadRepository
 from app.repositories.object_storage_repository import ObjectStorageRepository
 from app.schemas.document_parsing import ResumeProfileExtractionV1
 from app.services.object_cleanup_service import ObjectCleanupService
@@ -241,8 +245,9 @@ def test_candidate_preparation_upload_reuses_objects_without_orphans(
             object_storage_root = app.state.object_storage._root
 
         assert first.status_code == replay.status_code == 201
-        assert second.status_code == 409
+        assert second.status_code == 201
         assert first.json()["data"]["resume_id"] == replay.json()["data"]["resume_id"]
+        assert second.json()["data"]["resume_id"] == first.json()["data"]["resume_id"]
         assert len(list(object_storage_root.iterdir())) == 1
 
         async def assert_object_reuse() -> None:
@@ -268,6 +273,188 @@ def test_candidate_preparation_upload_reuses_objects_without_orphans(
                 await database.close()
 
         asyncio.run(assert_object_reuse())
+    finally:
+        get_settings.cache_clear()
+
+
+def test_resume_upload_revives_stranded_deleting_object_instead_of_409(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Re-uploading content whose object is stranded in deleting must succeed."""
+    database_url, redis_url = _require_integration_environment()
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    monkeypatch.setenv("REDIS_URL", redis_url)
+    monkeypatch.setenv("OBJECT_STORAGE_ROOT", str(tmp_path / "objects"))
+    monkeypatch.setenv("APP_ENV", "test")
+    get_settings.cache_clear()
+    try:
+        command.upgrade(Config("alembic.ini"), "head")
+        app = create_app()
+        with TestClient(app, raise_server_exceptions=False) as client:
+            username = f"revive-{uuid4()}"
+            registration = client.post(
+                "/api/v1/auth/register",
+                json={"username": username, "password": "StrongPassword123!"},
+            )
+            token = registration.json()["data"]["access_token"]
+            content = f"%PDF-1.7\n{username}".encode()
+            digest = hashlib.sha256(content).hexdigest()
+            stranded_upload = app.state.object_storage.put(content)
+            object_storage_root = app.state.object_storage._root
+
+            async def seed_stranded_object() -> None:
+                database = create_database(database_url)
+                try:
+                    async with database.session_factory() as session:
+                        await session.execute(
+                            text(
+                                "INSERT INTO stored_file_objects "
+                                "(storage_key, content_sha256, detected_mime_type, "
+                                "file_size_bytes, status) VALUES "
+                                "(:storage_key, :content_sha256, 'application/pdf', "
+                                ":file_size_bytes, 'deleting')"
+                            ),
+                            {
+                                "storage_key": stranded_upload.storage_key,
+                                "content_sha256": digest,
+                                "file_size_bytes": len(content),
+                            },
+                        )
+                        await session.commit()
+                finally:
+                    await database.close()
+
+            asyncio.run(seed_stranded_object())
+
+            upload = client.post(
+                "/api/v1/resumes",
+                files={"file": ("resume.pdf", content, "application/pdf")},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Idempotency-Key": str(uuid4()),
+                },
+            )
+            payload = upload.json()
+            resume_id = payload["data"]["resume_id"] if upload.status_code == 201 else None
+
+        assert upload.status_code == 201
+        assert resume_id is not None
+        assert not (object_storage_root / stranded_upload.storage_key).exists()
+        assert len(list(object_storage_root.iterdir())) == 1
+
+        async def assert_revival() -> None:
+            database = create_database(database_url)
+            try:
+                async with database.session_factory() as session:
+                    row = await session.scalar(
+                        select(StoredFileObject).where(
+                            StoredFileObject.content_sha256 == digest
+                        )
+                    )
+                    assert row is not None
+                    assert row.status == "ready"
+                    assert row.storage_key != stranded_upload.storage_key
+                    assert (object_storage_root / row.storage_key).exists()
+                    task = await session.scalar(
+                        select(AsyncTaskRun).where(
+                            AsyncTaskRun.resource_type == "resume",
+                            AsyncTaskRun.resource_id == UUID(resume_id),
+                        )
+                    )
+                    assert task is not None
+            finally:
+                await database.close()
+
+        asyncio.run(assert_revival())
+    finally:
+        get_settings.cache_clear()
+
+
+def test_job_upload_revives_stranded_deleting_object(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Job creation reuses the revived object instead of hitting the hash uniqueness."""
+    database_url, redis_url = _require_integration_environment()
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    monkeypatch.setenv("REDIS_URL", redis_url)
+    monkeypatch.setenv("OBJECT_STORAGE_ROOT", str(tmp_path / "objects"))
+    monkeypatch.setenv("APP_ENV", "test")
+    get_settings.cache_clear()
+    try:
+        command.upgrade(Config("alembic.ini"), "head")
+
+        async def seed_hr_and_create_job() -> tuple[object, bool, str, object, str]:
+            database = create_database(database_url)
+            try:
+                async with database.session_factory() as session:
+                    user = User(username=f"hr-{uuid4()}", password_hash="test-only")
+                    session.add(user)
+                    await session.flush()
+                    session.add(UserRole(user_id=user.id, role="hr"))
+                    profile = HrProfile(user_id=user.id)
+                    session.add(profile)
+                    await session.flush()
+
+                    content = f"# stranded jd {uuid4()}".encode()
+                    digest = hashlib.sha256(content).hexdigest()
+                    storage = LocalObjectStorage(str(tmp_path / "objects"))
+                    stranded_upload = storage.put(content)
+                    await session.execute(
+                        text(
+                            "INSERT INTO stored_file_objects "
+                            "(storage_key, content_sha256, detected_mime_type, "
+                            "file_size_bytes, status) VALUES "
+                            "(:storage_key, :content_sha256, 'text/markdown', "
+                            ":file_size_bytes, 'deleting')"
+                        ),
+                        {
+                            "storage_key": stranded_upload.storage_key,
+                            "content_sha256": digest,
+                            "file_size_bytes": len(content),
+                        },
+                    )
+                    fresh_upload = storage.put(content)
+                    job, used_new_upload, replaced_key = await JobUploadRepository(
+                        session
+                    ).create_job(
+                        hr_profile_id=profile.id,
+                        upload=StoredUpload(
+                            storage_key=fresh_upload.storage_key,
+                            content_sha256=digest,
+                            size_bytes=len(content),
+                        ),
+                        detected_mime_type="text/markdown",
+                        file_name="jd.md",
+                    )
+                    await session.commit()
+                    return job, used_new_upload, replaced_key, profile, fresh_upload.storage_key
+            finally:
+                await database.close()
+
+        job, used_new_upload, replaced_key, profile, fresh_key = asyncio.run(
+            seed_hr_and_create_job()
+        )
+
+        assert used_new_upload is True
+        assert replaced_key is not None
+
+        async def assert_revived_object() -> None:
+            database = create_database(database_url)
+            try:
+                async with database.session_factory() as session:
+                    row = await session.scalar(
+                        select(StoredFileObject).where(
+                            StoredFileObject.id == job.stored_file_object_id
+                        )
+                    )
+                    assert row is not None
+                    assert row.status == "ready"
+                    assert row.storage_key == fresh_key
+                    assert job.hr_profile_id == profile.id
+            finally:
+                await database.close()
+
+        asyncio.run(assert_revived_object())
     finally:
         get_settings.cache_clear()
 

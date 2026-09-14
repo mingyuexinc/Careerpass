@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import exists, select
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import (
@@ -16,6 +17,7 @@ from app.infrastructure.database.models import (
     Resume,
     StoredFileObject,
 )
+from app.infrastructure.storage.local import StoredUpload
 
 
 @dataclass(frozen=True)
@@ -27,11 +29,77 @@ class CleanupClaim:
     previous_status: str
 
 
+@dataclass(frozen=True)
+class AcquiredFileObject:
+    """A ready object safe for a new reference, plus its upload bookkeeping."""
+
+    value: StoredFileObject
+    used_new_upload: bool
+    replaced_storage_key: str | None
+
+
 class ObjectStorageRepository:
     """Own transactional state transitions for stored-file cleanup."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def acquire_for_reference(
+        self, *, upload: StoredUpload, mime_type: str
+    ) -> AcquiredFileObject:
+        """Return the ready object for this content, reviving a dying row when held.
+
+        Must run inside the caller's transaction so the object and its new
+        reference commit or roll back together. A non-ready object holding the
+        content hash is unreferenced by lifecycle definition, so pointing it at
+        the fresh upload is safe and keeps the hash unique constraint intact.
+        """
+        existing = await self._locked_object_by_hash(upload.content_sha256)
+        if existing is not None:
+            return self._as_ready_reference(existing, upload, mime_type)
+        statement = (
+            postgres_insert(StoredFileObject)
+            .values(
+                storage_key=upload.storage_key,
+                content_sha256=upload.content_sha256,
+                detected_mime_type=mime_type,
+                file_size_bytes=upload.size_bytes,
+                status="ready",
+            )
+            .on_conflict_do_nothing(index_elements=[StoredFileObject.content_sha256])
+        )
+        await self._session.execute(statement)
+        winner = await self._locked_object_by_hash(upload.content_sha256)
+        if winner is None:
+            raise RuntimeError("stored file object acquisition failed")
+        return self._as_ready_reference(winner, upload, mime_type)
+
+    async def _locked_object_by_hash(self, content_sha256: str) -> StoredFileObject | None:
+        return await self._session.scalar(
+            select(StoredFileObject)
+            .where(StoredFileObject.content_sha256 == content_sha256)
+            .with_for_update()
+        )
+
+    def _as_ready_reference(
+        self, value: StoredFileObject, upload: StoredUpload, mime_type: str
+    ) -> AcquiredFileObject:
+        if value.status == "ready":
+            return AcquiredFileObject(
+                value,
+                used_new_upload=value.storage_key == upload.storage_key,
+                replaced_storage_key=None,
+            )
+        replaced_storage_key = value.storage_key
+        value.status = "ready"
+        value.storage_key = upload.storage_key
+        value.detected_mime_type = mime_type
+        value.file_size_bytes = upload.size_bytes
+        return AcquiredFileObject(
+            value,
+            used_new_upload=True,
+            replaced_storage_key=replaced_storage_key,
+        )
 
     async def claim_expired_unreferenced(
         self, *, older_than: datetime, limit: int

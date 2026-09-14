@@ -30,3 +30,9 @@ Repository 锁定当前 Candidate 或 HrProfile，检查其资源关联的 `Asyn
 ## 5. Readiness / Verify
 
 Readiness 需要确认 PostgreSQL、对象存储目录和后端服务可用。真实联调步骤和开发者演示结果见 Integration Scenario；Scenario 第 4 节由开发者填写，coding Agent 不代填。
+
+## 6. 整改记录：清理韧性
+
+- 认领 `CleanupClaim.previous_status` 改为记录对象真实原状态，恢复语义可用；
+- 事务外逐对象清理对行删除异常按 claim 隔离，单个失败不再搁浅其余对象；被遗留的 `deleting` 行由小时级对象清理续删兜底；
+- 单元回归：`test_reset_service_continues_remaining_claims_when_finalize_fails`、`test_cleanup_continues_batch_when_finalize_fails`。

@@ -15,6 +15,7 @@ from app.infrastructure.database.models import (
     StoredFileObject,
 )
 from app.infrastructure.storage.local import StoredUpload
+from app.repositories.object_storage_repository import ObjectStorageRepository
 
 
 class IdempotencyConflictError(Exception):
@@ -47,19 +48,19 @@ class CandidatePreparationRepository:
 
     async def create_resume(
         self, *, candidate_id: UUID, name: str, upload: StoredUpload, idempotency_key: UUID | None
-    ) -> tuple[Resume, bool, bool]:
-        file_object, created_file_object = await self._get_or_create_file_object(
-            upload, "application/pdf"
+    ) -> tuple[Resume, bool, bool, str | None]:
+        file_object, used_new_file_object, replaced_storage_key = (
+            await self._get_or_create_file_object(upload, "application/pdf")
         )
         existing = await self._resume_by_key(candidate_id, idempotency_key)
         if existing is not None:
             resume, existing_file_object = existing
             if existing_file_object.content_sha256 != upload.content_sha256:
                 raise IdempotencyConflictError
-            return resume, True, False
+            return resume, True, False, None
         existing = await self._resume_by_content(candidate_id, file_object.content_sha256)
         if existing is not None:
-            return existing, True, False
+            return existing, True, False, None
         resume = Resume(
             candidate_id=candidate_id,
             upload_idempotency_key=idempotency_key,
@@ -74,7 +75,7 @@ class CandidatePreparationRepository:
         )
         if candidate is not None:
             candidate.current_resume_id = resume.id
-        return resume, False, created_file_object
+        return resume, False, used_new_file_object, replaced_storage_key
 
     async def create_document(
         self,
@@ -85,7 +86,7 @@ class CandidatePreparationRepository:
         detected_mime_type: str,
         upload: StoredUpload,
         idempotency_key: UUID | None,
-    ) -> tuple[CandidateDocument, bool, bool]:
+    ) -> tuple[CandidateDocument, bool, bool, str | None]:
         async with self._session.begin():
             existing = await self._document_by_key(candidate_id, idempotency_key)
             if existing is not None:
@@ -95,14 +96,14 @@ class CandidatePreparationRepository:
                     or file_object.content_sha256 != upload.content_sha256
                 ):
                     raise IdempotencyConflictError
-                return document, True, False
+                return document, True, False, None
             existing_by_content = await self._document_by_content(
                 candidate_id, upload.content_sha256
             )
             if existing_by_content is not None:
-                return existing_by_content, True, False
-            file_object, created_file_object = await self._get_or_create_file_object(
-                upload, detected_mime_type
+                return existing_by_content, True, False, None
+            file_object, used_new_file_object, replaced_storage_key = (
+                await self._get_or_create_file_object(upload, detected_mime_type)
             )
             document = CandidateDocument(
                 candidate_id=candidate_id,
@@ -114,7 +115,7 @@ class CandidatePreparationRepository:
             )
             self._session.add(document)
             await self._session.flush()
-        return document, False, created_file_object
+        return document, False, used_new_file_object, replaced_storage_key
 
     async def list_resumes(
         self, candidate_id: UUID, page: int, page_size: int
@@ -157,22 +158,11 @@ class CandidatePreparationRepository:
 
     async def _get_or_create_file_object(
         self, upload: StoredUpload, mime_type: str
-    ) -> tuple[StoredFileObject, bool]:
-        existing = await self._session.scalar(
-            select(StoredFileObject).where(StoredFileObject.content_sha256 == upload.content_sha256)
+    ) -> tuple[StoredFileObject, bool, str | None]:
+        acquired = await ObjectStorageRepository(self._session).acquire_for_reference(
+            upload=upload, mime_type=mime_type
         )
-        if existing is not None:
-            return existing, False
-        value = StoredFileObject(
-            storage_key=upload.storage_key,
-            content_sha256=upload.content_sha256,
-            detected_mime_type=mime_type,
-            file_size_bytes=upload.size_bytes,
-            status="ready",
-        )
-        self._session.add(value)
-        await self._session.flush()
-        return value, True
+        return acquired.value, acquired.used_new_upload, acquired.replaced_storage_key
 
     async def _resume_by_key(
         self, candidate_id: UUID, key: UUID | None

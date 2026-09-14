@@ -62,8 +62,8 @@ def test_resume_upload_removes_transient_file_when_content_object_is_reused(
         async def has_other_resume(self, **_: object) -> bool:
             return False
 
-        async def create_resume(self, **_: object) -> tuple[object, bool, bool]:
-            return type("Resume", (), {"id": uuid4()})(), False, False
+        async def create_resume(self, **_: object) -> tuple[object, bool, bool, None]:
+            return type("Resume", (), {"id": uuid4()})(), False, False, None
 
         @asynccontextmanager
         async def transaction(self):
@@ -93,6 +93,77 @@ def test_resume_upload_removes_transient_file_when_content_object_is_reused(
     assert list(tmp_path.iterdir()) == []
 
 
+def test_resume_upload_removes_replaced_object_file_after_revival(tmp_path: Path) -> None:
+    replaced: dict[str, str] = {}
+
+    class RevivingRepository:
+        async def has_other_resume(self, **_: object) -> bool:
+            return False
+
+        @asynccontextmanager
+        async def transaction(self):
+            yield
+
+        async def create_resume(self, **_: object) -> tuple[object, bool, bool, str | None]:
+            return type("Resume", (), {"id": uuid4()})(), False, True, replaced["key"]
+
+    class RecordingTaskRepository:
+        async def create_or_get_queued_resume_task(self, **_: object) -> tuple[object, bool]:
+            return object(), True
+
+    async def execute() -> None:
+        storage = LocalObjectStorage(str(tmp_path))
+        replaced["key"] = storage.put(b"%PDF-1.4 stranded").storage_key
+        service = CandidatePreparationService(
+            repository=RevivingRepository(),
+            task_repository=RecordingTaskRepository(),
+            storage=storage,
+        )  # type: ignore[arg-type]
+        await service.upload_resume(
+            candidate_id=uuid4(),
+            content=b"%PDF-1.7",
+            filename="resume.pdf",
+            declared_mime="application/pdf",
+            name="resume.pdf",
+            idempotency_key=None,
+        )
+
+    asyncio.run(execute())
+    remaining = {path.name for path in tmp_path.iterdir()}
+    assert replaced["key"] not in remaining
+    assert len(remaining) == 1
+
+
+def test_document_upload_removes_replaced_object_file_after_revival(tmp_path: Path) -> None:
+    replaced: dict[str, str] = {}
+
+    class RevivingRepository:
+        async def create_document(self, **_: object) -> tuple[object, bool, bool, str | None]:
+            return SimpleNamespace(
+                id=uuid4(), file_type="md", created_at=datetime.now(UTC)
+            ), False, True, replaced["key"]
+
+    async def execute() -> None:
+        storage = LocalObjectStorage(str(tmp_path))
+        replaced["key"] = storage.put(b"# stranded").storage_key
+        service = CandidatePreparationService(
+            repository=RevivingRepository(),
+            task_repository=object(),
+            storage=storage,
+        )  # type: ignore[arg-type]
+        result = await service.upload_documents(
+            candidate_id=uuid4(),
+            uploads=[(b"# notes", "notes.md", "text/markdown")],
+            idempotency_key=None,
+        )
+        assert result.results[0].result == "created"
+
+    asyncio.run(execute())
+    remaining = {path.name for path in tmp_path.iterdir()}
+    assert replaced["key"] not in remaining
+    assert len(remaining) == 1
+
+
 def test_resume_upload_returns_processing_and_creates_queued_task(tmp_path: Path) -> None:
     class RecordingRepository:
         async def has_other_resume(self, **_: object) -> bool:
@@ -102,8 +173,8 @@ def test_resume_upload_returns_processing_and_creates_queued_task(tmp_path: Path
         async def transaction(self):
             yield
 
-        async def create_resume(self, **_: object) -> tuple[object, bool, bool]:
-            return type("Resume", (), {"id": uuid4()})(), False, True
+        async def create_resume(self, **_: object) -> tuple[object, bool, bool, None]:
+            return type("Resume", (), {"id": uuid4()})(), False, True, None
 
     class RecordingTaskRepository:
         received: dict[str, object] | None = None
@@ -148,8 +219,8 @@ def test_resume_upload_reuses_same_content_without_creating_a_second_task(tmp_pa
         async def transaction(self):
             yield
 
-        async def create_resume(self, **_: object) -> tuple[object, bool, bool]:
-            return SimpleNamespace(id=resume_id, parse_status="succeeded"), True, False
+        async def create_resume(self, **_: object) -> tuple[object, bool, bool, None]:
+            return SimpleNamespace(id=resume_id, parse_status="succeeded"), True, False, None
 
     class FailingTaskRepository:
         async def create_or_get_queued_resume_task(self, **_: object) -> tuple[object, bool]:
@@ -186,8 +257,8 @@ def test_resume_upload_cleans_transient_file_when_task_creation_fails(tmp_path: 
         async def transaction(self):
             yield
 
-        async def create_resume(self, **_: object) -> tuple[object, bool, bool]:
-            return SimpleNamespace(id=uuid4()), False, True
+        async def create_resume(self, **_: object) -> tuple[object, bool, bool, None]:
+            return SimpleNamespace(id=uuid4()), False, True, None
 
     class FailingTaskRepository:
         async def create_or_get_queued_resume_task(self, **_: object) -> tuple[object, bool]:
@@ -215,10 +286,10 @@ def test_resume_upload_cleans_transient_file_when_task_creation_fails(tmp_path: 
 
 def test_document_upload_reuses_object_and_returns_created_result(tmp_path: Path) -> None:
     class Repository:
-        async def create_document(self, **_: object) -> tuple[object, bool, bool]:
+        async def create_document(self, **_: object) -> tuple[object, bool, bool, None]:
             return SimpleNamespace(
                 id=uuid4(), file_type="md", created_at=datetime.now(UTC)
-            ), False, False
+            ), False, False, None
 
     async def execute() -> object:
         service = CandidatePreparationService(
@@ -242,7 +313,7 @@ def test_document_upload_reuses_object_and_returns_created_result(tmp_path: Path
 
 def test_document_upload_cleans_transient_file_when_repository_fails(tmp_path: Path) -> None:
     class FailingRepository:
-        async def create_document(self, **_: object) -> tuple[object, bool, bool]:
+        async def create_document(self, **_: object) -> tuple[object, bool, bool, None]:
             raise RuntimeError("document creation failed")
 
     async def execute() -> None:
@@ -286,7 +357,7 @@ def test_document_upload_returns_storage_failure_without_persisting_a_record() -
             raise OSError("storage unavailable")
 
     class Repository:
-        async def create_document(self, **_: object) -> tuple[object, bool, bool]:
+        async def create_document(self, **_: object) -> tuple[object, bool, bool, None]:
             raise AssertionError("storage failure must happen before repository access")
 
     async def execute() -> object:

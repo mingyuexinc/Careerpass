@@ -41,7 +41,7 @@ class FakeJobRepository:
         job = SimpleNamespace(id=uuid4(), file_name=_.get("file_name"))
         self.active[content_sha256] = job
         self.created.append(job)
-        return job, True
+        return job, True, None
 
 
 class FakeTaskRepository:

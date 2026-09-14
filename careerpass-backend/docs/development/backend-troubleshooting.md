@@ -161,6 +161,42 @@ Qwen 返回的画像通过 JSON Schema，但教育字段出现 Schema 名称、�
 - 该检查降低字段串位和 Schema 泄漏风险，不宣称仅靠字符串支持即可证明全部语义正确；固定 PDF 结果仍需开发者审阅；
 - `unknown` 只表示所有非实习工作经历均缺少有效时间段，不等于解析失败。
 
+## 重传同内容简历返回 409 resume is not ready for parsing
+
+### 现象与原因
+
+删除简历或账号重置后，重新上传同一份 PDF 返回 `409 resume is not ready for parsing`。根因是两段式对象删除被打断：账号重置事务内把无引用文件对象置为 `deleting`，物理删除和行删除在事务外逐个执行，任一环节失败或进程中断会遗留 `deleting` 行；上传按 `content_sha256` 全局复用对象时不检查状态，新简历挂到非 `ready` 对象后被任务前置条件拒绝。简历级内容复用短路（`_resume_by_content`）消除后才会走进该路径，因此删除/重置是复现前提。
+
+### 诊断与处理
+
+1. 用 PDF 字节 sha256 查 `stored_file_objects.status`，预期看到 `deleting` 残留；换不同内容的 PDF 上传应返回 201，可确认哈希特异性；
+2. 修复落在对象获取边界：`ObjectStorageRepository.acquire_for_reference` 统一简历/文档/JD 三条上传链路，仅复用 `ready` 对象，命中非 `ready` 对象时在同一事务内复活为 `ready` 并指向新物理文件，被替换旧文件提交后清理；
+3. 同步加固使残留更少且可自愈：重置认领记录真实 `previous_status`，重置与小时清理的行删除按 claim 隔离异常，`deleting` 残留行继续由小时清理续删。
+
+### 结论边界
+
+- 复活仅适用于无引用的非 `ready` 对象；该前提由生命周期定义保证，不需要运行时再校验归属；
+- `async_task_repository` 的 ready/processing 前置条件保留为纵深防御，不作为业务分支依据；
+- 每小时对象清理认领条件是"无引用且早于 1 小时"，后端重启会使该计时从头开始。
+
+## 集成测试迁移用例重建枚举导致 Dispatcher 崩溃、任务停在 queued
+
+### 现象与原因
+
+上传简历后 `parse_status` 长时间停留在 `processing`（远超软时限 120 秒/租约 180 秒）。`docker compose ps -a` 显示 dispatcher 已 `Exited (1)`，日志为 `cache lookup failed for type <oid>`。原因是集成测试 `test_migrations_are_repeatable_and_readiness_is_healthy` 执行 `downgrade/upgrade` 循环，枚举类型被删除重建后 OID 变化；dispatcher 的长连接持有旧 OID 的预编译缓存，轮询第一句即崩溃退出，且无重启策略不会自愈。此后任务只能入库为 `queued`，无进程派发；从未派发的任务没有执行租约，超时终结不会触发，简历因此永远 processing。Backend 若在类型重建后启动则连接全新不受影响。
+
+### 诊断与处理
+
+1. `docker compose ps -a` 确认 dispatcher 退出、`logs dispatcher` 确认 cache lookup 错误；`SELECT typname FROM pg_type WHERE oid=<oid>` 为空即可定性；
+2. 重启长连接服务：`docker compose -f docker-compose.integration.yml up -d dispatcher worker`（worker 连接池同样可能持有过期 OID，一并刷新）；
+3. 重启后 dispatcher 会把存量 `queued` 任务派发给 Worker，无需重新上传。
+
+### 结论边界
+
+- 运行包含迁移可重复性用例的集成测试后，必须重启栈内长连接服务（backend/worker/dispatcher），否则枚举缓存失效会以不同形式暴露；
+- `cache lookup failed` 属连接级缓存失效，不是数据库损坏，重启即可恢复，不需要重建卷；
+- dispatcher 缺少自动重启策略是该故障持续存在的放大因素，是否补充 restart 策略由后续 Slice 决策。
+
 ## 宿主 MinerU 可用但 Worker 容器连续连接失败
 
 ### 现象与原因

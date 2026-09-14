@@ -107,3 +107,10 @@ Acceptance Artifact 至少包含 `report.md` 和 `actual.json`；不写入完整
 - 真实解析交付链路的代码、任务状态、画像持久化和外部解析调用验证已完成；前端只消费上传和解析状态，不消费画像或匹配资格详情。
 - 当前仅保留成功验收产物：`careerpass-backend/tests/acceptance/s04_resume_parse/delivery-acceptance-results/20260815T155611Z-fc83327a`。此前最终判定失败的产物已按开发者裁定删除。
 - S-04 关闭状态为 `integration_delivered`；后续 S-07 接收已校验画像和匹配资格，S-06 不依赖 S-04；不扩大本 Slice 范围。
+
+## 10. 整改记录：同内容重传 409
+
+- 问题：删除/重置后重传同一 PDF 返回 409 `resume is not ready for parsing`，成因与诊断见 `docs/development/backend-troubleshooting.md`「重传同内容简历返回 409」案例；
+- 修复：对象获取统一为 `ObjectStorageRepository.acquire_for_reference`，仅复用 `ready` 对象，命中 `deleting` 残留对象时同事务复活并指向新物理文件；数据不变量已同步 `docs/data/database-design.md`；
+- 回归证据：`tests/integration/test_runtime_dependencies.py::test_resume_upload_revives_stranded_deleting_object_instead_of_409`（种子 `deleting` 对象 + 同内容上传返回 201、对象复活、旧物理文件清理、任务入队）；
+- 同步修正既有测试 `test_candidate_preparation_upload_reuses_objects_without_orphans` 中与自身声明语义矛盾的 409 断言（同内容不同幂等键应为 201 复用，该失败在本次修复前已存在）。

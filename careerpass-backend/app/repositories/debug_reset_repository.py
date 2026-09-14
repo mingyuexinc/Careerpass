@@ -322,12 +322,13 @@ class DebugResetRepository:
             )
             if value is None or await self._has_reference(value.id):
                 continue
+            previous_status = value.status
             value.status = "deleting"
             claims.append(
                 CleanupClaim(
                     object_id=value.id,
                     storage_key=value.storage_key,
-                    previous_status="deleting",
+                    previous_status=previous_status,
                 )
             )
         await self._session.flush()

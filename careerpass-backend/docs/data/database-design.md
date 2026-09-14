@@ -33,7 +33,7 @@
 | `candidates` | `id`；`user_id → users` | `user_id`、`current_resume_id` | `user_id` 唯一，一对一；当前简历可为空，删除后不自动回退 |
 | `hr_profiles` | `id`；`user_id → users` | `user_id` | `user_id` 唯一，一对一 |
 | `user_roles` | `id`；`user_id → users` | 角色关联 | 服务端复核角色归属 |
-| `stored_file_objects` | `id` | `storage_key`、`content_sha256`、状态 | `storage_key`、`content_sha256` 唯一；内部定位不进入 API |
+| `stored_file_objects` | `id` | `storage_key`、`content_sha256`、状态 | `storage_key`、`content_sha256` 唯一；内部定位不进入 API；仅 `ready` 对象可承接新引用，上传哈希命中非 `ready` 对象时在同一事务内复活为 `ready` 并指向新物理文件，被替换旧文件提交后清理，`deleting` 残留行由小时级对象清理续删 |
 | `resumes` | `id`；`candidate_id → candidates` | 文件引用、解析状态、失败分类、`deleted_at` | 只接受 `ready` 文件对象；同一 Candidate 可有多条记录；逻辑删除后不参与列表、检索和内容幂等复用 |
 | `candidate_profiles` | `id`；`resume_id → resumes` | 结构化画像 | `resume_id` 唯一；`years_of_experience` 为 `unknown/x个月/x年` |
 | `candidate_documents` | `id`；`candidate_id → candidates`；`stored_file_object_id → stored_file_objects` | `document_type` 固定为 `other`、`document_name`、`file_type`、文件引用、上传幂等键、`deleted_at` | 仅保存成功资料；不进入解析任务；失败文件不落库；逻辑删除后不参与新的资料检索 |

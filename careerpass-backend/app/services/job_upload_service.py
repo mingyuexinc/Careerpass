@@ -81,6 +81,7 @@ class JobUploadService:
             return JobUploadResult(index=index, outcome="failed", error_code="storage_failed")
 
         created_file_object = False
+        replaced_storage_key: str | None = None
         try:
             async with self._repository.transaction():
                 existing = await self._repository.find_active_by_digest(
@@ -95,7 +96,11 @@ class JobUploadService:
                         task_status="existing",
                     )
                 else:
-                    job, created_file_object = await self._repository.create_job(
+                    (
+                        job,
+                        created_file_object,
+                        replaced_storage_key,
+                    ) = await self._repository.create_job(
                         hr_profile_id=hr_profile_id,
                         upload=stored_upload,
                         detected_mime_type=validated.mime_type,
@@ -120,6 +125,8 @@ class JobUploadService:
 
         if not created_file_object:
             self._storage.delete(stored_upload.storage_key)
+        if replaced_storage_key is not None:
+            _delete_replaced_object(self._storage, replaced_storage_key)
         return result
 
 
@@ -154,3 +161,10 @@ def _safe_file_name(filename: str | None) -> str | None:
         return None
     name = PurePath(filename.replace("\\", "/")).name.strip()
     return name[:255] or None
+
+
+def _delete_replaced_object(storage: LocalObjectStorage, storage_key: str) -> None:
+    try:
+        storage.delete(storage_key)
+    except OSError:
+        pass

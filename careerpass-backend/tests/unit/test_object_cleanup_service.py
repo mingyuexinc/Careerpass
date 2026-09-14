@@ -73,6 +73,32 @@ def test_cleanup_finalizes_successful_physical_deletion() -> None:
     assert storage.deleted == [claim.storage_key]
 
 
+def test_cleanup_continues_batch_when_finalize_fails() -> None:
+    failing = CleanupClaim(object_id=uuid4(), storage_key="a" * 32, previous_status="ready")
+    succeeding = CleanupClaim(object_id=uuid4(), storage_key="b" * 32, previous_status="ready")
+
+    class Repository:
+        async def claim_expired_unreferenced(self, **_: object) -> list[CleanupClaim]:
+            return [failing, succeeding]
+
+        async def restore_after_delete_failure(self, _: CleanupClaim) -> None:
+            raise AssertionError("physical deletion succeeded; restore must not run")
+
+        async def finalize_deletion(self, object_id: object) -> bool:
+            if object_id == failing.object_id:
+                raise RuntimeError("finalize failed")
+            return True
+
+    class Storage:
+        def delete(self, _: str) -> None:
+            return None
+
+    result = asyncio.run(
+        ObjectCleanupService(repository=Repository(), storage=Storage()).run_once()  # type: ignore[arg-type]
+    )
+    assert result == 1
+
+
 def test_hourly_entrypoint_uses_a_fresh_repository_session(tmp_path) -> None:
     class Session:
         async def __aenter__(self):

@@ -69,11 +69,13 @@ class CandidatePreparationService:
         display_name = _display_name(name, filename, "resume", "pdf")
         try:
             async with self._repository.transaction():
-                resume, reused, used_new_file_object = await self._repository.create_resume(
-                    candidate_id=candidate_id,
-                    name=display_name,
-                    upload=upload,
-                    idempotency_key=idempotency_key,
+                resume, reused, used_new_file_object, replaced_storage_key = (
+                    await self._repository.create_resume(
+                        candidate_id=candidate_id,
+                        name=display_name,
+                        upload=upload,
+                        idempotency_key=idempotency_key,
+                    )
                 )
                 if not reused:
                     await self._task_repository.create_or_get_queued_resume_task(
@@ -85,6 +87,8 @@ class CandidatePreparationService:
             raise
         if not used_new_file_object:
             self._storage.delete(upload.storage_key)
+        if replaced_storage_key is not None:
+            _delete_transient_upload(self._storage, replaced_storage_key)
         return ResumeCreated(
             resume_id=resume.id,
             parse_status=getattr(resume, "parse_status", "processing"),
@@ -133,7 +137,12 @@ class CandidatePreparationService:
         try:
             upload = self._storage.put(validated.content)
             display_name = _display_name(None, filename, "document", validated.file_type)
-            document, reused, used_new_file_object = await self._repository.create_document(
+            (
+                document,
+                reused,
+                used_new_file_object,
+                replaced_storage_key,
+            ) = await self._repository.create_document(
                 candidate_id=candidate_id,
                 name=display_name,
                 file_type=validated.file_type,
@@ -162,6 +171,8 @@ class CandidatePreparationService:
 
         if not used_new_file_object:
             self._storage.delete(upload.storage_key)
+        if replaced_storage_key is not None:
+            _delete_transient_upload(self._storage, replaced_storage_key)
         return CandidateDocumentUploadResult(
             file_name=safe_filename,
             result="duplicate" if reused else "created",

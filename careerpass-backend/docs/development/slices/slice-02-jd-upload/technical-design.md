@@ -172,3 +172,8 @@ Service 不直接访问 ORM Session 或编写 SQL；所有 Job 和文件资源�
 - Integration Scenario 已完成业务事实变更后的真实链路执行，问题整改并完成回归；
 - 前端真实接入能够按文件顺序区分“上传成功”和“上传失败”，但不消费或展示 S-03 解析状态；
 - 不产生真实外部招聘副作用。
+
+## 整改记录：对象获取统一
+
+- Job 上传的文件对象获取切换为 `ObjectStorageRepository.acquire_for_reference`，与简历/文档链路共用同一实现；消除原“仅查 ready 后直接新建”在同哈希 `deleting` 对象残留时违反 `content_sha256` 唯一约束的隐患；
+- 回归证据：`tests/integration/test_runtime_dependencies.py::test_job_upload_revives_stranded_deleting_object`（`deleting` 对象同哈希创建 Job 正常复活，无 IntegrityError）。

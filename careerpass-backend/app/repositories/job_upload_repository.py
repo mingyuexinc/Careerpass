@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import Job, StoredFileObject
 from app.infrastructure.storage.local import StoredUpload
+from app.repositories.object_storage_repository import ObjectStorageRepository
 
 
 class JobUploadRepository:
@@ -44,19 +45,11 @@ class JobUploadRepository:
         upload: StoredUpload,
         detected_mime_type: str,
         file_name: str | None = None,
-    ) -> tuple[Job, bool]:
-        file_object = await self._file_object_by_digest(upload.content_sha256)
-        created_file_object = file_object is None
-        if file_object is None:
-            file_object = StoredFileObject(
-                storage_key=upload.storage_key,
-                content_sha256=upload.content_sha256,
-                detected_mime_type=detected_mime_type,
-                file_size_bytes=upload.size_bytes,
-                status="ready",
-            )
-            self._session.add(file_object)
-            await self._session.flush()
+    ) -> tuple[Job, bool, str | None]:
+        acquired = await ObjectStorageRepository(self._session).acquire_for_reference(
+            upload=upload, mime_type=detected_mime_type
+        )
+        file_object = acquired.value
 
         job = Job(
             hr_profile_id=hr_profile_id,
@@ -65,12 +58,4 @@ class JobUploadRepository:
         )
         self._session.add(job)
         await self._session.flush()
-        return job, created_file_object
-
-    async def _file_object_by_digest(self, content_sha256: str) -> StoredFileObject | None:
-        return await self._session.scalar(
-            select(StoredFileObject).where(
-                StoredFileObject.content_sha256 == content_sha256,
-                StoredFileObject.status == "ready",
-            )
-        )
+        return job, acquired.used_new_upload, acquired.replaced_storage_key

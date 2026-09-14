@@ -67,7 +67,7 @@ class S03AcceptanceRepository:
         detected_mime_type: str,
     ) -> CreatedJob:
         uploader = JobUploadRepository(self._session)
-        job, created_file_object = await uploader.create_job(
+        job, created_file_object, _replaced_storage_key = await uploader.create_job(
             hr_profile_id=hr_profile_id,
             upload=upload,
             detected_mime_type=detected_mime_type,

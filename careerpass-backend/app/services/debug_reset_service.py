@@ -49,7 +49,11 @@ class DebugResetService:
             except OSError:
                 failed_deletions += 1
                 continue
-            await self._object_repository.finalize_deletion(claim.object_id)
+            try:
+                await self._object_repository.finalize_deletion(claim.object_id)
+            except Exception:
+                # The committed deleting row stays retriable by the hourly cleanup.
+                failed_deletions += 1
         if failed_deletions:
             logger.warning(
                 "debug reset left physical object cleanup pending role=%s count=%d",
