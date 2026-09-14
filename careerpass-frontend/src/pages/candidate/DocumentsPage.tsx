@@ -129,6 +129,11 @@ export function DocumentsPage() {
               onDelete={() => void deleteResume()}
             />
           ) : null}
+          {state.resumePollingNotice ? (
+            <p className="muted-text" role="status">
+              {state.resumePollingNotice}
+            </p>
+          ) : null}
         </article>
         <article className="panel upload-panel">
           <div className="panel-heading">

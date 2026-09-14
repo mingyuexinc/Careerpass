@@ -19,6 +19,7 @@ from app.schemas.candidate_preparation import (
     ResumeCreated,
     ResumeListItem,
     ResumeListResponse,
+    ResumeStatus,
 )
 
 MAX_FILE_SIZE = 10_000_000
@@ -181,6 +182,18 @@ class CandidatePreparationService:
             upload_status="success",
             uploaded_at=document.created_at,
         )
+    async def get_resume_status(
+        self, candidate_id: UUID, resume_id: UUID
+    ) -> ResumeStatus | None:
+        resume = await self._repository.get_resume_status(candidate_id, resume_id)
+        if resume is None:
+            return None
+        return ResumeStatus(
+            resume_id=resume.id,
+            parse_status=resume.parse_status,
+            failure_code=resume.failure_code if resume.parse_status == "failed" else None,
+        )
+
     async def list_resumes(
         self, candidate_id: UUID, page: int, page_size: int
     ) -> ResumeListResponse:

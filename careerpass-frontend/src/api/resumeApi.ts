@@ -1,4 +1,5 @@
 import type { Resume, ResumeParseStatus } from "../domain/types";
+import { ApiRequestError } from "./applicationApi";
 
 interface ApiResponse<T> {
   code: number;
@@ -7,6 +8,11 @@ interface ApiResponse<T> {
 }
 
 interface ResumeResponse {
+  resume_id: string;
+  parse_status: Exclude<ResumeParseStatus, "not_uploaded" | "uploading">;
+}
+
+interface ResumeStatusResponse {
   resume_id: string;
   parse_status: Exclude<ResumeParseStatus, "not_uploaded" | "uploading">;
 }
@@ -65,6 +71,21 @@ export async function listResumes(accessToken: string): Promise<Resume[]> {
   });
   const data = await parseResponse<ResumeListResponse>(response);
   return data.list.map((item, index) => toResume(item, data.list.length - index));
+}
+
+export async function getResumeStatus(
+  resumeId: string,
+  accessToken: string,
+): Promise<ResumeParseStatus> {
+  const response = await fetch(`${apiBaseUrl}/resumes/${resumeId}`, {
+    headers: authorizationHeaders(accessToken),
+  });
+  if (response.status === 404) {
+    const payload = (await response.json().catch(() => null)) as ApiResponse<null> | null;
+    throw new ApiRequestError(payload?.msg ?? "简历不存在或已删除。", 404);
+  }
+  const data = await parseResponse<ResumeStatusResponse>(response);
+  return data.parse_status;
 }
 
 export async function uploadResume(file: File, accessToken: string): Promise<Resume> {

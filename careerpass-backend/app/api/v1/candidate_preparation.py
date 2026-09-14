@@ -84,6 +84,19 @@ async def list_resumes(
     return success_response(value.model_dump(mode="json", exclude_none=True))
 
 
+@candidate_preparation_router.get("/resumes/{resume_id}")
+async def get_resume_status(
+    resume_id: UUID,
+    identity: Annotated[CurrentIdentity, Depends(get_current_identity)],
+    service: Annotated[CandidatePreparationService, Depends(get_candidate_preparation_service)],
+) -> dict[str, object]:
+    """Lightweight parse-status read used by frontend polling."""
+    value = await service.get_resume_status(identity.candidate_id, resume_id)
+    if value is None:
+        raise AppException(status_code=404, code=ErrorCode.NOT_FOUND, message="resume not found")
+    return success_response(value.model_dump(mode="json", exclude_none=True))
+
+
 @candidate_preparation_router.post("/candidate_documents", status_code=status.HTTP_200_OK)
 async def upload_candidate_document(
     identity: Annotated[CurrentIdentity, Depends(get_current_identity)],

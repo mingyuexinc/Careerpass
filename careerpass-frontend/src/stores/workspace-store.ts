@@ -32,6 +32,7 @@ import {
 import type {
   DeliveryProgress,
   AgentRunSummary,
+  HrJob,
   JobGoalInput,
   SupportingDocumentUploadResult,
   WorkspaceSnapshot,
@@ -44,7 +45,10 @@ interface WorkspaceState extends WorkspaceSnapshot {
   resumeLoading: boolean;
   supportingDocumentsLoading: boolean;
   error: string | null;
+  resumePollingNotice: string | null;
   refresh: (options?: { preserveView?: boolean }) => Promise<void>;
+  updateHrJobs: (jobs: HrJob[]) => void;
+  markResumePollingTimedOut: () => void;
   uploadResume: (file: File) => Promise<void>;
   deleteResume: () => Promise<void>;
   setParseResult: (result: "succeeded" | "failed") => Promise<void>;
@@ -129,13 +133,15 @@ function isMockMode(): boolean {
   );
 }
 
+export { isMockMode };
+
 async function runAction(
   set: (partial: Partial<WorkspaceState>) => void,
   action: () => Promise<WorkspaceSnapshot>,
   loadingKey?: "resumeLoading" | "supportingDocumentsLoading",
 ): Promise<void> {
   const startedState: Partial<WorkspaceState> = loadingKey ? { [loadingKey]: true } : {};
-  set({ loading: true, error: null, ...startedState });
+  set({ loading: true, error: null, resumePollingNotice: null, ...startedState });
   try {
     set(await action());
     const completedState: Partial<WorkspaceState> = loadingKey
@@ -165,6 +171,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   resumeLoading: false,
   supportingDocumentsLoading: false,
   error: null,
+  resumePollingNotice: null,
   agentRun: null,
   agentRunCanStart: false,
   savingGoal: false,
@@ -176,6 +183,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       loading: true,
       ...(preserveView ? {} : { initialized: false }),
       error: null,
+      resumePollingNotice: null,
     });
     try {
       const snapshot: WorkspaceSnapshot = {
@@ -262,6 +270,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
           : { error: error instanceof Error ? error.message : "数据加载失败。" }),
       });
     }
+  },
+  updateHrJobs: (jobs) => {
+    set({ hrJobs: jobs, currentHrJob: jobs.at(-1) ?? null });
+  },
+  markResumePollingTimedOut: () => {
+    set({ resumePollingNotice: "解析耗时较长，可稍后手动刷新查看结果。" });
   },
   uploadResume: async (file) =>
     runAction(
@@ -587,6 +601,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       resumeLoading: false,
       supportingDocumentsLoading: false,
       error: null,
+      resumePollingNotice: null,
       agentRun: null,
       agentRunCanStart: false,
       savingGoal: false,

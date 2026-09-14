@@ -117,6 +117,17 @@ class CandidatePreparationRepository:
             await self._session.flush()
         return document, False, used_new_file_object, replaced_storage_key
 
+    async def get_resume_status(
+        self, candidate_id: UUID, resume_id: UUID
+    ) -> Resume | None:
+        return await self._session.scalar(
+            select(Resume).where(
+                Resume.id == resume_id,
+                Resume.candidate_id == candidate_id,
+                Resume.deleted_at.is_(None),
+            )
+        )
+
     async def list_resumes(
         self, candidate_id: UUID, page: int, page_size: int
     ) -> tuple[list[Resume], int, UUID | None]:

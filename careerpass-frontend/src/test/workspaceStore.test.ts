@@ -193,3 +193,54 @@ describe("workspace upload loading scopes", () => {
     useAuthStore.getState().signOut();
   });
 });
+
+describe("workspace status polling support", () => {
+  beforeEach(async () => {
+    await useWorkspaceStore.getState().resetData();
+    useWorkspaceStore.setState({
+      initialized: true,
+      loading: false,
+      error: null,
+      resumePollingNotice: null,
+      hrJobs: [],
+    });
+  });
+
+  it("patches hr jobs and the current job without resetting other state", () => {
+    const resume = {
+      id: "resume-1",
+      fileName: "resume.pdf",
+      uploadedAt: "2026-09-14T00:00:00Z",
+      parseStatus: "succeeded" as const,
+      version: 1,
+      isCurrent: true,
+    };
+    useWorkspaceStore.setState({ resume });
+    const job = {
+      id: "job-1",
+      fileName: "role.md",
+      jobTitle: null,
+      companyName: null,
+      createdAt: "2026-09-14T00:00:00Z",
+      parseStatus: "succeeded" as const,
+    };
+
+    useWorkspaceStore.getState().updateHrJobs([job]);
+
+    const state = useWorkspaceStore.getState();
+    expect(state.hrJobs).toEqual([job]);
+    expect(state.currentHrJob).toEqual(job);
+    expect(state.resume).toEqual(resume);
+    expect(state.initialized).toBe(true);
+  });
+
+  it("marks the resume polling notice and clears it with local state", async () => {
+    useWorkspaceStore.getState().markResumePollingTimedOut();
+
+    expect(useWorkspaceStore.getState().resumePollingNotice).toContain("解析耗时较长");
+
+    await useWorkspaceStore.getState().clearLocalState();
+
+    expect(useWorkspaceStore.getState().resumePollingNotice).toBeNull();
+  });
+});

@@ -548,6 +548,18 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
                 f"/api/v1/resumes/{created_resume.json()['data']['resume_id']}/profile",
                 headers=second_headers,
             )
+            own_status = client.get(
+                f"/api/v1/resumes/{created_resume.json()['data']['resume_id']}",
+                headers={"Authorization": first_headers["Authorization"]},
+            )
+            other_status = client.get(
+                f"/api/v1/resumes/{created_resume.json()['data']['resume_id']}",
+                headers=second_headers,
+            )
+            missing_status = client.get(
+                f"/api/v1/resumes/{uuid4()}",
+                headers={"Authorization": first_headers["Authorization"]},
+            )
 
         assert created_resume.status_code == replayed_resume.status_code == 201
         assert created_resume.json()["code"] == 201
@@ -598,6 +610,14 @@ def test_candidate_preparation_apis_enforce_contract_and_candidate_isolation(
         assert other_documents.json()["data"]["list"] == []
         assert unavailable_profile.status_code == 404
         assert unavailable_profile.json()["code"] == 404
+
+        assert own_status.status_code == 200
+        assert own_status.json()["data"]["resume_id"] == created_resume.json()["data"]["resume_id"]
+        assert own_status.json()["data"]["parse_status"] == "processing"
+        assert "failure_code" not in own_status.json()["data"]
+        assert other_status.status_code == 404
+        assert other_status.json()["code"] == 404
+        assert missing_status.status_code == 404
     finally:
         get_settings.cache_clear()
 

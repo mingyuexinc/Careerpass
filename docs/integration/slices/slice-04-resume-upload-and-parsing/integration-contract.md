@@ -36,6 +36,13 @@
 - 前端使用它观察 `processing/succeeded/failed`；
 - 不返回画像字段。
 
+### `GET /api/v1/resumes/{resume_id}`
+
+- 已认证 Candidate，按 `resume_id` 返回单条 `resume_id`、`parse_status` 和（仅 `failed` 时的）`failure_code`；
+- 前端"解析中"状态轮询必须优先使用本端点，不得以全量工作区刷新或列表轮询代替；
+- 资源不存在、已删除或非本人归属时返回 404，不区分原因；
+- 不返回画像、简历正文、内部路径、对象键或模型原始响应。
+
 ## 3. 前端状态
 
 | 状态 | 页面表现 |

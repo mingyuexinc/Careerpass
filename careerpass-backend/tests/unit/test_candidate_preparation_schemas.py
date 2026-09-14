@@ -379,6 +379,52 @@ def test_document_upload_returns_storage_failure_without_persisting_a_record() -
     assert result.failure_code == "storage_unavailable"
 
 
+def test_get_resume_status_maps_parse_fields_and_hides_failure_when_not_failed() -> None:
+    resume_id = uuid4()
+
+    class Repository:
+        def __init__(self, resume: object | None) -> None:
+            self._resume = resume
+
+        async def get_resume_status(self, *_: object) -> object | None:
+            return self._resume
+
+    async def execute() -> tuple[object, object, object]:
+        failed_service = CandidatePreparationService(
+            repository=Repository(  # type: ignore[arg-type]
+                SimpleNamespace(id=resume_id, parse_status="failed", failure_code="parser_timeout")
+            ),
+            task_repository=object(),
+            storage=object(),
+        )  # type: ignore[arg-type]
+        processing_service = CandidatePreparationService(
+            repository=Repository(  # type: ignore[arg-type]
+                SimpleNamespace(id=resume_id, parse_status="processing", failure_code=None)
+            ),
+            task_repository=object(),
+            storage=object(),
+        )  # type: ignore[arg-type]
+        missing_service = CandidatePreparationService(
+            repository=Repository(None),  # type: ignore[arg-type]
+            task_repository=object(),
+            storage=object(),
+        )  # type: ignore[arg-type]
+        return (
+            await failed_service.get_resume_status(uuid4(), uuid4()),
+            await processing_service.get_resume_status(uuid4(), uuid4()),
+            await missing_service.get_resume_status(uuid4(), uuid4()),
+        )
+
+    failed, processing, missing = asyncio.run(execute())
+
+    assert failed.resume_id == resume_id
+    assert failed.parse_status == "failed"
+    assert failed.failure_code == "parser_timeout"
+    assert processing.parse_status == "processing"
+    assert processing.failure_code is None
+    assert missing is None
+
+
 def test_list_methods_map_repository_rows_to_safe_responses() -> None:
     created_at = datetime.now(UTC)
     resume = SimpleNamespace(

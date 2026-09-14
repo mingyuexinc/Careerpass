@@ -33,6 +33,12 @@ class ResumeCreated(BaseModel):
     parse_status: ParseStatus = "processing"
 
 
+class ResumeStatus(BaseModel):
+    resume_id: UUID
+    parse_status: ParseStatus
+    failure_code: ParseFailureCode | None = None
+
+
 class ResumeListItem(BaseModel):
     resume_id: UUID
     name: str

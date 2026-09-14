@@ -25,7 +25,7 @@
 | Capability Acceptance | 固定 PDF 解析成功，生成 `report.md` 和 `actual.json` |
 | Slice Integration | Resume、StoredFileObject、AsyncTaskRun 和 CandidateProfile 状态一致 |
 | Infrastructure | Dispatcher/Worker 真实领取、执行和终态提交 |
-| E2E | 前端显示上传成功、解析中和解析成功 |
+| E2E | 前端显示上传成功、解析中和解析成功；解析中状态通过 `GET /api/v1/resumes/{resume_id}` 按指数退避轮询观察，不触发全量工作区刷新 |
 
 ## 4. 最小演示步骤
 

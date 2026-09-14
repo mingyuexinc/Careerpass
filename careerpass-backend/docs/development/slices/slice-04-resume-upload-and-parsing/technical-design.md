@@ -27,8 +27,14 @@
 ### `GET /api/v1/resumes`
 
 - 仅返回当前 Candidate 的 Resume 列表和解析状态；
-- 用于前端刷新/轮询处理状态；
+- 用于前端非轮询场景的整体刷新；
 - 不返回文件路径、对象键、简历正文、画像字段或模型响应。
+
+### `GET /api/v1/resumes/{resume_id}`
+
+- 返回当前 Candidate 单条 Resume 的 `resume_id`、`parse_status` 和（仅 `failed` 时的）`failure_code`；
+- 专用于前端"解析中"状态轮询，前端以指数退避调用并在终态后做一次整体刷新；
+- 资源不存在、已删除或非本人归属时返回 404，不区分原因。
 
 ### `GET /api/v1/resumes/{resume_id}/profile`
 
