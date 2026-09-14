@@ -12,8 +12,8 @@ import { useWorkspaceStore } from "../../stores/workspace-store";
 export function JobGoalCreatePage() {
   const state = useWorkspaceStore((store) => store);
   const [offerTarget, setOfferTarget] = useState("1");
-  const [title, setTitle] = useState("前端工程师");
-  const [filters, setFilters] = useState("优先 AI 应用和数据产品，不考虑长期出差岗位。");
+  const [title, setTitle] = useState("Agent开发工程师");
+  const [filters, setFilters] = useState("不考虑北京作为工作地点；不考虑兼职性质岗位。");
   const [toast, setToast] = useState<string | null>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
 
