@@ -1,572 +1,2472 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Careerpass · 求职 Agent 原型</title>
+    <title>Careerpass · 求职 Agent 演示</title>
     <style>
+      /* 样式与 careerpass-frontend/src/styles/tokens.css + globals.css 保持一致（不含调试重置面板）。 */
       :root {
-        --bg: #f4f5f7;
-        --surface: #ffffff;
-        --surface-soft: #fafafa;
-        --line: #eceef2;
-        --text: #17202b;
-        --muted: #8c96a3;
-        --muted-2: #b8bec7;
-        --brand: #ff6a00;
-        --brand-dark: #e85800;
-        --brand-soft: #fff1e7;
-        --success: #2dbb78;
-        --success-soft: #eaf9f1;
-        --info: #588cf4;
-        --info-soft: #edf3ff;
-        --danger: #eb6262;
-        --danger-soft: #fff0f0;
+        --color-bg: #f4f5f7;
+        --color-surface: #ffffff;
+        --color-line: #eceef2;
+        --color-text: #17202b;
+        --color-input-text: #5c6877;
+        --color-muted: #8c96a3;
+        --color-brand: #ff6a00;
+        --color-brand-dark: #e85800;
+        --color-brand-soft: #fff1e7;
+        --color-success: #2dbb78;
+        --color-success-soft: #e8f8ef;
+        --color-danger: #eb6262;
+        --color-danger-soft: #fff0f0;
         --radius-lg: 24px;
         --radius-md: 16px;
         --radius-sm: 10px;
-        --shadow: 0 10px 28px rgba(28, 37, 48, 0.06);
-        --shadow-soft: 0 3px 14px rgba(28, 37, 48, 0.05);
-        --sidebar: 256px;
+        --shadow: 0 10px 28px rgb(28 37 48 / 6%);
+        --shadow-soft: 0 3px 14px rgb(28 37 48 / 5%);
+        font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        color: var(--color-text);
+        background: var(--color-bg);
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
       }
-
       * { box-sizing: border-box; }
-      html, body { min-height: 100%; }
       body {
+        min-width: 320px;
+        min-height: 100vh;
         margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
-        font-size: 14px;
+        background: var(--color-bg);
       }
       button, input, textarea, select { font: inherit; }
+      button, a { -webkit-tap-highlight-color: transparent; }
       button { cursor: pointer; }
-      button:disabled { cursor: not-allowed; opacity: .5; }
+      button:disabled, .is-disabled { cursor: not-allowed; opacity: 0.55; }
       a { color: inherit; text-decoration: none; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 {
+        margin-bottom: 10px;
+        font-size: clamp(28px, 4vw, 42px);
+        letter-spacing: -0.045em;
+      }
+      h2 { margin-bottom: 8px; font-size: 19px; letter-spacing: -0.025em; }
+      p { line-height: 1.65; }
 
-      .hidden { display: none !important; }
-      .muted { color: var(--muted); }
-      .eyebrow { color: var(--brand); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-      .page-title { margin: 4px 0 8px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.04em; }
-      .page-subtitle { margin: 0; color: var(--muted); line-height: 1.7; }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      .eyebrow {
+        color: var(--color-brand);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+      }
+      .page-subtitle, .muted-text { color: var(--color-muted); }
+      .inline-button { display: inline-flex; align-items: center; gap: 8px; }
 
-      .btn {
+      .auth-layout {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        padding: 24px;
+        background: radial-gradient(circle at 18% 10%, #fff4e9 0, transparent 36%), var(--color-bg);
+      }
+      .login-card {
+        width: min(500px, 100%);
+        padding: 38px;
+        background: var(--color-surface);
+        border: 1px solid #fff;
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+      }
+      .login-brand { margin-bottom: 30px; }
+      .brand-lockup { display: flex; align-items: center; gap: 11px; }
+      .brand-lockup strong, .brand-lockup span { display: block; }
+      .brand-lockup span {
+        margin-top: 2px;
+        color: var(--color-muted);
+        font-size: 11px;
+      }
+      .brand-mark {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border-radius: 12px;
+        background: var(--color-brand);
+        color: white;
+        font-size: 22px;
+        font-weight: 900;
+        box-shadow: 0 8px 18px rgb(255 106 0 / 22%);
+      }
+      .role-switcher {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        margin: 28px 0 20px;
+        padding: 4px;
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+      }
+      .role-switcher button {
+        min-height: 42px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--color-muted);
+      }
+      .role-switcher button.is-active {
+        background: white;
+        color: var(--color-brand);
+        box-shadow: var(--shadow-soft);
+        font-weight: 800;
+      }
+      .login-form { display: grid; gap: 15px; }
+      .login-form label, .form-grid label, .status-editor label {
+        display: grid;
+        gap: 8px;
+        color: var(--color-text);
+        font-size: 13px;
+        font-weight: 750;
+      }
+      input, textarea, select {
+        width: 100%;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-sm);
+        background: white;
+        color: var(--color-input-text);
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1.5;
+        outline: 0;
+      }
+      input, select { min-height: 44px; padding: 0 12px; }
+      .login-form input::placeholder {
+        color: var(--color-muted);
+        font-weight: 400;
+        opacity: 1;
+      }
+      textarea { padding: 12px; resize: vertical; }
+      input:focus, textarea:focus, select:focus {
+        border-color: var(--color-brand);
+        box-shadow: 0 0 0 3px var(--color-brand-soft);
+      }
+      .login-form .form-alert {
+        margin: 0;
+        color: var(--color-danger);
+        font-size: 13px;
+      }
+      .login-register-link {
+        display: block;
+        margin-top: 22px;
+        color: var(--color-brand);
+        font-size: 13px;
+        text-align: center;
+      }
+
+      .button {
+        min-height: 42px;
+        padding: 0 17px;
+        border: 0;
+        border-radius: var(--radius-sm);
+        font-weight: 800;
+        transition: transform 0.16s ease, background 0.16s ease;
+      }
+      .button:not(:disabled):hover { transform: translateY(-1px); }
+      .button-primary {
+        background: var(--color-brand);
+        color: white;
+        box-shadow: 0 8px 18px rgb(255 106 0 / 18%);
+      }
+      .button-primary:not(:disabled):hover { background: var(--color-brand-dark); }
+      .button-secondary {
+        border: 1px solid var(--color-line);
+        background: white;
+        color: var(--color-text);
+      }
+      .button-ghost {
+        min-height: 34px;
+        padding: 0 10px;
+        background: transparent;
+        color: var(--color-brand);
+      }
+      .button-danger {
+        background: var(--color-danger-soft);
+        color: var(--color-danger);
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+      .sidebar {
+        display: flex;
+        min-height: 100vh;
+        flex-direction: column;
+        gap: 28px;
+        padding: 25px 16px 18px;
+        background: white;
+        border-right: 1px solid var(--color-line);
+      }
+      .role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        width: fit-content;
+        margin: 0 10px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: var(--color-brand-soft);
+        color: var(--color-brand-dark);
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .role-badge .dot {
+        width: 7px;
+        height: 7px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--color-brand);
+      }
+      .sidebar-nav { display: grid; gap: 6px; }
+      .sidebar-nav a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        color: var(--color-muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .sidebar-nav a:hover { background: var(--color-bg); color: var(--color-text); }
+      .sidebar-nav a.active { background: var(--color-brand-soft); color: var(--color-brand); }
+      .nav-icon {
+        display: grid;
+        width: 23px;
+        height: 23px;
+        place-items: center;
+        border-radius: 7px;
+        background: #f4f5f7;
+        font-size: 14px;
+      }
+      .sidebar-nav a.active .nav-icon { background: white; }
+      .sidebar-footer {
+        display: grid;
+        gap: 13px;
+        margin-top: auto;
+        color: var(--color-muted);
+        font-size: 12px;
+      }
+      .profile-mini {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 10px;
+        border-top: 1px solid var(--color-line);
+      }
+      .avatar {
+        display: grid;
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ffd4b7, #ffe9d7);
+        color: var(--color-brand-dark);
+        font-weight: 800;
+      }
+      .profile-mini strong { display: block; color: var(--color-text); font-size: 13px; }
+      .profile-mini span { display: block; margin-top: 0; color: var(--color-muted); font-size: 12px; }
+      .sidebar-footer button {
+        min-height: 36px;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-sm);
+        background: white;
+        color: var(--color-text);
+      }
+      .content-area { min-width: 0; padding: 42px clamp(20px, 4vw, 62px); }
+      .page-container, .page-view { width: min(1160px, 100%); margin: 0 auto; }
+      .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+      .page-header .page-subtitle { max-width: 720px; margin-bottom: 0; }
+      .page-header-action { flex: 0 0 auto; }
+      .hero-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 220px;
+        margin-bottom: 20px;
+        padding: 30px 34px;
+        overflow: hidden;
+        border-radius: var(--radius-lg);
+        background: linear-gradient(135deg, #fff7f0, #fff);
+        box-shadow: var(--shadow-soft);
+      }
+      .hero-card h2 { font-size: 25px; }
+      .hero-card p { max-width: 650px; color: var(--color-muted); }
+      .hero-orb {
+        display: grid;
+        width: 100px;
+        height: 100px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 32px;
+        background: var(--color-brand);
+        color: #fff;
+        font-size: 34px;
+        box-shadow: 0 16px 28px rgba(255, 106, 0, 0.22);
+      }
+      .panel-grid, .upload-grid, .two-col {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+      .two-col { grid-template-columns: 1.25fr 0.75fr; }
+      .job-goal-section-nav {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 6px;
+        border: 1px solid var(--color-line);
+        border-radius: 17px;
+        background: white;
+        box-shadow: var(--shadow-soft);
+      }
+      .job-goal-section-nav a {
+        min-width: 0;
+        padding: 13px 16px;
+        border-radius: 12px;
+        color: var(--color-muted);
+        font-size: 14px;
+        font-weight: 800;
+        text-align: center;
+        transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+      }
+      .job-goal-section-nav a:hover, .job-goal-section-nav a.is-active {
+        background: var(--color-brand-soft);
+        color: var(--color-brand-dark);
+      }
+      .job-goal-section-nav a.is-active { box-shadow: inset 0 0 0 1px rgb(255 106 0 / 14%); }
+      .job-goal-create-page { display: grid; gap: 20px; }
+      .job-goal-create-page > .panel { margin-bottom: 0; }
+      .form-action-row { display: flex; justify-content: flex-start; }
+      .agent-card-content, .agent-card-action { min-width: 0; }
+      .agent-card-action { flex: 0 0 auto; }
+      .agent-card-action .button { white-space: nowrap; }
+      .agent-start-button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
         min-height: 42px;
         padding: 0 18px;
+        border-radius: 12px;
+      }
+      .job-goal-list-panel { margin-bottom: 0; }
+      .job-goal-table { margin-top: 18px; overflow-x: auto; }
+      .job-goal-table-head, .job-goal-record-list {
+        display: grid;
+        grid-template-columns: minmax(260px, 1.6fr) minmax(160px, 0.8fr) minmax(200px, 1fr);
+        min-width: 680px;
+      }
+      .job-goal-table-head {
+        align-items: center;
+        gap: 22px;
+        padding: 0 14px 8px;
+        color: #8a94a1;
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.02em;
+      }
+      .job-goal-record-list { gap: 8px; margin: 0; padding: 0; list-style: none; }
+      .job-goal-record {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: inherit;
+        align-items: center;
+        gap: 22px;
+        min-height: 48px;
+        padding: 10px 14px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: #fff4e8;
+        transition: background 0.16s ease;
+      }
+      .job-goal-record:nth-child(even) { border-color: #edf0f3; background: #fff; }
+      .job-goal-record:hover, .job-goal-record:nth-child(even):hover {
+        border-color: rgb(255 106 0 / 28%);
+        background: #fffaf5;
+      }
+      .job-goal-record-title {
+        overflow: hidden;
+        color: #8a4216;
+        font-size: 15px;
+        font-weight: 750;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .job-goal-record:nth-child(even) .job-goal-record-title { color: #354253; }
+      .job-goal-record-offer {
+        color: #a55d2b;
+        font-size: 13px;
+        font-weight: 650;
+        white-space: nowrap;
+      }
+      .job-goal-record:nth-child(even) .job-goal-record-offer { color: #465568; }
+      .job-goal-record-created { color: #b8754b; font-size: 12px; white-space: nowrap; }
+      .job-goal-record:nth-child(even) .job-goal-record-created { color: #98a1ac; }
+      .job-goal-record-count { color: var(--color-muted); font-size: 12px; font-weight: 600; }
+      .panel {
+        margin-bottom: 20px;
+        padding: 24px;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-lg);
+        background: white;
+        box-shadow: var(--shadow-soft);
+      }
+      .panel-heading, .application-top, .conversation-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .application-top {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr) auto;
+        align-items: start;
+      }
+      .application-heading { min-width: 0; }
+      .application-heading h2 { overflow-wrap: anywhere; }
+      .application-match-summary {
+        min-width: 0;
+        max-width: 360px;
+        padding: 12px 14px;
+        border: 1px solid rgb(255 106 0 / 18%);
+        border-radius: 12px;
+        background: #fff8f2;
+      }
+      .application-match-summary strong {
+        display: block;
+        color: var(--color-brand-dark);
+        font-size: 13px;
+      }
+      .application-match-summary p {
+        margin: 6px 0 0;
+        color: var(--color-muted);
+        font-size: 12px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+      }
+      .panel-heading p { margin-bottom: 0; }
+      .panel-heading-note { color: var(--color-brand); font-size: 12px; font-weight: 800; }
+      .condition-list, .notice-list, .quick-links, .file-list { display: grid; gap: 10px; }
+      .step-list { display: grid; gap: 12px; }
+      .step-list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 56px;
+        padding: 13px;
+        border-radius: 14px;
+        background: var(--color-bg);
+      }
+      .step-list-copy { min-width: 0; }
+      .step-list-copy strong {
+        display: block;
+        color: var(--color-text);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.4;
+      }
+      .step-list-copy span {
+        display: block;
+        margin-top: 4px;
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.5;
+      }
+      .notice-row p {
+        display: block;
+        margin-top: 4px;
+        color: var(--color-muted);
+        font-size: 12px;
+      }
+      .step-marker, .condition-marker {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--color-line);
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+        text-align: center;
+      }
+      .step-marker-active { background: var(--color-brand-soft); color: var(--color-brand); }
+      .step-marker-completed { background: var(--color-success-soft); color: var(--color-success); }
+      .guide-panel .panel-heading {
+        min-height: 28px;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+      .guide-panel .panel-heading h2 { margin-bottom: 0; }
+      .guide-summary { margin-top: 20px; }
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: #f3f4f6;
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .status-info { background: #eaf3ff; color: #3177c9; }
+      .status-success { background: var(--color-success-soft); color: #15945b; }
+      .status-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+      .feedback-card, .notice-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 20px;
+        padding: 20px;
+        border-radius: var(--radius-md);
+        background: white;
+        border: 1px solid var(--color-line);
+        box-shadow: var(--shadow-soft);
+      }
+      .feedback-card p, .notice-card p {
+        margin: 4px 0 0;
+        color: var(--color-muted);
+        font-size: 13px;
+      }
+      .empty-state { padding: 38px 24px; }
+      .error-state { border-color: #ffd9d9; background: #fff9f9; }
+      .empty-icon, .notice-icon {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--color-brand-soft);
+        color: var(--color-brand);
+        font-weight: 900;
+      }
+      .error-state .empty-icon { background: var(--color-danger-soft); color: var(--color-danger); }
+      .spinner {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        border: 3px solid var(--color-brand-soft);
+        border-top-color: var(--color-brand);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .upload-panel { min-height: 450px; }
+      .upload-box {
+        display: grid;
+        min-height: 280px;
+        margin-top: 20px;
+        place-items: center;
+        align-content: center;
+        gap: 8px;
+        padding: 22px;
+        border: 1.5px dashed #ffb37f;
+        border-radius: 20px;
+        background: #fffaf6;
+        text-align: center;
+      }
+      .upload-box p {
+        max-width: 290px;
+        margin: 0 0 9px;
+        color: var(--color-muted);
+        font-size: 13px;
+      }
+      .upload-icon {
+        display: grid;
+        width: 56px;
+        height: 56px;
+        place-items: center;
+        margin-bottom: 4px;
+        border-radius: 18px;
+        background: var(--color-brand-soft);
+        color: var(--color-brand);
+        font-size: 27px;
+      }
+      .file-info-card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        margin-top: 16px;
+        padding: 12px;
+        border: 1px solid var(--color-line);
+        border-radius: 13px;
+        background: var(--color-surface);
+        text-align: left;
+      }
+      .file-info-card.has-delete { padding-right: 48px; }
+      .file-type-icon {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 12px;
+        background: var(--color-brand-soft);
+        color: var(--color-brand);
+        font-size: 10px;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        text-align: center;
+      }
+      .file-info-copy { min-width: 0; flex: 1; }
+      .file-info-trailing {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+        align-self: flex-start;
+        margin-left: auto;
+      }
+      .file-info-trailing .status-badge { white-space: nowrap; }
+      .file-info-name {
+        display: block;
+        overflow: hidden;
+        color: var(--color-text);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .file-info-meta {
+        display: block;
+        overflow: hidden;
+        margin-top: 4px;
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 1.5;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .file-info-delete {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: grid;
+        width: 25px;
+        height: 25px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--color-muted);
+        font-size: 16px;
+        line-height: 1;
+        opacity: 0;
+        cursor: pointer;
+        transition: opacity 0.16s ease, background 0.16s ease, color 0.16s ease;
+      }
+      .file-info-card:hover .file-info-delete, .file-info-delete:focus-visible { opacity: 1; }
+      .file-info-delete:hover { background: var(--color-danger-soft); color: var(--color-danger); }
+      .file-info-delete:disabled { opacity: 0.45; cursor: not-allowed; }
+      .file-list-scroll {
+        max-height: 296px;
+        margin-top: 16px;
+        overflow-y: auto;
+        padding-right: 8px;
+        scrollbar-color: var(--color-muted) var(--color-bg);
+        scrollbar-gutter: stable;
+        scrollbar-width: thin;
+      }
+      .file-list { display: grid; gap: 10px; }
+      .file-list .file-info-card { margin-top: 0; }
+      .file-list-scroll::-webkit-scrollbar { width: 8px; }
+      .file-list-scroll::-webkit-scrollbar-track { border-radius: 8px; background: var(--color-bg); }
+      .file-list-scroll::-webkit-scrollbar-thumb {
+        border: 2px solid var(--color-bg);
+        border-radius: 8px;
+        background: var(--color-muted);
+      }
+      .inline-empty {
+        margin-top: 22px;
+        padding: 18px;
+        border-radius: 14px;
+        background: var(--color-bg);
+        color: var(--color-muted);
+        font-size: 13px;
+      }
+      .notice-card { align-items: center; }
+      .notice-card p { margin-bottom: 0; }
+      .notice-row {
+        display: flex;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 13px;
+        background: var(--color-bg);
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 20px;
+      }
+      .field-wide { grid-column: 1 / -1; }
+      .agent-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-width: 0;
+        padding: 20px;
+        border-radius: 17px;
+        background: linear-gradient(135deg, #fff8f2, #fff);
+      }
+      .agent-card h3 { margin: 0 0 7px; font-size: 17px; }
+      .agent-card p { margin: 0; color: var(--color-muted); font-size: 13px; line-height: 1.6; }
+      .agent-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 10px;
+        color: var(--color-muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .pulse { width: 8px; height: 8px; border-radius: 50%; background: #9aa3ad; }
+      .agent-state.running { color: var(--color-success); }
+      .agent-state.running .pulse {
+        background: var(--color-success);
+        box-shadow: 0 0 0 5px var(--color-success-soft);
+      }
+      .agent-state.finished { color: var(--color-success); }
+      .agent-state.finished .pulse { background: var(--color-success); }
+      .offer-progress-panel {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        margin-bottom: 20px;
+        padding: 24px;
+        border-radius: var(--radius-lg);
+        background: linear-gradient(135deg, #fff8f2, white);
+        box-shadow: var(--shadow-soft);
+      }
+      .offer-progress-panel p { color: var(--color-muted); }
+      .offer-ring {
+        display: grid;
+        width: 142px;
+        height: 142px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 50%;
+        background: conic-gradient(var(--color-brand) var(--offer-progress), var(--color-brand-soft) 0);
+      }
+      .offer-ring > div {
+        display: grid;
+        width: 112px;
+        height: 112px;
+        place-items: center;
+        align-content: center;
+        border-radius: 50%;
+        background: white;
+        text-align: center;
+      }
+      .offer-ring strong, .offer-ring span { display: block; }
+      .offer-ring strong { font-size: 25px; }
+      .offer-ring span { margin-top: 3px; color: var(--color-muted); font-size: 11px; font-weight: 700; }
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .metric {
+        padding: 18px;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-md);
+        background: white;
+      }
+      .metric span, .metric small { display: block; color: var(--color-muted); font-size: 12px; }
+      .metric strong { display: block; margin: 8px 0 2px; font-size: 28px; letter-spacing: -0.06em; color: var(--color-brand); }
+      .application-list { display: grid; gap: 16px; }
+      .round-select {
+        position: relative;
+        width: fit-content;
+        margin-left: auto;
+        margin-bottom: 16px;
+      }
+      .round-select-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        min-width: 176px;
+        min-height: 42px;
+        padding: 0 14px;
+        border: 1px solid var(--color-line);
+        border-radius: 12px;
+        background: white;
+        color: var(--color-text);
+        font-size: 13px;
+        font-weight: 800;
+        box-shadow: var(--shadow-soft);
+      }
+      .round-select-toggle:hover { border-color: rgb(255 106 0 / 32%); }
+      .round-select-toggle .caret { color: var(--color-muted); font-size: 11px; transition: transform 0.16s ease; }
+      .round-select.is-open .round-select-toggle {
+        border-color: var(--color-brand);
+        border-radius: 12px 12px 0 0;
+        box-shadow: 0 0 0 3px var(--color-brand-soft);
+      }
+      .round-select.is-open .caret { transform: rotate(180deg); }
+      .round-select-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 5;
+        display: grid;
+        width: max-content;
+        min-width: 100%;
+        padding: 6px 0;
+        border: 1px solid var(--color-brand);
+        border-top: 0;
+        border-radius: 0 0 14px 14px;
+        background: white;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .round-select-menu button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        min-height: 42px;
+        padding: 0 14px 0 18px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--color-text);
+        font-size: 13px;
+        font-weight: 700;
+        text-align: left;
+      }
+      .round-select-menu button:hover { background: var(--color-bg); }
+      .round-select-menu button.is-selected {
+        background: transparent;
+        color: var(--color-brand-dark);
+        box-shadow: inset 3px 0 0 var(--color-brand);
+      }
+      .round-select-menu button.is-selected small { color: var(--color-brand-dark); }
+      .round-select-menu button small { color: var(--color-muted); font-size: 11px; font-weight: 700; }
+      .application-list-connected {
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-lg);
+        background: white;
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+      }
+      .application-list-connected .application-card {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      .application-list-connected .application-card + .application-card { border-top: 1px solid var(--color-line); }
+      .application-card {
+        padding: 22px;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-lg);
+        background: white;
+        box-shadow: var(--shadow-soft);
+      }
+      .application-top p { margin-bottom: 0; color: var(--color-muted); font-size: 13px; }
+      .timeline { display: flex; gap: 0; margin-top: 24px; overflow-x: auto; }
+      .timeline-step {
+        display: grid;
+        min-width: 85px;
+        flex: 1;
+        justify-items: center;
+        gap: 8px;
+        color: var(--color-muted);
+        font-size: 11px;
+        text-align: center;
+      }
+      .timeline-step::before {
+        width: 100%;
+        height: 3px;
+        margin-bottom: -17px;
+        background: var(--color-line);
+        content: "";
+      }
+      .timeline-step:first-child::before { border-radius: 3px 0 0 3px; }
+      .timeline-step:last-child::before { border-radius: 0 3px 3px 0; }
+      .timeline-dot {
+        z-index: 1;
+        width: 13px;
+        height: 13px;
+        border: 3px solid white;
+        border-radius: 50%;
+        background: var(--color-line);
+        box-shadow: 0 0 0 1px var(--color-line);
+      }
+      .timeline-step.is-done, .timeline-step.is-current { color: var(--color-text); font-weight: 750; }
+      .timeline-step.is-done::before, .timeline-step.is-current::before { background: var(--color-brand); }
+      .timeline-step.is-done .timeline-dot, .timeline-step.is-current .timeline-dot {
+        background: var(--color-brand);
+        box-shadow: 0 0 0 1px var(--color-brand);
+      }
+      .timeline-step.is-terminated { color: var(--color-danger); }
+      .status-editor {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
+        margin-top: 20px;
+      }
+      .status-editor label { max-width: 260px; flex: 1; }
+      .chat-layout {
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        min-height: 590px;
+        overflow: hidden;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-lg);
+        background: white;
+        box-shadow: var(--shadow-soft);
+      }
+      .conversation-list {
+        padding: 18px;
+        border-right: 1px solid var(--color-line);
+        background: #fcfcfd;
+      }
+      .conversation-item {
+        display: grid;
+        width: 100%;
+        gap: 5px;
+        margin-top: 7px;
+        padding: 13px;
         border: 0;
         border-radius: 12px;
-        font-weight: 700;
-        transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+        background: transparent;
+        color: var(--color-text);
+        text-align: left;
       }
-      .btn:hover:not(:disabled) { transform: translateY(-1px); }
-      .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 8px 18px rgba(255, 106, 0, .2); }
-      .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
-      .btn.is-disabled { pointer-events: none; opacity: .5; cursor: not-allowed; }
-      .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
-      .btn-ghost { min-height: 36px; padding: 0 12px; background: transparent; color: var(--brand); }
-      .btn-danger { background: var(--danger-soft); color: var(--danger); }
-
-      .login-shell {
-        min-height: 100vh;
+      .conversation-item span { color: var(--color-muted); font-size: 12px; }
+      .conversation-item.is-active { background: var(--color-brand-soft); }
+      .conversation-main { display: flex; flex-direction: column; min-width: 0; }
+      .conversation-header { padding: 20px; border-bottom: 1px solid var(--color-line); }
+      .conversation-header p { margin: 0; color: var(--color-muted); font-size: 13px; }
+      .message-list {
         display: grid;
+        flex: 1;
+        align-content: start;
+        gap: 12px;
+        padding: 22px;
+        overflow-y: auto;
+      }
+      .message-row { display: flex; }
+      .message-row.is-hr { justify-content: flex-end; }
+      .message-bubble {
+        display: grid;
+        max-width: min(520px, 85%);
+        gap: 5px;
+        padding: 12px 14px;
+        border-radius: 14px 14px 14px 4px;
+        background: var(--color-bg);
+        font-size: 13px;
+      }
+      .message-row.is-hr .message-bubble {
+        border-radius: 14px 14px 4px 14px;
+        background: var(--color-brand-soft);
+      }
+      .message-row.is-attachment-only { align-items: flex-start; }
+      .message-attachment-stack { display: grid; width: min(440px, 92%); gap: 8px; }
+      .message-attachment-card {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--color-line);
+        border-radius: 14px 14px 14px 4px;
+        background: var(--color-surface);
+        box-shadow: 0 8px 22px rgb(24 32 43 / 7%);
+      }
+      .message-attachment-main { display: flex; align-items: center; min-width: 0; gap: 10px; }
+      .message-attachment-icon {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 auto;
         place-items: center;
-        padding: 28px;
-        background: radial-gradient(circle at 20% 10%, #fff7f0 0, transparent 32%), var(--bg);
+        border-radius: 12px;
+        background: var(--color-brand-soft);
+        color: var(--color-brand);
+        font-size: 10px;
+        font-weight: 900;
+        line-height: 1;
       }
-      .login-layout { width: min(1060px, 100%); display: grid; grid-template-columns: .9fr 1.1fr; gap: 30px; align-items: center; }
-      .login-intro { padding: 24px 8px; }
-      .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.04em; }
-      .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--brand); color: #fff; font-weight: 900; box-shadow: 0 7px 14px rgba(255, 106, 0, .22); }
-      .login-intro h1 { max-width: 430px; margin: 52px 0 18px; font-size: clamp(36px, 5vw, 62px); line-height: 1.04; letter-spacing: -.07em; }
-      .login-intro p { max-width: 420px; color: var(--muted); font-size: 16px; line-height: 1.8; }
-      .login-note { display: flex; gap: 10px; align-items: center; margin-top: 36px; color: var(--muted); }
-      .login-note strong { color: var(--text); }
-      .login-card { padding: 34px; background: var(--surface); border: 1px solid rgba(255,255,255,.75); border-radius: 28px; box-shadow: var(--shadow); }
-      .role-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 5px; background: var(--bg); border-radius: 14px; }
-      .role-tab { min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-weight: 700; }
-      .role-tab.active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-soft); }
-      .login-card h2 { margin: 30px 0 8px; font-size: 28px; letter-spacing: -.04em; }
-      .login-card .helper { margin: 0 0 24px; color: var(--muted); line-height: 1.6; }
-      .form-field { display: grid; gap: 8px; margin: 16px 0; }
-      .form-field label { color: #5c6877; font-size: 13px; font-weight: 700; }
-      .form-field input, .form-field textarea, .form-field select {
-        width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; outline: 0; background: var(--surface-soft); color: var(--text);
-        transition: border .18s ease, box-shadow .18s ease, background .18s ease;
+      .message-attachment-copy { min-width: 0; flex: 1; }
+      .message-attachment-name {
+        display: block;
+        overflow: hidden;
+        color: var(--color-text);
+        font-size: 13px;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .form-field textarea { padding-top: 12px; min-height: 108px; resize: vertical; }
-      .form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 4px var(--brand-soft); }
-      .login-submit { width: 100%; margin-top: 12px; }
-      .reference-hint { margin: 16px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
-      .login-error { min-height: 18px; margin-top: 10px; color: var(--danger); font-size: 13px; }
-
-      .app-shell { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) 1fr; }
-      .sidebar { display: flex; flex-direction: column; min-height: 100vh; padding: 24px 16px 18px; background: var(--surface); border-right: 1px solid var(--line); }
-      .sidebar .brand { padding: 0 10px 28px; }
-      .role-badge { display: inline-flex; align-items: center; gap: 7px; width: fit-content; margin: 0 10px 24px; padding: 7px 10px; background: var(--brand-soft); border-radius: 999px; color: var(--brand-dark); font-size: 12px; font-weight: 800; }
-      .role-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
-      .nav { display: grid; gap: 5px; }
-      .nav-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 0 12px; border: 0; border-radius: 13px; background: transparent; color: var(--muted); text-align: left; font-weight: 700; }
-      .nav-item:hover { background: var(--surface-soft); color: var(--text); }
-      .nav-item.active { background: #f1f2f4; color: var(--text); }
-      .nav-icon { display: grid; place-items: center; width: 24px; color: currentColor; font-size: 18px; }
-      .sidebar-spacer { flex: 1; }
-      .profile-mini { display: flex; align-items: center; gap: 10px; padding: 14px 10px; border-top: 1px solid var(--line); }
-      .avatar { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #ffd4b7, #ffe9d7); color: var(--brand-dark); font-weight: 800; }
-      .profile-mini strong { display: block; font-size: 13px; }
-      .profile-mini span { color: var(--muted); font-size: 12px; }
-      .logout { width: 100%; margin-top: 10px; }
-      .main { min-width: 0; padding: 28px clamp(18px, 4vw, 56px) 42px; overflow: hidden; }
-      .topbar { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 28px; }
-      .topbar-actions { display: flex; align-items: center; gap: 10px; }
-      .status-pill { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border-radius: 999px; background: var(--surface); color: var(--muted); box-shadow: var(--shadow-soft); font-size: 12px; font-weight: 700; }
-      .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
-      .view { display: grid; gap: 22px; animation: fade-in .22s ease both; }
-      @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-      .hero-card, .panel, .metric, .empty-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
-      .hero-card { display: flex; justify-content: space-between; gap: 24px; align-items: center; padding: 28px; background: linear-gradient(135deg, #fff8f2, #fff); }
-      .hero-card h2 { margin: 5px 0 8px; font-size: 25px; letter-spacing: -.04em; }
-      .hero-card p { margin: 0; color: var(--muted); line-height: 1.7; }
-      .hero-orb { display: grid; place-items: center; flex: 0 0 auto; width: 100px; height: 100px; border-radius: 32px; background: var(--brand); color: #fff; font-size: 34px; box-shadow: 0 16px 28px rgba(255, 106, 0, .22); }
-      .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-      .metric { padding: 20px; border-top: 3px solid var(--brand); }
-      .metric:nth-child(2) { border-top-color: var(--info); }
-      .metric:nth-child(3) { border-top-color: #a47af4; }
-      .metric:nth-child(4) { border-top-color: var(--success); }
-      .metric-label { color: var(--muted); font-size: 13px; }
-      .metric-value { margin: 8px 0 4px; font-size: 31px; font-weight: 800; letter-spacing: -.06em; }
-      .metric-note { color: var(--muted); font-size: 12px; }
-      .two-col { display: grid; grid-template-columns: 1.25fr .75fr; gap: 20px; }
-      .panel { padding: 22px; }
-      .panel-head { display: flex; justify-content: space-between; gap: 14px; align-items: center; margin-bottom: 18px; }
-      .panel-head h3 { margin: 0; font-size: 17px; letter-spacing: -.03em; }
-      .panel-head span { color: var(--brand); font-size: 12px; font-weight: 800; }
-      .job-list { display: grid; gap: 10px; }
-      .job-row { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; }
-      .job-logo { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; border-radius: 12px; background: var(--brand-soft); color: var(--brand); font-weight: 900; }
-      .job-info { min-width: 0; flex: 1; }
-      .job-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .job-info span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
-      .score { color: var(--success); font-weight: 800; }
-      .notice-list { display: grid; gap: 12px; }
-      .notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--surface-soft); }
-      .notice-icon { display: grid; place-items: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 10px; background: var(--brand-soft); color: var(--brand); }
-      .notice strong { display: block; font-size: 13px; }
-      .notice span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-
-      .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-      .section-grid > .panel { display: flex; flex-direction: column; }
-      .section-grid > .panel .upload-zone { flex: 1; min-height: 280px; }
-      .upload-zone { display: grid; place-items: center; min-height: 250px; padding: 28px; border: 1.5px dashed #ffb37f; border-radius: 20px; background: #fffaf6; text-align: center; }
-      .upload-icon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 15px; border-radius: 19px; background: var(--brand-soft); color: var(--brand); font-size: 26px; }
-      .upload-zone h3 { margin: 0 0 8px; font-size: 18px; }
-      .upload-zone p { max-width: 320px; margin: 0 auto 18px; color: var(--muted); line-height: 1.7; }
-      .file-input { display: none; }
-      .file-card { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 430px; margin-top: 18px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); text-align: left; }
-      .file-card strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .file-card span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
-      .material-file-list { display: grid; gap: 8px; width: 100%; max-width: 430px; margin-top: 18px; }
-      .material-file-list .file-card { position: relative; max-width: none; margin-top: 0; padding-right: 42px; }
-      .material-file-remove { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 25px; height: 25px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; opacity: 0; cursor: pointer; transition: opacity .16s ease, background .16s ease, color .16s ease; }
-      .material-file:hover .material-file-remove, .material-file-remove:focus-visible { opacity: 1; }
-      .material-file-remove:hover { background: var(--danger-soft); color: var(--danger); }
-      .state-list { display: grid; gap: 12px; }
-      .state-row { display: flex; align-items: center; gap: 12px; padding: 13px; border-radius: 14px; background: var(--surface-soft); }
-      .state-marker { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--line); color: var(--muted); font-size: 13px; font-weight: 800; }
-      .state-row.done .state-marker { background: var(--success-soft); color: var(--success); }
-      .state-row.active .state-marker { background: var(--brand-soft); color: var(--brand); }
-      .state-row strong { display: block; font-size: 13px; }
-      .state-row span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
-
-      .progress-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 4px; }
-      .filter-row { display: flex; flex-wrap: wrap; gap: 8px; }
-      .filter-chip { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
-      .filter-chip.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
-      .offer-progress-panel { display: flex; align-items: center; gap: 28px; padding: 22px 26px; border-radius: var(--radius-lg); background: linear-gradient(135deg, #fff8f2, #fff); box-shadow: var(--shadow-soft); }
-      .offer-ring { display: grid; place-items: center; flex: 0 0 auto; width: 142px; height: 142px; border-radius: 50%; background: conic-gradient(var(--brand) var(--offer-progress), var(--brand-soft) 0); position: relative; }
-      .offer-ring::before { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: var(--surface); }
-      .offer-ring-content { position: relative; z-index: 1; text-align: center; }
-      .offer-ring-value { display: block; font-size: 25px; font-weight: 800; letter-spacing: -.05em; color: var(--ink); }
-      .offer-ring-label { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 700; }
-      .offer-progress-copy h3 { margin: 0; font-size: 17px; letter-spacing: -.03em; }
-      .offer-progress-copy p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
-      .offer-progress-detail { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; color: var(--muted); font-size: 12px; font-weight: 700; }
-      .offer-progress-detail strong { color: var(--ink); font-size: 16px; }
-      .application-list { display: grid; gap: 16px; }
-      .application-card { padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-soft); }
-      .application-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-      .application-top h3 { margin: 0; font-size: 16px; }
-      .application-top p { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
-      .tag { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--info-soft); color: var(--info); font-size: 11px; font-weight: 800; white-space: nowrap; }
-      .tag.offer { background: var(--success-soft); color: var(--success); }
-      .tag.terminated { background: var(--danger-soft); color: var(--danger); }
-      .timeline { display: grid; grid-template-columns: repeat(9, 1fr); gap: 0; margin-top: 24px; }
-      .timeline-step { position: relative; min-width: 0; padding-top: 17px; color: var(--muted-2); text-align: center; font-size: 10px; }
-      .timeline-step::before { content: ""; position: absolute; z-index: 1; top: 0; left: 50%; width: 10px; height: 10px; border: 3px solid var(--line); border-radius: 50%; background: var(--surface); transform: translateX(-50%); }
-      .timeline-step::after { content: ""; position: absolute; top: 4px; left: 0; width: 100%; height: 3px; background: var(--line); }
-      .timeline-step:first-child::after { left: 50%; width: 50%; }
-      .timeline-step:last-child::after { width: 50%; }
-      .timeline-step.active, .timeline-step.done { color: var(--text); font-weight: 800; }
-      .timeline-step.active::before, .timeline-step.done::before { border-color: var(--brand); background: var(--brand); }
-      .timeline-step.done::after { background: var(--brand); }
-      .timeline-step.active::after { background: linear-gradient(90deg, var(--brand) 0 50%, var(--line) 50%); }
-
-      .goal-form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; }
-      .goal-form .wide { grid-column: 1 / -1; }
-      .condition-list { display: grid; gap: 10px; margin-top: 4px; }
-      .condition { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 13px; background: var(--surface-soft); color: var(--muted); }
-      .condition .check { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--line); color: transparent; font-size: 12px; }
-      .condition.done { color: var(--text); }
-      .condition.done .check { background: var(--success-soft); color: var(--success); }
-      .agent-card { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px; border-radius: 18px; background: linear-gradient(135deg, #fff7ef, #fff); }
-      .agent-card h3 { margin: 0 0 7px; font-size: 17px; }
-      .agent-card p { margin: 0; color: var(--muted); line-height: 1.6; }
-      .agent-state { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; color: var(--muted); font-size: 12px; font-weight: 700; }
-      .agent-state .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-2); }
-      .agent-state.running { color: var(--success); }
-      .agent-state.running .pulse { background: var(--success); box-shadow: 0 0 0 5px var(--success-soft); }
-      .agent-state.finished { color: var(--success); }
-      .agent-state.finished .pulse { background: var(--success); }
-
-      .chat-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 570px; overflow: hidden; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
-      .chat-list { padding: 18px; border-right: 1px solid var(--line); background: #fcfcfd; }
-      .chat-list h3 { margin: 0 0 16px; font-size: 16px; }
-      .chat-contact { display: flex; gap: 10px; align-items: center; width: 100%; padding: 12px; border: 0; border-radius: 13px; background: transparent; text-align: left; }
-      .chat-contact.active { background: #f1f2f4; }
-      .chat-contact strong { display: block; font-size: 13px; }
-      .chat-contact span { display: block; overflow: hidden; max-width: 160px; margin-top: 4px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-      .chat-window { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
-      .chat-header { display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
-      .chat-header h3 { margin: 0; font-size: 16px; }
-      .chat-header p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-      .messages { display: flex; flex-direction: column; gap: 13px; padding: 22px; overflow: auto; background: linear-gradient(180deg, #fafafa, #f5f6f7); }
-      .message { max-width: min(560px, 80%); padding: 12px 14px; border-radius: 14px; line-height: 1.6; }
-      .message.agent { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); }
-      .message.hr { align-self: flex-end; background: var(--brand); color: #fff; }
-      .message small { display: block; margin-top: 5px; opacity: .58; font-size: 10px; }
-      .typing { align-self: flex-start; color: var(--muted); font-size: 12px; font-style: italic; }
-      .composer { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); background: var(--surface); }
-      .composer input { flex: 1; min-width: 0; padding: 0 13px; border: 1px solid var(--line); border-radius: 12px; outline: 0; }
-      .composer input:focus { border-color: var(--brand); }
-
-      .update-table { display: grid; gap: 10px; }
-      .update-row { display: grid; grid-template-columns: 1.4fr .85fr .95fr; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
-      .update-job strong { display: block; }
-      .update-job span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
-      .update-select { width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--text); outline: 0; }
-      .update-select:focus { border-color: var(--brand); }
-      .empty-card { display: grid; place-items: center; min-height: 290px; padding: 30px; text-align: center; }
-      .empty-icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 14px; border-radius: 18px; background: var(--brand-soft); color: var(--brand); font-size: 24px; }
-      .empty-card h3 { margin: 0 0 8px; font-size: 18px; }
-      .empty-card p { max-width: 420px; margin: 0; color: var(--muted); line-height: 1.7; }
-
-      .toast { position: fixed; right: 24px; bottom: 24px; z-index: 20; max-width: min(360px, calc(100vw - 48px)); padding: 13px 16px; border-radius: 13px; background: #1d252e; color: #fff; box-shadow: var(--shadow); animation: toast-in .22s ease both; }
-      @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-      .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(23, 32, 43, .25); }
-      .modal { width: min(460px, 100%); padding: 24px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
-      .modal h3 { margin: 0 0 8px; font-size: 18px; }
-      .modal p { margin: 0; color: var(--muted); line-height: 1.7; }
-      .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-
-      @media (max-width: 960px) {
-        :root { --sidebar: 220px; }
-        .login-layout { grid-template-columns: 1fr; max-width: 620px; }
-        .login-intro { padding: 0; text-align: center; }
-        .login-intro h1, .login-intro p { margin-left: auto; margin-right: auto; }
-        .login-intro h1 { margin-top: 28px; }
-        .login-note { justify-content: center; margin-top: 20px; }
-        .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .two-col, .section-grid { grid-template-columns: 1fr; }
+      .message-attachment-meta, .message-attachment-details {
+        color: var(--color-muted);
+        font-size: 11px;
+        line-height: 1.5;
       }
-      @media (max-width: 700px) {
-        .app-shell { display: block; }
-        .sidebar { position: sticky; top: 0; z-index: 5; min-height: auto; padding: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
-        .sidebar .brand { padding: 0 4px 10px; }
-        .role-badge, .profile-mini, .logout { display: none; }
-        .nav { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 2px; }
-        .nav-item { flex: 0 0 auto; width: auto; min-height: 38px; padding: 0 10px; font-size: 12px; }
-        .nav-icon { width: 20px; font-size: 15px; }
-        .main { padding: 20px 14px 32px; }
-        .topbar { margin-bottom: 20px; }
-        .topbar-actions { display: none; }
-        .hero-card { align-items: flex-start; padding: 20px; }
-        .hero-orb { width: 68px; height: 68px; border-radius: 22px; font-size: 26px; }
-        .metric-grid { gap: 10px; }
+      .message-attachment-meta { display: block; margin-top: 3px; }
+      .message-attachment-status { flex: 0 0 auto; color: var(--color-muted); font-size: 11px; white-space: nowrap; }
+      .message-attachment-card.is-expired .message-attachment-status,
+      .message-attachment-card.is-failed .message-attachment-status { color: var(--color-danger); }
+      .message-attachment-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        padding-top: 10px;
+        border-top: 1px solid var(--color-line);
+      }
+      .message-attachment-actions { display: flex; justify-content: flex-end; }
+      .message-attachment-download { min-height: 34px; padding: 0 13px; font-size: 12px; }
+      .message-bubble strong { font-size: 11px; }
+      .message-bubble time { color: var(--color-muted); font-size: 10px; }
+      .message-composer {
+        display: grid;
+        gap: 9px;
+        padding: 18px;
+        border-top: 1px solid var(--color-line);
+      }
+      .message-composer .button { justify-self: end; }
+      .toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        max-width: min(420px, calc(100vw - 32px));
+        padding: 13px 15px;
+        border-radius: 12px;
+        background: #18202b;
+        color: white;
+        box-shadow: var(--shadow);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .toast-error { background: #9b2f3b; }
+      .toast-info { background: #315f8f; }
+      .toast button { border: 0; background: transparent; color: white; font-size: 18px; }
+
+      @media (max-width: 850px) {
+        .app-shell { grid-template-columns: 1fr; }
+        .sidebar {
+          min-height: auto;
+          padding: 15px 16px;
+          border-right: 0;
+          border-bottom: 1px solid var(--color-line);
+        }
+        .sidebar-nav { display: flex; overflow-x: auto; }
+        .sidebar-nav a { flex: 0 0 auto; }
+        .sidebar-footer { display: none; }
+        .role-badge { margin-left: 4px; margin-right: 4px; }
+        .content-area { padding: 28px 16px; }
+        .page-header { display: block; }
+        .page-header-action { margin-top: 12px; }
+        .page-header-action .status-badge { display: inline-flex; }
+        .panel-grid, .upload-grid, .two-col { grid-template-columns: 1fr; }
+        .metric-grid { grid-template-columns: repeat(2, 1fr); }
+        .chat-layout { grid-template-columns: 1fr; }
+        .conversation-list { border-right: 0; border-bottom: 1px solid var(--color-line); }
+        .conversation-item { display: inline-grid; width: auto; min-width: 160px; margin-right: 5px; }
+        .conversation-list .panel-heading { margin-bottom: 10px; }
+        .application-top { grid-template-columns: 1fr; }
+        .application-match-summary { max-width: none; }
+      }
+      @media (max-width: 540px) {
+        .login-card { padding: 26px 20px; }
+        .hero-card { display: flex; align-items: flex-start; padding: 20px; }
+        .offer-progress-panel, .agent-card { display: block; padding: 22px; }
+        .job-goal-section-nav a { padding: 12px 8px; font-size: 13px; }
+        .agent-card-action { margin-top: 16px; }
+        .agent-card-action .button { width: 100%; }
+        .hero-orb { display: grid; width: 68px; height: 68px; border-radius: 22px; font-size: 26px; }
+        .form-grid { grid-template-columns: 1fr; }
+        .field-wide { grid-column: auto; }
+        .metric-grid { gap: 8px; }
         .metric { padding: 14px; }
-        .metric-value { font-size: 25px; }
-        .goal-form { grid-template-columns: 1fr; }
-        .goal-form .wide { grid-column: auto; }
-        .agent-card, .progress-head { display: block; }
-        .offer-progress-panel { flex-direction: column; align-items: flex-start; gap: 18px; padding: 20px; }
-        .agent-card .btn { width: 100%; margin-top: 16px; }
-        .timeline { gap: 0; overflow-x: auto; min-width: 640px; }
+        .metric strong { font-size: 23px; }
+        .status-editor { display: block; }
+        .status-editor label { max-width: none; margin-bottom: 10px; }
+        .file-info-card { align-items: flex-start; }
+        .file-info-trailing { flex-direction: column; align-items: flex-end; }
         .application-card { overflow-x: auto; }
-        .chat-layout { grid-template-columns: 1fr; min-height: auto; }
-        .chat-list { border-right: 0; border-bottom: 1px solid var(--line); }
-        .chat-list .chat-contact { display: inline-flex; width: auto; margin-right: 4px; }
-        .chat-window { min-height: 500px; }
-        .update-row { grid-template-columns: 1fr; gap: 9px; }
-        .login-shell { padding: 18px; }
-        .login-intro { display: none; }
-        .login-card { padding: 22px; }
+        .timeline { min-width: 680px; }
+        .offer-ring { margin-bottom: 18px; }
+        .page-header h1 { font-size: 30px; }
       }
     </style>
   </head>
   <body>
-    <section id="loginScreen" class="login-shell">
-      <div class="login-layout">
-        <div class="login-intro">
-          <div class="brand"><span class="brand-mark">C</span><span>Careerpass</span></div>
-          <h1>让每一次求职，都更有方向。</h1>
-          <p>你的 AI 求职伙伴，帮你从目标设定、岗位匹配到求职沟通，持续推进下一份理想工作。</p>
-          <div class="login-note"><span>●</span><span><strong>产品流程参考</strong> · 使用预置身份即可进入原型</span></div>
-        </div>
-        <form id="loginForm" class="login-card">
-          <div class="role-tabs" role="tablist" aria-label="登录身份">
-            <button type="button" class="role-tab active" data-role="candidate">求职者登录</button>
-            <button type="button" class="role-tab" data-role="hr">HR 登录</button>
-          </div>
-          <h2 id="loginTitle">欢迎回来</h2>
-          <p id="loginHelper" class="helper">登录后继续管理你的求职目标和 Agent 进度。</p>
-          <div class="form-field"><label for="loginAccount">账号</label><input id="loginAccount" name="account" autocomplete="username" placeholder="请输入账号" value="candidate@careerpass.local" /></div>
-          <div class="form-field"><label for="loginPassword">密码</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" value="local1234" /></div>
-          <div id="loginError" class="login-error" aria-live="polite"></div>
-          <button type="submit" class="btn btn-primary login-submit">进入 Careerpass <span>→</span></button>
-          <p class="reference-hint">本页面不连接真实账号系统 · 点击右上身份标签切换角色</p>
-        </form>
-      </div>
-    </section>
-
-    <section id="appScreen" class="app-shell hidden">
-      <aside class="sidebar">
-        <div class="brand"><span class="brand-mark">C</span><span>Careerpass</span></div>
-        <div class="role-badge"><span class="dot"></span><span id="roleBadgeText">求职者模式</span></div>
-        <nav id="candidateNav" class="nav" aria-label="求职者菜单">
-          <button class="nav-item active" data-view="candidateWelcome"><span class="nav-icon">⌂</span>使用指南</button>
-          <button class="nav-item" data-view="candidateUpload"><span class="nav-icon">↥</span>求职资料上传</button>
-          <button class="nav-item" data-view="candidateGoal"><span class="nav-icon">◎</span>求职任务创建</button>
-          <button class="nav-item" data-view="candidateProgress"><span class="nav-icon">▥</span>求职进度查看</button>
-        </nav>
-        <nav id="hrNav" class="nav hidden" aria-label="HR菜单">
-          <button class="nav-item active" data-view="hrWelcome"><span class="nav-icon">⌂</span>使用指南</button>
-          <button class="nav-item" data-view="hrUpload"><span class="nav-icon">↥</span>岗位 JD 上传</button>
-          <button class="nav-item" data-view="hrChat"><span class="nav-icon">□</span>求职沟通</button>
-          <button class="nav-item" data-view="hrUpdate"><span class="nav-icon">↗</span>投递进度更新</button>
-        </nav>
-        <div class="sidebar-spacer"></div>
-        <div class="profile-mini"><div class="avatar" id="profileAvatar">A</div><div><strong id="profileName">Alex Chen</strong><span id="profileRole">求职者</span></div></div>
-        <button id="logoutButton" class="btn btn-secondary logout">⇥ 退出登录</button>
-      </aside>
-      <main class="main">
-        <header class="topbar">
-          <div><div class="eyebrow" id="topEyebrow">CAREER AGENT</div><h1 id="topTitle" class="page-title">你好，Alex</h1><p id="topSubtitle" class="page-subtitle">把求职交给 Agent，把时间留给更重要的准备。</p></div>
-          <div class="topbar-actions"><span class="status-pill"><span class="dot"></span><span id="topStatus">业务数据已就绪</span></span></div>
-        </header>
-        <div id="viewRoot"></div>
-      </main>
-    </section>
-
-    <div id="toast" class="toast hidden" role="status"></div>
-    <div id="modalRoot"></div>
+    <div id="root"></div>
 
     <script>
-      // 浏览器直开版本：这里使用与 mock/first-round-matching-jobs.js 对齐的展示投影。
-      const jobs = [
-        ["job-001", "AI Agent 工程师", "星河智能科技", "深圳", "25-40K", 94],
-        ["job-002", "大模型应用开发工程师", "云启信息", "杭州", "22-35K", 92],
-        ["job-003", "后端开发工程师（Python）", "远见数据", "广州", "18-30K", 91],
-        ["job-004", "RAG 应用工程师", "知行智能", "上海", "20-32K", 90],
-        ["job-005", "智能产品技术负责人", "启明软件", "北京", "30-45K", 88],
-        ["job-006", "数据平台开发工程师", "数澜科技", "杭州", "18-28K", 87],
-        ["job-007", "机器学习平台工程师", "蓝图计算", "上海", "25-38K", 85],
-        ["job-008", "全栈开发工程师", "木棉互联", "深圳", "20-32K", 84],
-        ["job-009", "后端架构师", "极光云图", "广州", "32-50K", 82],
-        ["job-010", "AI 解决方案工程师", "融智科技", "成都", "18-30K", 81],
-        ["job-011", "软件工程师（智能办公）", "新岸办公", "南京", "16-26K", 79],
-        ["job-012", "数据分析工程师", "瀚海消费科技", "上海", "15-25K", 77],
-        ["job-013", "平台运维开发工程师", "稳态云服务", "武汉", "16-28K", 76],
-        ["job-014", "技术产品经理（AI方向）", "智汇互娱", "北京", "20-35K", 75],
-        ["job-015", "Java 后端开发工程师", "清源网络", "杭州", "18-30K", 73],
-        ["job-016", "前端开发工程师", "界面实验室", "深圳", "16-28K", 72],
-        ["job-017", "自动化测试开发工程师", "质量方舟", "苏州", "14-24K", 70],
-        ["job-018", "技术写作与知识库工程师", "文脉科技", "成都", "12-22K", 68],
-        ["job-019", "业务流程自动化工程师", "合流数字化", "重庆", "13-23K", 66],
-        ["job-020", "云平台应用工程师", "云际互联", "厦门", "15-26K", 64],
-      ].map(([id, title, company, location, salary, score]) => ({ id, title, company, location, salary, score }));
+      /*
+       * 浏览器直开演示版：UI 与交互对齐 careerpass-frontend/src 正式实现。
+       * - 样式与结构对齐 src/styles/tokens.css、globals.css 与各页面 JSX。
+       * - 交互语义对齐 src/api/mock/mockRepository.ts 与真实 API 行为
+       *   （简历解析轮询、JD 异步解析、状态机合法迁移、Offer 达标联动、
+       *   S10-01 回复、S10-02 附件卡片、S10-03 主动查询）。
+       * - 按演示要求不含：真实账号数据、调试数据重置面板。
+       * - 多轮投递演示：单轮按推荐得分 Top-K 投递，其余岗位进入储备；
+       *   本轮投递全部被拒后自动开启下一轮；进度页按轮次分组展示，
+       *   演示数据保证不同轮次投递不同岗位。
+       * - 资料交付演示（S10-02 语义）：默认资料为“学籍验证报告”，HR 提问
+       *   1.5 秒后按受控别名模糊识别并检索交付；唯一命中才发送附件，
+       *   未找到时返回受控文案（对齐 app/services/document_delivery_service.py）。
+       */
 
-      const stages = [
-        ["submitted", "已投递"], ["screening", "初筛中"], ["written_test", "笔试"], ["interview_1", "一面"], ["interview_2", "二面"], ["interview_3", "三面"], ["hr_interview", "HR 面"], ["offer", "Offer"], ["terminated", "流程终止"],
+      // ---------- 领域元数据（对齐 src/domain/mappings.ts） ----------
+      const resumeStatusMeta = {
+        not_uploaded: { label: "尚未上传", tone: "neutral" },
+        uploading: { label: "上传中", tone: "info" },
+        processing: { label: "解析中", tone: "info" },
+        succeeded: { label: "解析成功", tone: "success" },
+        failed: { label: "解析失败", tone: "danger" },
+      };
+      const agentStatusMeta = {
+        not_started: { label: "尚未启动", tone: "neutral" },
+        ready: { label: "可以启动", tone: "info" },
+        running: { label: "Agent 运行中", tone: "info" },
+        finished: { label: "Agent 已结束", tone: "success" },
+      };
+      const deliveryProgressOrder = [
+        "submitted", "screening", "written_test", "interview_1",
+        "interview_2", "interview_3", "hr_interview", "offer",
       ];
-      const state = {
-        role: "candidate",
-        view: "candidateWelcome",
-        candidateName: "Alex Chen",
-        resumeUploaded: false,
-        resumeParsed: false,
-        otherFiles: [],
-        jdUploaded: false,
-        goalCreated: false,
-        agentStarted: false,
-        agentFinished: false,
-        round: 0,
-        goal: { offers: 2, title: "AI Agent 工程师", filters: "优先深圳、杭州；薪资不低于 20K；接受线上面试" },
-        applications: [],
-        selectedChat: 0,
-        messages: [
-          { side: "agent", text: "您好，我是 Alex 的求职 Agent。感谢您查看这份投递，我可以补充说明候选人的项目经验。", time: "09:18" },
-          { side: "hr", text: "你好 Alex，我们想进一步了解你在智能应用项目中的职责。", time: "09:20" },
-          { side: "agent", text: "Alex 主要负责 Python 服务、RAG 检索链路和 Agent 工作流编排，能够独立完成从方案到上线的闭环。", time: "09:21" },
-        ],
+      const deliveryProgressMeta = {
+        submitted: { label: "已投递", tone: "neutral", terminal: false },
+        screening: { label: "初筛中", tone: "info", terminal: false },
+        written_test: { label: "笔试", tone: "info", terminal: false },
+        interview_1: { label: "一面", tone: "info", terminal: false },
+        interview_2: { label: "二面", tone: "info", terminal: false },
+        interview_3: { label: "三面", tone: "info", terminal: false },
+        hr_interview: { label: "HR 面", tone: "info", terminal: false },
+        offer: { label: "获得 Offer", tone: "success", terminal: true },
+        terminated: { label: "流程终止", tone: "danger", terminal: true },
+      };
+      function getAllowedDeliveryTransitions(current) {
+        if (deliveryProgressMeta[current].terminal) return [];
+        const index = deliveryProgressOrder.indexOf(current);
+        return [...deliveryProgressOrder.slice(index + 1), "terminated"];
+      }
+      function isValidDeliveryTransition(current, next) {
+        if (current === next) return true;
+        if (deliveryProgressMeta[current].terminal) return false;
+        if (next === "terminated") return true;
+        return deliveryProgressOrder.indexOf(next) > deliveryProgressOrder.indexOf(current);
+      }
+      function getOfferCount(statuses) {
+        return statuses.filter((status) => status === "offer").length;
+      }
+
+      // ---------- 演示数据（面试演示构造：20 份大模型应用方向岗位 JD） ----------
+      const userFixtures = {
+        candidate: { id: "candidate-001", role: "candidate", displayName: "Alex Chen", title: "求职者工作台" },
+        hr: { id: "hr-001", role: "hr", displayName: "Mia Wang", title: "HR 工作台" },
+      };
+      const jobFixtures = [
+        { fileName: "01-星河智能-Agent应用开发工程师.md", title: "Agent 应用开发工程师", company: "星河智能", location: "深圳", salary: "25-40K", score: 92, direction: "Agent 应用开发", level: "同级", covered: 7, total: 8 },
+        { fileName: "02-云启信息-大模型应用开发工程师.md", title: "大模型应用开发工程师", company: "云启信息", location: "杭州", salary: "22-35K", score: 88, direction: "大模型应用开发", level: "同级", covered: 6, total: 8 },
+        { fileName: "03-知行智能-RAG应用开发工程师.md", title: "RAG 应用开发工程师", company: "知行智能", location: "上海", salary: "20-33K", score: 84, direction: "检索增强生成", level: "相差一级", covered: 6, total: 9 },
+        { fileName: "04-远见数据-AI应用开发工程师（LLM方向）.md", title: "AI 应用开发工程师（LLM 方向）", company: "远见数据", location: "广州", salary: "19-30K", score: 86, direction: "AI 应用开发", level: "同级", covered: 6, total: 7 },
+        { fileName: "05-蓝图计算-Agent平台研发工程师.md", title: "Agent 平台研发工程师", company: "蓝图计算", location: "上海", salary: "28-45K", score: 83, direction: "智能体平台", level: "相差一级", covered: 7, total: 9 },
+        { fileName: "06-木棉互联-LLM后端开发工程师.md", title: "LLM 后端开发工程师", company: "木棉互联", location: "深圳", salary: "21-34K", score: 81, direction: "大模型应用开发", level: "同级", covered: 5, total: 8 },
+        { fileName: "07-启明软件-智能体工作流开发工程师.md", title: "智能体工作流开发工程师", company: "启明软件", location: "苏州", salary: "20-32K", score: 79, direction: "Agent 应用开发", level: "相差一级", covered: 5, total: 7 },
+        { fileName: "08-极光云图-大模型推理优化工程师.md", title: "大模型推理优化工程师", company: "极光云图", location: "杭州", salary: "30-48K", score: 76, direction: "LLM 推理优化", level: "相差一级", covered: 6, total: 9 },
+        { fileName: "09-融智科技-多模态应用开发工程师.md", title: "多模态应用开发工程师", company: "融智科技", location: "成都", salary: "18-30K", score: 75, direction: "多模态应用", level: "同级", covered: 5, total: 8 },
+        { fileName: "10-稳态云-AI中间件开发工程师.md", title: "AI 中间件开发工程师", company: "稳态云", location: "武汉", salary: "20-32K", score: 73, direction: "AI 中间件", level: "相差一级", covered: 4, total: 6 },
+        { fileName: "11-数澜科技-大模型数据工程工程师.md", title: "大模型数据工程工程师", company: "数澜科技", location: "杭州", salary: "18-29K", score: 71, direction: "大模型数据", level: "同级", covered: 5, total: 7 },
+        { fileName: "12-文脉科技-Prompt工程与应用开发工程师.md", title: "Prompt 工程与应用开发工程师", company: "文脉科技", location: "南京", salary: "16-26K", score: 70, direction: "Prompt 工程", level: "同级", covered: 6, total: 8 },
+        { fileName: "13-新岸智能-Agent记忆与检索系统工程师.md", title: "Agent 记忆与检索系统工程师", company: "新岸智能", location: "上海", salary: "22-36K", score: 68, direction: "检索增强生成", level: "相差一级", covered: 5, total: 9 },
+        { fileName: "14-智汇互娱-LLM编排引擎开发工程师.md", title: "LLM 编排引擎开发工程师", company: "智汇互娱", location: "广州", salary: "24-38K", score: 66, direction: "智能体平台", level: "相差一级", covered: 5, total: 8 },
+        { fileName: "15-质量方舟-大模型评测工程师.md", title: "大模型评测工程师", company: "质量方舟", location: "苏州", salary: "15-24K", score: 65, direction: "大模型应用开发", level: "同级", covered: 4, total: 6 },
+        { fileName: "16-清源网络-大模型微调与应用工程师.md", title: "大模型微调与应用工程师", company: "清源网络", location: "西安", salary: "20-32K", score: 63, direction: "大模型应用开发", level: "相差一级", covered: 5, total: 8 },
+        { fileName: "17-云际智能-AI解决方案开发工程师（大模型）.md", title: "AI 解决方案开发工程师（大模型）", company: "云际智能", location: "厦门", salary: "18-29K", score: 60, direction: "AI 应用开发", level: "相差一级", covered: 4, total: 7 },
+        { fileName: "18-瀚海消费科技-智能客服大模型应用工程师.md", title: "智能客服大模型应用工程师", company: "瀚海消费科技", location: "上海", salary: "17-28K", score: 58, direction: "AI 应用开发", level: "同级", covered: 4, total: 6 },
+        { fileName: "19-星穹研究院-AI Agent算法工程师.md", title: "AI Agent 算法工程师", company: "星穹研究院", location: "合肥", salary: "26-42K", score: 55, direction: "Agent 应用开发", level: "相差一级", covered: 5, total: 9 },
+        { fileName: "20-合流数字-企业级AI应用开发工程师.md", title: "企业级 AI 应用开发工程师", company: "合流数字", location: "深圳", salary: "22-35K", score: 53, direction: "AI 应用开发", level: "相差一级", covered: 4, total: 7 },
+      ];
+      // 多轮投递演示参数：每轮投递数量阈值（Top-K）；超出部分进入储备，本轮全部被拒后延迟自动开启下一轮。
+      function roundCapFor(round) {
+        return round === 1 ? 4 : 3;
+      }
+      function buildRecommendationReason(fixture) {
+        return `岗位同属于${fixture.direction}方向；能力层级${fixture.level}；技能匹配覆盖 ${fixture.covered}/${fixture.total} 项技能`;
+      }
+      const goalDefaults = {
+        offerTarget: "1",
+        title: "Agent开发工程师",
+        filters: "不考虑北京作为工作地点；不考虑兼职性质岗位。",
       };
 
-      const $ = (selector) => document.querySelector(selector);
+      // ---------- 状态 ----------
+      function createInitialState() {
+        return {
+          route: "login",
+          loginRole: "candidate",
+          loginSubmitting: false,
+          loginError: null,
+          user: null,
+          initialized: false,
+          loading: false,
+          error: null,
+          resumeLoading: false,
+          supportingDocumentsLoading: false,
+          supportingDocumentUploads: [],
+          resume: null,
+          // 默认资料：与后端 fixtures 的 学籍验证报告.pdf（448.2 KB）一致。
+          supportingDocuments: [
+            {
+              id: "document-academic-status-001",
+              fileName: "学籍验证报告.pdf",
+              fileType: "pdf",
+              sizeBytes: 458960,
+              uploadedAt: new Date().toISOString(),
+              status: "success",
+            },
+          ],
+          documentFingerprints: new Map(),
+          hrJobs: [],
+          uploadingJobs: false,
+          jobGoal: null,
+          goalForm: { ...goalDefaults },
+          savingGoal: false,
+          agentStatus: "not_started",
+          agentRun: null,
+          agentRunCanStart: false,
+          startingAgent: false,
+          round: 0,
+          reserveJobs: [],
+          roundAdvancing: false,
+          selectedRound: null,
+          roundSelectOpen: false,
+          applications: [],
+          conversations: [],
+          matchingSummary: { evaluatedJobCount: 0 },
+          selectedConversationId: null,
+          composerText: "",
+          sendingMessage: false,
+          toast: null,
+        };
+      }
+      let state = createInitialState();
+
+      // ---------- 基础工具 ----------
+      const $ = (selector, scope) => (scope || document).querySelector(selector);
       const esc = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
-      const showToast = (message) => { const node = $("#toast"); node.textContent = message; node.classList.remove("hidden"); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => node.classList.add("hidden"), 2600); };
-      const stageIndex = (status) => Math.max(0, stages.findIndex(([key]) => key === status));
-      const statusLabel = (status) => stages.find(([key]) => key === status)?.[1] || status;
-      const makeApplications = () => jobs.map((job, index) => ({ ...job, applicationId: `app-${String(index + 1).padStart(3, "0")}`, status: index < 2 ? "interview_1" : index === 2 ? "screening" : index === 3 ? "offer" : index === 4 ? "terminated" : "submitted", recent: index < 2 ? "今天 10:24" : "昨天 16:40" }));
-      const currentOfferCount = () => state.applications.filter((app) => app.status === "offer").length;
-      const evaluateAgentCompletion = () => { if (state.agentStarted && currentOfferCount() >= state.goal.offers) state.agentFinished = true; };
-
-      function setLoginRole(role) {
-        state.role = role;
-        document.querySelectorAll(".role-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.role === role));
-        $("#loginTitle").textContent = role === "candidate" ? "欢迎回来" : "进入 HR 工作台";
-        $("#loginHelper").textContent = role === "candidate" ? "登录后继续管理你的求职目标和 Agent 进度。" : "登录后查看候选人沟通与岗位投递进度。";
-        $("#loginAccount").value = role === "candidate" ? "candidate@careerpass.local" : "hr@careerpass.local";
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const nowIso = () => new Date().toISOString();
+      const uid = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const fmtDateTime = (value) =>
+        new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
+      const fmtShortDateTime = (value) =>
+        new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
+      const fmtTime = (value) =>
+        new Date(value).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+      const fmtSize = (bytes) =>
+        bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      const getFileType = (fileName) => {
+        const index = fileName.lastIndexOf(".");
+        if (index < 0 || index === fileName.length - 1) return "FILE";
+        const extension = fileName.slice(index + 1).toUpperCase();
+        return extension.length <= 4 ? extension : "FILE";
+      };
+      function showToast(message, tone = "success") {
+        state.toast = { message, tone };
+        render();
+        if (showToast.timer) clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => { state.toast = null; render(); }, 4500);
       }
 
-      function login(role = state.role) {
-        state.role = role;
-        state.view = role === "candidate" ? "candidateWelcome" : "hrWelcome";
-        $("#loginScreen").classList.add("hidden");
-        $("#appScreen").classList.remove("hidden");
-        renderShell();
-        showToast(role === "candidate" ? "已进入求职者产品流程参考" : "已进入 HR 产品流程参考");
+      // ---------- 渲染基元（对齐 src/components/ui） ----------
+      const badge = (tone, label) => `<span class="status-badge status-${tone}">${esc(label)}</span>`;
+      function pageHeader(eyebrow, title, description, action = "") {
+        return `<header class="page-header"><div><div class="eyebrow">${esc(eyebrow)}</div><h1>${esc(title)}</h1><p class="page-subtitle">${esc(description)}</p></div>${action ? `<div class="page-header-action">${action}</div>` : ""}</header>`;
+      }
+      function stepListItem(step, status, title, description, activeSymbol) {
+        const markerClass = status === "completed" ? "step-marker-completed" : status === "active" ? "step-marker-active" : "";
+        const content = status === "completed" ? "✓" : (status === "active" && activeSymbol ? activeSymbol : step);
+        return `<div class="step-list-item"><span class="step-marker ${markerClass}" aria-hidden="true">${content}</span><div class="step-list-copy"><strong>${esc(title)}</strong><span>${esc(description)}</span></div></div>`;
+      }
+      function uploadBox({ id, label, description, accept, multiple, disabled, disabledLabel = "当前不可替换" }) {
+        return `<div class="upload-box ${disabled ? "is-disabled" : ""}"><div class="upload-icon">↥</div><strong>${esc(label)}</strong><p>${esc(description)}</p><input id="${id}" class="visually-hidden" type="file" accept="${accept}" ${multiple ? "multiple" : ""} ${disabled ? "disabled" : ""} data-file="${id}" /><button type="button" class="button button-primary" data-action="pick" data-target="${id}" ${disabled ? "disabled" : ""}>${disabled ? esc(disabledLabel) : "选择文件"}</button></div>`;
+      }
+      function fileInfoCard({ fileName, version, uploadedAt, iconLabel, deleteAction, deleteId, deleteDisabled, trailing = "" }) {
+        const meta = `${version === undefined ? "" : `版本 ${version} · `}上传于 ${fmtDateTime(uploadedAt)}`;
+        return `<div class="file-info-card ${deleteAction ? "has-delete" : ""}"><span class="file-type-icon" aria-hidden="true">${esc(iconLabel ?? getFileType(fileName))}</span><div class="file-info-copy"><strong class="file-info-name" title="${esc(fileName)}">${esc(fileName)}</strong><span class="file-info-meta">${esc(meta)}</span></div>${trailing ? `<div class="file-info-trailing">${trailing}</div>` : ""}${deleteAction ? `<button type="button" class="file-info-delete" aria-label="删除 ${esc(fileName)}" title="删除资料" ${deleteDisabled ? "disabled" : ""} data-action="${deleteAction}" data-id="${esc(deleteId)}">×</button>` : ""}</div>`;
+      }
+      function progressTimeline(current) {
+        const label = deliveryProgressMeta[current].label;
+        const index = current === "terminated" ? -1 : deliveryProgressOrder.indexOf(current);
+        return `<div class="timeline" aria-label="当前进度：${esc(label)}">${deliveryProgressOrder.map((status, i) => {
+          const cls = current === "terminated" ? "is-terminated" : i < index ? "is-done" : i === index ? "is-current" : "";
+          return `<div class="timeline-step ${cls}"><span class="timeline-dot"></span><span>${esc(deliveryProgressMeta[status].label)}</span></div>`;
+        }).join("")}</div>`;
+      }
+      const loadingState = (title = "正在加载", description = "请稍候，页面正在加载数据。") =>
+        `<div class="feedback-card" role="status"><span class="spinner"></span><div><strong>${esc(title)}</strong><p>${esc(description)}</p></div></div>`;
+      const emptyState = (title = "暂无数据", description = "完成前置操作后，这里会显示相关内容。") =>
+        `<div class="feedback-card empty-state"><span class="empty-icon">○</span><div><strong>${esc(title)}</strong><p>${esc(description)}</p></div></div>`;
+      const errorState = (description, retry = true) =>
+        `<div class="feedback-card error-state"><span class="empty-icon">!</span><div><strong>暂时无法完成操作</strong><p>${esc(description)}</p>${retry ? `<button class="button button-secondary" type="button" data-action="clear-error">重新尝试</button>` : ""}</div></div>`;
+
+      // ---------- 页面：认证 ----------
+      function renderLogin() {
+        const role = state.loginRole;
+        return `<main class="auth-layout"><section class="login-card" aria-labelledby="login-title">
+          <div class="brand-lockup login-brand"><div class="brand-mark">C</div><div><strong>Careerpass</strong><span>求职 Agent</span></div></div>
+          <div class="eyebrow">CAREERPASS</div>
+          <h1 id="login-title">开始你的求职旅程</h1>
+          <p class="page-subtitle">选择身份进入对应工作台，体验从资料准备到求职 Agent 推进的完整流程。</p>
+          <div class="role-switcher" aria-label="选择登录身份">
+            <button type="button" class="${role === "candidate" ? "is-active" : ""}" data-action="login-role" data-role="candidate">求职者</button>
+            <button type="button" class="${role === "hr" ? "is-active" : ""}" data-action="login-role" data-role="hr">HR</button>
+          </div>
+          <form id="loginForm" class="login-form">
+            <label>账号<input name="username" placeholder="请输入账号" autocomplete="username" value="${role === "candidate" ? "candidate@careerpass.local" : "hr@careerpass.local"}" /></label>
+            <label>密码<input name="password" type="password" placeholder="请输入密码" autocomplete="current-password" value="local1234" /></label>
+            <button class="button button-primary" type="submit" ${state.loginSubmitting ? "disabled" : ""}>${state.loginSubmitting ? "登录中…" : "登录"}</button>
+            ${state.loginError ? `<p class="form-alert" role="alert">${esc(state.loginError)}</p>` : ""}
+          </form>
+          <a class="login-register-link" href="#register" data-route="register">了解注册流程</a>
+        </section></main>`;
+      }
+      function renderRegister() {
+        return `<main class="auth-layout"><section class="login-card" aria-labelledby="register-title">
+          <div class="eyebrow">CAREERPASS</div>
+          <h1 id="register-title">注册功能暂未启用</h1>
+          <p class="page-subtitle">注册服务正在完善，当前可先返回登录页进入对应工作台。</p>
+          <a class="button button-primary inline-button" href="#login" data-route="login">返回登录</a>
+        </section></main>`;
       }
 
-      function logout() {
-        $("#appScreen").classList.add("hidden");
-        $("#loginScreen").classList.remove("hidden");
-        $("#loginError").textContent = "";
-        showToast("已退出当前账号");
-      }
-
-      function renderShell() {
-        $("#candidateNav").classList.toggle("hidden", state.role !== "candidate");
-        $("#hrNav").classList.toggle("hidden", state.role !== "hr");
-        $("#roleBadgeText").textContent = state.role === "candidate" ? "求职者模式" : "HR 模式";
-        $("#profileName").textContent = state.role === "candidate" ? "Alex Chen" : "Morgan Lee";
-        $("#profileRole").textContent = state.role === "candidate" ? "求职者" : "招聘 HR";
-        $("#profileAvatar").textContent = state.role === "candidate" ? "A" : "M";
-        document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === state.view));
-        renderView();
-      }
-
-      function setHeader(title, subtitle, eyebrow = state.role === "candidate" ? "CANDIDATE AGENT" : "HR WORKSPACE") {
-        $("#topEyebrow").textContent = eyebrow;
-        $("#topTitle").textContent = title;
-        $("#topSubtitle").textContent = subtitle;
-        $("#topStatus").textContent = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 运行中" : "业务数据已就绪";
-      }
-
-      function renderView() {
-        const root = $("#viewRoot");
-        if (state.view === "candidateWelcome") return renderCandidateWelcome(root);
-        if (state.view === "candidateUpload") return renderCandidateUpload(root);
-        if (state.view === "candidateGoal") return renderCandidateGoal(root);
-        if (state.view === "candidateProgress") return renderCandidateProgress(root);
-        if (state.view === "hrWelcome") return renderHrWelcome(root);
-        if (state.view === "hrUpload") return renderHrUpload(root);
-        if (state.view === "hrChat") return renderHrChat(root);
-        if (state.view === "hrUpdate") return renderHrUpdate(root);
-      }
-
-      function jobRow(job) {
-        return `<div class="job-row"><div class="job-logo">${esc(job.company.slice(0, 1))}</div><div class="job-info"><strong>${esc(job.title)}</strong><span>${esc(job.company)} · ${esc(job.location)} · ${esc(job.salary)}</span></div><span class="score">${job.score}%</span></div>`;
-      }
-
-      function renderCandidateWelcome(root) {
-        setHeader("你好，Alex", "把求职交给 Agent，把时间留给更重要的准备。");
-        const steps = [
-          { title: "上传求职资料", description: state.resumeParsed ? "简历解析成功，画像已就绪" : state.resumeUploaded ? "简历正在解析，请稍候" : "上传一份简历，完成资料准备", view: "candidateUpload", done: state.resumeParsed },
-          { title: "创建求职目标", description: state.goalCreated ? "求职目标已创建" : "设置目标岗位与筛选条件", view: "candidateGoal", done: state.goalCreated },
-          { title: "启动求职 Agent", description: state.agentFinished ? `目标 Offer 已达成，系统判定 Agent 运行结束` : state.agentStarted ? "Agent 正在持续推进求职" : "满足条件后启动首轮求职", view: "candidateGoal", done: state.agentStarted || state.agentFinished },
+      // ---------- 页面：求职者 ----------
+      function renderCandidateHome() {
+        const agentStatus = state.agentStatus;
+        const resume = state.resume;
+        const resumeParsed = resume?.parseStatus === "succeeded";
+        const firstName = state.user.displayName.split(" ")[0];
+        const resumeStepStatus = resumeParsed ? "completed" : resume ? "active" : "waiting";
+        const goalStepStatus = state.jobGoal ? "completed" : resumeParsed ? "active" : "waiting";
+        const agentStepStatus = agentStatus === "finished" ? "completed" : agentStatus === "running" || agentStatus === "ready" ? "active" : "waiting";
+        const agentActiveSymbol = agentStatus === "running" ? "…" : undefined;
+        const nextStep = agentStatus === "finished"
+          ? { route: "candidate/progress", label: "查看求职进度" }
+          : resumeParsed
+            ? { route: "candidate/job-goal/create", label: "进入求职任务" }
+            : { route: "candidate/documents", label: "上传求职资料" };
+        const flowSteps = [
+          {
+            title: "上传求职资料",
+            description: resumeParsed
+              ? "简历解析成功，画像已就绪"
+              : resume?.parseStatus === "processing" || resume?.parseStatus === "uploading"
+                ? "简历正在解析，请稍候"
+                : resume?.parseStatus === "failed"
+                  ? "简历解析未完成，请重新上传"
+                  : "上传一份简历，完成资料准备",
+          },
+          {
+            title: "创建求职目标",
+            description: state.jobGoal ? "求职目标已创建" : "设置目标岗位与筛选条件",
+          },
+          {
+            title: "启动求职 Agent",
+            description: agentStatus === "finished"
+              ? "目标 Offer 已达成，系统已结束本轮运行"
+              : agentStatus === "running"
+                ? "Agent 正在持续推进求职"
+                : agentStatus === "ready"
+                  ? "启动条件已满足，可以启动 Agent"
+                  : "满足条件后启动首轮求职",
+          },
         ];
-        const nextStep = steps.find((step) => !step.done) || { title: "查看求职进度", view: "candidateProgress", done: true };
-        root.innerHTML = `<div class="view">
-          <section class="hero-card"><div><div class="eyebrow">YOUR CAREER COPILOT</div><h2>准备好开始你的求职旅程了吗？</h2><p>Careerpass 将陪你完成资料准备、目标设定和求职 Agent 启动，让每一步都更清晰。</p><button class="btn btn-primary" data-view="${nextStep.view}" style="margin-top:18px">${nextStep.done ? "查看求职进度" : nextStep.title} <span>→</span></button></div><div class="hero-orb">✦</div></section>
-          <section class="two-col"><div class="panel"><div class="panel-head"><h3>开始你的求职流程</h3><span>3 个步骤</span></div><div class="notice-list">${steps.map((step, index) => `<div class="notice"><div class="notice-icon">${step.done ? "✓" : index + 1}</div><div><strong>${step.title}</strong><span>${step.description}</span></div></div>`).join("")}</div></div><div class="panel"><div class="panel-head"><h3>当前准备状态</h3><span>${state.agentFinished ? "已结束" : state.agentStarted ? "进行中" : "待完成"}</span></div><div class="state-list"><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "1"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "已完成" : state.resumeUploaded ? "解析中" : "尚未开始"}</span></div></div><div class="state-row ${state.goalCreated ? "done" : state.resumeParsed ? "active" : ""}"><div class="state-marker">${state.goalCreated ? "✓" : "2"}</div><div><strong>求职目标</strong><span>${state.goalCreated ? "已创建" : "等待创建"}</span></div></div><div class="state-row ${state.agentFinished ? "done" : state.agentStarted ? "active" : ""}"><div class="state-marker">${state.agentFinished ? "✓" : state.agentStarted ? "…" : "3"}</div><div><strong>Agent 状态</strong><span>${state.agentFinished ? "运行结束" : state.agentStarted ? "正在运行" : "尚未启动"}</span></div></div></div></div></section>
-          <section class="panel"><div class="panel-head"><h3>产品流程说明</h3><span>Careerpass</span></div><p class="page-subtitle">本页面展示从资料准备、求职目标创建到 Agent 推进求职进度的完整流程。岗位匹配结果和投递数据将在对应的求职进度页面中展示。</p></section>
+        const heroCopy = agentStatus === "finished"
+          ? "目标已达成，查看进度了解完整投递结果。"
+          : resume?.parseStatus === "succeeded"
+            ? "简历已准备好，可以创建求职目标。"
+            : "先上传一份简历，开始准备求职资料。";
+        const status = agentStatusMeta[agentStatus];
+        return `<div class="page-view">
+          ${pageHeader("CAREER AGENT", `你好，${firstName}`, "把求职交给 Agent，把时间留给更重要的准备。")}
+          <section class="hero-card"><div>
+            <div class="eyebrow">YOUR CAREER COPILOT</div><h2>你的下一步</h2><p>${esc(heroCopy)}</p>
+            <a class="button button-primary inline-button" href="#${nextStep.route}" data-route="${nextStep.route}">${esc(nextStep.label)} <span>→</span></a>
+          </div><div class="hero-orb">✦</div></section>
+          <section class="two-col">
+            <article class="panel guide-panel">
+              <div class="panel-heading"><h2>开始你的求职流程</h2><span class="panel-heading-note">3 个步骤</span></div>
+              <div class="step-list">${flowSteps.map((step, index) => stepListItem(index + 1, [resumeStepStatus, goalStepStatus, agentStepStatus][index], step.title, step.description, index === 2 ? agentActiveSymbol : undefined)).join("")}</div>
+            </article>
+            <article class="panel guide-panel">
+              <div class="panel-heading"><h2>当前准备状态</h2>${badge(status.tone, status.label)}</div>
+              <div class="step-list">
+                ${stepListItem(1, resumeStepStatus, "简历解析", resume ? resumeStatusMeta[resume.parseStatus].label : "尚未开始")}
+                ${stepListItem(2, goalStepStatus, "求职目标", state.jobGoal ? "已创建" : "等待创建")}
+                ${stepListItem(3, agentStepStatus, "Agent 状态", status.label, agentActiveSymbol)}
+              </div>
+            </article>
+          </section>
+          <section class="panel guide-summary">
+            <div class="panel-heading"><h2>产品流程说明</h2><span class="panel-heading-note">Careerpass</span></div>
+            <p class="page-subtitle">本页面展示从资料准备、求职目标创建到 Agent 推进求职进度的完整流程。岗位匹配结果和投递数据将在求职进度页面中展示。</p>
+            <span class="muted-text">当前已有 ${state.applications.length} 条投递记录。</span>
+          </section>
         </div>`;
       }
 
-      function renderCandidateUpload(root) {
-        setHeader("求职资料上传", "分别准备简历和其它求职资料；简历解析成功后才能创建求职目标。");
-        const resumeLocked = state.agentStarted || state.agentFinished;
-        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>简历</h3><span>${resumeLocked ? "本轮已绑定" : "必需"}</span></div><div class="upload-zone"><div class="upload-icon">CV</div><h3>${resumeLocked ? "本轮简历已绑定" : state.resumeUploaded ? "简历已选择" : "上传你的简历"}</h3><p>${resumeLocked ? "本轮投递已绑定当前简历，运行期间不可更换。" : state.resumeUploaded ? "文件已接收，正在更新解析状态。" : "支持用于验证的 PDF、DOC 或 DOCX 文件。"}</p><input id="resumeInput" class="file-input" type="file" accept=".pdf,.doc,.docx" ${resumeLocked ? "disabled" : ""} /><label for="resumeInput" class="btn btn-primary ${resumeLocked ? "is-disabled" : ""}">${resumeLocked ? "本轮已绑定" : state.resumeUploaded ? "重新选择简历" : "选择简历"}</label>${state.resumeUploaded ? `<div class="file-card"><div class="job-logo">CV</div><div><strong>${esc(state.resumeName || "Alex-Chen-Resume.pdf")}</strong><span>${state.resumeParsed ? "解析成功 · 画像已就绪" : "上传成功 · 正在解析"}</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>其它求职资料</h3><span>${state.otherFiles.length ? `${state.otherFiles.length} 份已上传` : "可选 · 支持多份"}</span></div><div class="upload-zone"><div class="upload-icon">＋</div><h3>${state.otherFiles.length ? "资料已添加" : "补充其它求职资料"}</h3><p>${state.otherFiles.length ? "新选择的资料会追加到当前列表，不会替换已有资料。" : "可一次选择多份，或分批上传证书、作品集等资料。"}</p><input id="otherInput" class="file-input" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple /><label for="otherInput" class="btn btn-primary">${state.otherFiles.length ? "继续添加资料" : "选择资料"}</label>${state.otherFiles.length ? `<div class="material-file-list">${state.otherFiles.map((name, index) => `<div class="file-card material-file"><div class="job-logo">＋</div><div><strong>${esc(name)}</strong><span>上传成功 · 资料已就绪</span></div><button class="material-file-remove" type="button" data-material-index="${index}" aria-label="删除 ${esc(name)}" title="删除资料">×</button></div>`).join("")}</div>` : ""}</div></div></section><section class="panel"><div class="panel-head"><h3>简历处理状态</h3><span>${state.resumeParsed ? "已完成" : "准备中"}</span></div><div class="state-list"><div class="state-row ${state.resumeUploaded ? "done" : "active"}"><div class="state-marker">${state.resumeUploaded ? "✓" : "1"}</div><div><strong>文件上传</strong><span>${state.resumeUploaded ? "简历文件已安全接收" : "等待选择简历"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : state.resumeUploaded ? "active" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "2"}</div><div><strong>简历解析</strong><span>${state.resumeParsed ? "结构化画像已生成" : state.resumeUploaded ? "Agent 正在解析" : "上传后开始"}</span></div></div><div class="state-row ${state.resumeParsed ? "done" : ""}"><div class="state-marker">${state.resumeParsed ? "✓" : "3"}</div><div><strong>可用于求职</strong><span>${state.resumeParsed ? "可以创建求职目标" : "等待解析完成"}</span></div></div></div></section></div>`;
-        const input = $("#resumeInput");
-        input?.addEventListener("change", (event) => { if (resumeLocked) return; const file = event.target.files?.[0]; if (!file) return; state.resumeUploaded = true; state.resumeParsed = false; state.resumeName = file.name; renderView(); showToast("简历上传成功，正在解析…"); setTimeout(() => { state.resumeParsed = true; renderView(); showToast("简历解析成功，可以创建求职目标"); }, 850); });
-        $("#otherInput")?.addEventListener("change", (event) => { const files = Array.from(event.target.files || []); if (!files.length) return; state.otherFiles.push(...files.map((file) => file.name)); renderView(); showToast(`已添加 ${files.length} 份其它求职资料`); });
-        document.querySelectorAll("[data-material-index]").forEach((button) => button.addEventListener("click", () => { const index = Number(button.dataset.materialIndex); const [removed] = state.otherFiles.splice(index, 1); renderView(); showToast(`已删除 ${removed || "该资料"}`); }));
+      function renderDocuments() {
+        const resume = state.resume;
+        const resumeLocked = state.agentStatus === "running" || state.agentStatus === "finished";
+        const resumeDeleteAllowed = Boolean(
+          resume && ["not_started", "ready"].includes(state.agentStatus) && ["succeeded", "failed"].includes(resume.parseStatus),
+        );
+        const resumeStatus = resume ? resumeStatusMeta[resume.parseStatus] : resumeStatusMeta.not_uploaded;
+        const pendingUploads = state.supportingDocumentUploads.filter((item) => item.status === "ready");
+        const noticeCopy = resumeLocked
+          ? "当前轮次已经绑定这份简历，历史投递记录会继续保留。"
+          : resume
+            ? "可以上传新简历；新形成的简历会自动成为当前简历。"
+            : "上传并解析一份简历后，才能创建求职目标。";
+        return `<div class="page-view">
+          ${pageHeader("CANDIDATE / DOCUMENTS", "准备你的求职资料", "上传简历和补充资料，系统将处理文件并更新资料状态。")}
+          ${state.error ? errorState(state.error) : ""}
+          <section class="upload-grid">
+            <article class="panel upload-panel">
+              <div class="panel-heading">
+                <div><h2>个人简历</h2><p class="muted-text">简历解析成功后才能创建求职目标。</p></div>
+                ${resume ? badge(resumeStatus.tone, resumeStatus.label) : ""}
+              </div>
+              ${uploadBox({
+                id: "resumeInput",
+                label: resume ? "上传新简历并设为当前" : "上传一份简历",
+                description: resumeLocked ? "当前投递轮次已绑定简历。" : "简历仅支持PDF格式。",
+                accept: ".pdf",
+                disabled: resumeLocked || state.resumeLoading,
+              })}
+              ${resume ? fileInfoCard({ fileName: resume.fileName, version: resume.version, uploadedAt: resume.uploadedAt, deleteAction: "del-resume", deleteId: resume.id, deleteDisabled: !resumeDeleteAllowed || state.resumeLoading }) : ""}
+            </article>
+            <article class="panel upload-panel">
+              <div class="panel-heading">
+                <div><h2>其它求职资料</h2><p class="muted-text">上传你的其它求职材料或证明</p></div>
+                ${badge("neutral", state.supportingDocuments.length ? `${state.supportingDocuments.length} 份已保存` : "可选")}
+              </div>
+              ${uploadBox({
+                id: "docsInput",
+                label: "上传其它资料",
+                description: "支持 PDF、Markdown、JPG、PNG，单文件不超过 10MB。",
+                accept: ".pdf,.md,.jpg,.png",
+                multiple: true,
+                disabled: state.supportingDocumentsLoading,
+                disabledLabel: "正在处理…",
+              })}
+              ${pendingUploads.length ? loadingState("正在上传其它资料", `正在处理：${pendingUploads.map((item) => item.fileName).join("、")}`) : ""}
+              ${state.supportingDocuments.length
+                ? `<div class="file-list-scroll" aria-label="其它求职资料成功上传列表" role="region"><div class="file-list">${state.supportingDocuments.map((doc) => fileInfoCard({ fileName: doc.fileName, uploadedAt: doc.uploadedAt, deleteAction: "del-doc", deleteId: doc.id, deleteDisabled: state.supportingDocumentsLoading })).join("")}</div></div>`
+                : `<div class="inline-empty">还没有其它资料，可稍后补充。</div>`}
+            </article>
+          </section>
+          <section class="notice-card">
+            <div class="notice-icon">i</div>
+            <div><strong>${esc(agentStatusMeta[state.agentStatus].label)}</strong><p>${esc(noticeCopy)}</p></div>
+          </section>
+        </div>`;
       }
 
-      function renderCandidateGoal(root) {
-        setHeader("求职任务配置与启动", "先创建一个清晰的求职目标，再让 Agent 开始首轮匹配。");
-        const canStart = state.resumeParsed && state.goalCreated && state.jdUploaded && !state.agentStarted && !state.agentFinished;
-        const agentTitle = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 正在运行" : "启动求职 Agent";
-        const agentDescription = state.agentFinished ? `系统已判定获得 ${currentOfferCount()} 个 Offer，达到目标 ${state.goal.offers} 个，已停止新增投递。` : state.agentStarted ? "首轮匹配任务已完成，进度看板可以查看岗位结果。" : "启动后，Agent 将在后台完成岗位筛选、匹配与投递。前端不展示中间过程。";
-        const agentState = state.agentFinished ? "Agent 运行结束" : state.agentStarted ? "Agent 运行中" : "尚未启动";
-        root.innerHTML = `<div class="view"><section class="panel"><div class="panel-head"><h3>求职目标配置</h3><span>${state.goalCreated ? "已保存" : "未创建"}</span></div><div class="goal-form"><div class="form-field"><label for="offerTarget">目标 Offer 数量</label><input id="offerTarget" type="number" min="1" value="${state.goal.offers}" /></div><div class="form-field"><label for="targetTitle">目标岗位名称</label><input id="targetTitle" value="${esc(state.goal.title)}" /></div><div class="form-field wide"><label for="targetFilters">岗位过滤条件</label><textarea id="targetFilters">${esc(state.goal.filters)}</textarea></div><div class="wide"><button id="saveGoal" class="btn btn-primary">${state.goalCreated ? "保存修改" : "创建求职目标"}</button></div></div></section><section class="panel"><div class="panel-head"><h3>启动条件</h3><span>${state.agentFinished ? "Agent 已结束" : canStart ? "条件满足" : "等待完成"}</span></div><div class="condition-list"><div class="condition ${state.resumeParsed ? "done" : ""}"><span class="check">✓</span><span>简历上传并解析成功</span></div><div class="condition ${state.jdUploaded ? "done" : ""}"><span class="check">✓</span><span>HR 已准备岗位 JD 数据</span></div><div class="condition ${state.goalCreated ? "done" : ""}"><span class="check">✓</span><span>求职目标创建完成</span></div></div></section><section class="agent-card"><div><h3>${agentTitle}</h3><p>${agentDescription}</p><div class="agent-state ${state.agentFinished ? "finished" : state.agentStarted ? "running" : ""}"><span class="pulse"></span>${agentState}</div></div><button id="startAgent" class="btn btn-primary" ${canStart ? "" : "disabled"}>${state.agentFinished ? "运行已结束" : state.agentStarted ? "已启动" : "启动求职 Agent"}</button></section></div>`;
-        $("#saveGoal")?.addEventListener("click", () => { state.goal.offers = Number($("#offerTarget").value || 1); state.goal.title = $("#targetTitle").value.trim() || "AI Agent 工程师"; state.goal.filters = $("#targetFilters").value.trim(); state.goalCreated = true; renderView(); showToast("求职目标创建成功"); });
-        $("#startAgent")?.addEventListener("click", () => { state.agentStarted = true; state.agentFinished = false; state.round = 1; state.applications = makeApplications(); evaluateAgentCompletion(); renderView(); showToast("求职 Agent 已启动，首轮匹配结果已就绪"); });
+      function renderJobGoalShell(content, isViewPage) {
+        return `<div class="page-view job-goal-page">
+          ${pageHeader("CANDIDATE / JOB GOAL", isViewPage ? "查看求职目标" : "配置你的求职任务", isViewPage ? "查看当前用户已创建的求职目标记录。" : "设置目标 Offer 数量和岗位条件，满足启动条件后即可开始求职 Agent。")}
+          <nav class="job-goal-section-nav" aria-label="求职目标页面菜单">
+            <a href="#create" data-route="candidate/job-goal/create" class="${isViewPage ? "" : "is-active"}">求职目标创建</a>
+            <a href="#view" data-route="candidate/job-goal/view" class="${isViewPage ? "is-active" : ""}">求职目标查看</a>
+          </nav>
+          ${content}
+        </div>`;
+      }
+      function renderJobGoalCreate() {
+        const locked = state.agentStatus === "running" || state.agentStatus === "finished";
+        const canStart =
+          state.resume?.parseStatus === "succeeded" &&
+          Boolean(state.jobGoal) &&
+          state.agentStatus === "ready" &&
+          state.agentRunCanStart;
+        const form = state.goalForm;
+        const status = agentStatusMeta[state.agentStatus];
+        return renderJobGoalShell(`<div class="job-goal-create-page">
+          ${state.error ? errorState(state.error) : ""}
+          <article class="panel job-goal-form-panel">
+            <div class="panel-heading">
+              <div><h2>求职目标配置</h2><p class="muted-text">当前版本每位用户维护一个求职目标。</p></div>
+              ${state.jobGoal ? badge("success", "已保存") : badge("neutral", "待创建")}
+            </div>
+            <div class="form-grid">
+              <label>目标 Offer 数量<input id="offerTarget" type="number" min="1" value="${esc(form.offerTarget)}" ${locked ? "disabled" : ""} data-goal-field="offerTarget" /></label>
+              <label>目标岗位名称<input id="targetTitle" value="${esc(form.title)}" ${locked ? "disabled" : ""} data-goal-field="title" /></label>
+              <label class="field-wide">岗位过滤条件<textarea id="targetFilters" rows="4" ${locked ? "disabled" : ""} data-goal-field="filters">${esc(form.filters)}</textarea></label>
+              <div class="field-wide form-action-row">
+                <button id="save-job-goal" type="button" class="button button-primary" data-action="save-goal" ${state.savingGoal || locked || !form.title.trim() ? "disabled" : ""}>${state.savingGoal ? "保存中…" : state.jobGoal ? "保存修改" : "创建求职目标"}</button>
+              </div>
+            </div>
+          </article>
+          <section class="panel agent-start-panel">
+            <div class="panel-heading">
+              <div><h2>启动条件</h2><p class="muted-text">完成必要准备后，启动按钮才会开放。</p></div>
+              ${badge(status.tone, status.label)}
+            </div>
+          </section>
+          <section class="agent-card" aria-labelledby="agent-start-title">
+            <div class="agent-card-content">
+              <h3 id="agent-start-title">${state.agentStatus === "finished" ? "Agent 运行结束" : state.agentStatus === "running" ? "Agent 正在运行" : "启动求职 Agent"}</h3>
+              <p>${locked ? "求职目标已锁定，请前往求职进度查看本轮投递结果。" : "启动后，Agent 将完成本轮岗位筛选与系统内投递记录创建。前端不展示中间过程。"}</p>
+              <div class="agent-state ${state.agentStatus === "finished" ? "finished" : state.agentStatus === "running" ? "running" : ""}"><span class="pulse"></span>${state.agentStatus === "finished" ? "Agent 运行结束" : state.agentStatus === "running" ? "Agent 运行中" : "尚未启动"}</div>
+            </div>
+            <div class="agent-card-action">
+              <button type="button" class="button button-primary agent-start-button" data-action="start-agent" ${!canStart || state.startingAgent || state.savingGoal ? "disabled" : ""} aria-label="启动求职 Agent">
+                ${state.startingAgent ? "启动中…" : state.agentStatus === "finished" ? "运行已结束" : state.agentStatus === "running" ? "已启动" : "启动求职 Agent"}<span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </section>
+        </div>`, false);
+      }
+      function renderJobGoalView() {
+        const records = state.jobGoal ? [state.jobGoal] : [];
+        const content = records.length
+          ? `<div class="job-goal-table">
+              <div class="job-goal-table-head"><span>目标岗位</span><span>目标 Offer</span><span>创建时间</span></div>
+              <ol class="job-goal-record-list" aria-label="求职目标记录列表">
+                ${records.map((goal) => `<li class="job-goal-record"><strong class="job-goal-record-title" title="${esc(goal.title)}">${esc(goal.title)}</strong><span class="job-goal-record-offer">${goal.offerTarget} 个</span><time class="job-goal-record-created" datetime="${esc(goal.createdAt)}">${fmtDateTime(goal.createdAt)}</time></li>`).join("")}
+              </ol>
+            </div>`
+          : `${emptyState("还没有求职目标", "完成求职目标创建后，这里会显示你的目标记录。")}<a class="button button-secondary inline-button" href="#create" data-route="candidate/job-goal/create">去创建求职目标</a>`;
+        return renderJobGoalShell(`<section class="panel job-goal-list-panel" aria-labelledby="job-goal-view-title">
+          <div class="panel-heading">
+            <div><h2 id="job-goal-view-title">已创建的求职目标</h2><p class="muted-text">当前用户已创建的求职目标</p></div>
+            <span class="job-goal-record-count">${records.length} 条</span>
+          </div>
+          ${content}
+        </section>`, true);
       }
 
-      function renderCandidateProgress(root) {
-        setHeader("投递岗位求职进度", "查看每个投递记录的推进状态，Agent 会持续同步已发生的变化。");
-        if (!state.agentStarted || state.round === 0) { root.innerHTML = `<div class="view"><div class="empty-card"><div><h3>${state.agentStarted ? "暂无投递记录" : "求职进程尚未开始"}</h3><p>${state.agentStarted ? "当前投递轮次为 0，暂无可以展示的岗位进度。" : "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"}</p><button class="btn btn-primary" data-view="candidateGoal" style="margin-top:18px">${state.agentStarted ? "返回任务配置" : "去启动 Agent"}</button></div></div></div>`; return; }
-        const offerCount = currentOfferCount();
-        const offerTarget = Math.max(1, state.goal.offers);
-        const offerPercent = Math.min(100, Math.round((offerCount / offerTarget) * 100));
-        root.innerHTML = `<div class="view"><section class="progress-head"><div><div class="filter-row"><button class="filter-chip active">全部岗位</button><button class="filter-chip">进行中</button><button class="filter-chip">已获得 Offer</button></div></div><div class="status-pill"><span class="dot"></span>${state.agentFinished ? "Agent 已结束 · 目标已达成" : `第 ${state.round} 轮 · ${state.applications.length} 条投递`}</div></section><section class="offer-progress-panel"><div class="offer-ring" style="--offer-progress: ${offerPercent}%" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${offerPercent}" aria-label="Offer 达成进度"><div class="offer-ring-content"><span class="offer-ring-value">${offerCount}/${state.goal.offers}</span><span class="offer-ring-label">Offer 达成</span></div></div><div class="offer-progress-copy"><h3>目标 Offer 达成进度</h3><p>${state.agentFinished ? "目标已达成，系统已判定 Agent 运行结束。" : `继续推进求职沟通，当前已完成目标的 ${offerPercent}%。`}</p><div class="offer-progress-detail"><span>已获得 <strong>${offerCount}</strong> 个</span><span>目标 <strong>${state.goal.offers}</strong> 个</span></div></div></section><section class="metric-grid"><div class="metric"><div class="metric-label">本轮投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">首轮新增</div></div><div class="metric"><div class="metric-label">累计投递数量</div><div class="metric-value">${state.applications.length}</div><div class="metric-note">历史总数</div></div><div class="metric"><div class="metric-label">进行中岗位</div><div class="metric-value">${state.applications.filter((app) => !["offer", "terminated"].includes(app.status)).length}</div><div class="metric-note">尚未结束</div></div><div class="metric"><div class="metric-label">已获得 Offer</div><div class="metric-value">${offerCount}</div><div class="metric-note">目标 ${state.goal.offers} 个</div></div></section><section class="application-list">${state.applications.slice(0, 8).map((app) => { const active = stageIndex(app.status); return `<article class="application-card"><div class="application-top"><div><h3>${esc(app.title)}</h3><p>${esc(app.company)} · ${esc(app.location)} · 最近沟通：${esc(app.recent)}</p></div><span class="tag ${app.status === "offer" ? "offer" : app.status === "terminated" ? "terminated" : ""}">${statusLabel(app.status)}</span></div><div class="timeline">${stages.map(([key, label], index) => `<div class="timeline-step ${index < active ? "done" : index === active ? "active" : ""}">${label}</div>`).join("")}</div></article>`; }).join("")}</section></div>`;
+      function renderProgress() {
+        const applications = state.applications;
+        const offerCount = getOfferCount(applications.map((item) => item.status));
+        const activeCount = applications.filter((item) => !deliveryProgressMeta[item.status].terminal).length;
+        const terminatedCount = applications.filter((item) => item.status === "terminated").length;
+        const offerTarget = state.jobGoal?.offerTarget ?? 0;
+        const offerPercent = offerTarget ? Math.min(offerCount / offerTarget, 1) * 100 : 0;
+        const status = agentStatusMeta[state.agentStatus];
+        const noMatch = state.agentStatus === "finished" && state.agentRun?.finishReason === "no_match";
+        const progressCopy = noMatch
+          ? "本轮岗位已筛选完成，暂未产生投递结果。"
+          : state.agentStatus === "finished"
+            ? "目标已达成，系统已判定 Agent 运行结束。"
+            : "继续推进求职沟通，当前状态会在 HR 更新后同步。";
+        let emptyBlock = "";
+        if (!applications.length) {
+          const evaluated = state.matchingSummary.evaluatedJobCount;
+          emptyBlock = emptyState(
+            state.agentStatus === "not_started" ? "求职进程尚未开始" : "本轮暂未产生匹配结果",
+            state.agentStatus === "not_started"
+              ? "完成简历解析和求职目标创建后，启动 Agent 即可开始首轮求职。"
+              : `本轮已筛选 ${evaluated} 个岗位，暂未产生投递记录。`,
+          );
+        }
+        const roundNumbers = [...new Set(applications.map((item) => item.round))].sort((a, b) => a - b);
+        const activeRoundView = roundNumbers.includes(state.selectedRound) ? state.selectedRound : state.round;
+        return `<div class="page-view">
+          ${pageHeader("CANDIDATE / PROGRESS", "查看求职进度", "这里会持续展示当前投递轮次、岗位阶段和 Offer 目标完成情况。", badge(status.tone, status.label))}
+          ${emptyBlock || `
+          <section class="offer-progress-panel">
+            <div class="offer-ring" style="--offer-progress: ${offerPercent}%" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(offerPercent)}" aria-label="Offer 达成进度">
+              <div><strong>${offerCount}/${offerTarget}</strong><span>Offer 达成</span></div>
+            </div>
+            <div><h2>目标 Offer 达成进度</h2><p>${esc(progressCopy)}</p></div>
+          </section>
+          <section class="metric-grid">
+            <div class="metric"><span>本轮投递</span><strong>${applications.filter((item) => item.round === state.round).length}</strong><small>第 ${state.round} 轮</small></div>
+            <div class="metric"><span>累计投递</span><strong>${applications.length}</strong><small>历史总数</small></div>
+            <div class="metric"><span>进行中岗位</span><strong>${activeCount}</strong><small>尚未结束</small></div>
+            <div class="metric"><span>流程终止</span><strong>${terminatedCount}</strong><small>已结束岗位</small></div>
+          </section>
+          <div class="round-select ${state.roundSelectOpen ? "is-open" : ""}">
+            <button type="button" class="round-select-toggle" data-action="toggle-round-select" aria-haspopup="listbox" aria-expanded="${state.roundSelectOpen}">
+              <span>第 ${activeRoundView} 轮 · ${activeRoundView < state.round ? "已结束" : "进行中"}</span><span class="caret" aria-hidden="true">▾</span>
+            </button>
+            ${state.roundSelectOpen ? `<div class="round-select-menu" role="listbox" aria-label="投递轮次选择">
+              ${roundNumbers.map((roundNo) => `<button type="button" role="option" aria-selected="${roundNo === activeRoundView}" class="${roundNo === activeRoundView ? "is-selected" : ""}" data-action="select-round" data-round="${roundNo}">第 ${roundNo} 轮<small>${roundNo < state.round ? "已结束" : "进行中"} · ${applications.filter((item) => item.round === roundNo).length} 条</small></button>`).join("")}
+            </div>` : ""}
+          </div>
+          <section class="application-list">
+            <div class="application-list-connected">
+              ${applications.filter((item) => item.round === activeRoundView).map((app) => `<article class="application-card">
+                <div class="application-top">
+                  <div class="application-heading"><h2>${esc(app.jobTitle)}</h2><p>${esc(app.company)} · ${esc(app.location)} · 最近沟通：${app.lastContactAt ? new Date(app.lastContactAt).toLocaleString("zh-CN") : "暂无"}</p></div>
+                  <div class="application-match-summary"><strong>综合匹配得分 ${app.matchScore}</strong><p>${esc(app.recommendationReason)}</p></div>
+                  ${badge(deliveryProgressMeta[app.status].tone, deliveryProgressMeta[app.status].label)}
+                </div>
+                ${progressTimeline(app.status)}
+              </article>`).join("")}
+            </div>
+          </section>`}
+        </div>`;
       }
 
-      function renderHrWelcome(root) {
-        setHeader("你好，Morgan", "通过 Careerpass，清晰了解岗位沟通与投递进度。");
-        root.innerHTML = `<div class="view"><section class="hero-card"><div><div class="eyebrow">HR WORKSPACE</div><h2>欢迎使用 HR 工作台</h2><p>从岗位信息准备到候选人沟通，Careerpass 帮你在一个工作台中完成招聘流程协作。</p><button class="btn btn-primary" data-view="hrUpload" style="margin-top:18px">开始准备岗位 JD <span>→</span></button></div><div class="hero-orb">⌁</div></section><section class="two-col"><div class="panel"><div class="panel-head"><h3>HR 标准流程</h3><span>3 个步骤</span></div><div class="notice-list"><div class="notice"><div class="notice-icon">1</div><div><strong>上传岗位 JD</strong><span>准备供求职者 Agent 匹配的岗位信息</span></div></div><div class="notice"><div class="notice-icon">2</div><div><strong>参与岗位沟通</strong><span>求职者 Agent 发起沟通后进行交流</span></div></div><div class="notice"><div class="notice-icon">3</div><div><strong>更新投递进度</strong><span>根据实际情况推进指定投递记录</span></div></div></div></div><div class="panel"><div class="panel-head"><h3>当前准备状态</h3><span>${state.agentStarted ? "进行中" : "待完成"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD</strong><span>${state.jdUploaded ? "已准备岗位数据" : "尚未上传"}</span></div></div><div class="state-row ${state.agentStarted ? "done" : ""}"><div class="state-marker">${state.agentStarted ? "✓" : "2"}</div><div><strong>求职者 Agent 沟通</strong><span>${state.agentStarted ? "已有沟通记录" : "等待求职者启动 Agent"}</span></div></div><div class="state-row ${state.agentStarted ? "active" : ""}"><div class="state-marker">3</div><div><strong>投递进度更新</strong><span>${state.agentStarted ? "可以查看并更新" : "沟通开始后可用"}</span></div></div></div></div></section><section class="panel"><div class="panel-head"><h3>产品流程说明</h3><span>Careerpass</span></div><p class="page-subtitle">本页面展示 HR 从岗位信息准备、候选人 Agent 沟通到投递进度更新的完整流程。具体岗位和投递数据将在对应功能页面中展示。</p></section></div>`;
+      // ---------- 页面：HR ----------
+      function renderHrHome() {
+        const currentHrJob = state.hrJobs.at(-1) ?? null;
+        const hasConversations = state.conversations.length > 0;
+        const hasApplications = state.hrApplications().length > 0;
+        const processStarted = hasConversations || hasApplications;
+        const jobStepStatus = currentHrJob ? "completed" : "active";
+        const conversationStepStatus = hasConversations ? "completed" : currentHrJob ? "active" : "waiting";
+        const applicationStepStatus = hasApplications ? "completed" : hasConversations ? "active" : "waiting";
+        const firstName = state.user.displayName.split(" ")[0];
+        const flowSteps = [
+          { title: "上传岗位 JD", description: currentHrJob ? "岗位信息已准备，可以查看岗位摘要" : "准备供求职者 Agent 匹配的岗位信息" },
+          { title: "参与岗位沟通", description: hasConversations ? "已有沟通记录，可以继续交流" : "求职者 Agent 发起沟通后进行交流" },
+          { title: "更新投递进度", description: hasApplications ? "根据实际情况推进指定投递记录" : "沟通开始后可查看并更新" },
+        ];
+        return `<div class="page-view">
+          ${pageHeader("CAREER AGENT", `你好，${firstName}`, "通过 Careerpass，清晰了解岗位沟通与投递进度。")}
+          <section class="hero-card"><div>
+            <div class="eyebrow">HR WORKSPACE</div>
+            <h2>${currentHrJob ? "岗位已经准备就绪" : "先准备一个岗位 JD"}</h2>
+            <p>${currentHrJob ? `${currentHrJob.jobTitle ?? "岗位 JD"} · ${currentHrJob.companyName ?? "待解析"}，现在可以查看投递进度。` : "上传岗位资料，为求职者 Agent 准备可匹配的岗位。"}</p>
+            <a class="button button-primary inline-button" href="#${currentHrJob ? "hr/applications" : "hr/jobs"}" data-route="${currentHrJob ? "hr/applications" : "hr/jobs"}">${currentHrJob ? "查看投递进度" : "上传岗位 JD"} <span>→</span></a>
+          </div><div class="hero-orb">⌁</div></section>
+          <section class="two-col">
+            <article class="panel guide-panel">
+              <div class="panel-heading"><h2>HR 标准流程</h2><span class="panel-heading-note">3 个步骤</span></div>
+              <div class="step-list">${flowSteps.map((step, index) => stepListItem(index + 1, [jobStepStatus, conversationStepStatus, applicationStepStatus][index], step.title, step.description)).join("")}</div>
+            </article>
+            <article class="panel guide-panel">
+              <div class="panel-heading"><h2>当前准备状态</h2>${badge(processStarted ? "info" : "neutral", processStarted ? "进行中" : "待完成")}</div>
+              <div class="step-list">
+                ${stepListItem(1, jobStepStatus, "岗位 JD", currentHrJob ? "已准备岗位数据" : "尚未上传")}
+                ${stepListItem(2, conversationStepStatus, "求职者 Agent 沟通", hasConversations ? "已有沟通记录" : "等待求职者启动 Agent")}
+                ${stepListItem(3, applicationStepStatus, "投递进度更新", hasApplications ? "可以查看并更新" : "沟通开始后可用")}
+              </div>
+            </article>
+          </section>
+          <section class="panel guide-summary">
+            <div class="panel-heading"><h2>产品流程说明</h2><span class="panel-heading-note">Careerpass</span></div>
+            <p class="page-subtitle">本页面展示 HR 从岗位信息准备、候选人 Agent 沟通到投递进度更新的完整流程。具体岗位和投递数据将在对应功能页面中展示。</p>
+            <span class="muted-text">当前已有 ${state.hrApplications().length} 条投递记录。</span>
+          </section>
+        </div>`;
       }
 
-      function renderHrUpload(root) {
-        setHeader("岗位 JD 上传", "上传岗位信息，为求职者 Agent 准备首轮匹配的岗位池。");
-        root.innerHTML = `<div class="view"><section class="section-grid"><div class="panel"><div class="panel-head"><h3>岗位 JD 资料</h3><span>${state.jdUploaded ? "已准备 20 个岗位" : "等待上传"}</span></div><div class="upload-zone"><div class="upload-icon">▤</div><h3>${state.jdUploaded ? "岗位 JD 已上传" : "上传岗位 JD 文件"}</h3><p>${state.jdUploaded ? "岗位数据已载入，求职者可以使用首轮匹配岗位池。" : "仅支持 Markdown（.md）文件，选择后立即上传。"}</p><input id="jdInput" class="file-input" type="file" accept=".md" /><label for="jdInput" class="btn btn-primary">${state.jdUploaded ? "重新上传" : "选择文件"}</label>${state.jdUploaded ? `<div class="file-card"><div class="job-logo">JD</div><div><strong>${esc(state.jdName || "careerpass-jobs-round-1.md")}</strong><span>上传成功 · 岗位数据已就绪</span></div></div>` : ""}</div></div><div class="panel"><div class="panel-head"><h3>岗位池状态</h3><span>${state.jdUploaded ? "可供匹配" : "未就绪"}</span></div><div class="state-list"><div class="state-row ${state.jdUploaded ? "done" : "active"}"><div class="state-marker">${state.jdUploaded ? "✓" : "1"}</div><div><strong>岗位 JD 上传</strong><span>${state.jdUploaded ? "文件已接收" : "等待选择文件"}</span></div></div><div class="state-row ${state.jdUploaded ? "done" : ""}"><div class="state-marker">${state.jdUploaded ? "✓" : "2"}</div><div><strong>岗位信息准备</strong><span>${state.jdUploaded ? "20 个岗位可用于首轮匹配" : "选择后自动上传"}</span></div></div></div></div></section></div>`;
-        $("#jdInput")?.addEventListener("change", (event) => { const file = event.target.files?.[0]; if (!file) return; state.jdUploaded = true; state.jdName = file.name; renderView(); showToast("岗位 JD 上传成功，20 个岗位数据已就绪"); });
+      function renderJobs() {
+        const jobs = state.hrJobs;
+        const uploadBadge = state.uploadingJobs
+          ? badge("info", "上传中")
+          : jobs.length ? badge("success", `${jobs.length} 份已保存`) : badge("neutral", "待上传");
+        const jobItems = jobs.map((job) => {
+          let parseBadge;
+          if (job.parseStatus === "succeeded") parseBadge = badge("success", "已解析");
+          else if (job.parseStatus === "queued" || job.parseStatus === "running") parseBadge = badge("info", "解析中");
+          else if (job.parseStatus === "failed") parseBadge = badge("danger", "解析失败：暂时不可用或重试耗尽");
+          else parseBadge = badge("neutral", "等待解析");
+          const deleteDisabled = (job.parseStatus !== "succeeded" && job.parseStatus !== "failed") || job.matchStarted;
+          return `<div class="job-upload-item">${fileInfoCard({
+            fileName: job.fileName ?? job.jobTitle ?? "岗位 JD",
+            uploadedAt: job.createdAt,
+            iconLabel: "MD",
+            deleteAction: "del-job",
+            deleteId: job.id,
+            deleteDisabled,
+            trailing: parseBadge,
+          })}</div>`;
+        }).join("");
+        return `<div class="page-view">
+          ${pageHeader("HR / JOBS", "准备岗位 JD", "上传岗位 JD，建立后续流程可使用的岗位输入资源。")}
+          ${state.error ? errorState(state.error) : ""}
+          <section class="upload-grid">
+            <article class="panel upload-panel">
+              <div class="panel-heading">
+                <div><h2>岗位 JD 上传</h2><p class="muted-text">选择一份或多份 Markdown（.md）文件后自动上传。</p></div>
+                ${uploadBadge}
+              </div>
+              ${uploadBox({ id: "jobsInput", label: "上传岗位 JD", description: "支持 Markdown（.md），选择后自动上传。", accept: ".md", multiple: true, disabled: state.uploadingJobs, disabledLabel: "正在处理…" })}
+              ${jobs.length ? `<div class="file-list-scroll" aria-label="已上传岗位列表" role="region"><div class="file-list" role="list">${jobItems}</div></div>` : ""}
+            </article>
+          </section>
+        </div>`;
       }
 
-      function renderHrChat(root) {
-        setHeader("岗位沟通", "和求职者 Agent 沟通，了解候选人的经验与求职意向。");
-        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><h3>等待求职者 Agent 发起沟通</h3><p>求职者启动 Agent 并完成首轮投递后，HR 侧会出现对应的沟通记录。</p></div></div></div>`; return; }
-        const app = state.applications[state.selectedChat] || state.applications[0];
-        root.innerHTML = `<div class="view"><div class="chat-layout"><aside class="chat-list"><h3>沟通中的投递</h3>${state.applications.slice(0, 5).map((item, index) => `<button class="chat-contact ${index === state.selectedChat ? "active" : ""}" data-chat-index="${index}"><div class="avatar">${esc(item.company.slice(0, 1))}</div><div><strong>${esc(item.title)}</strong><span>${esc(item.company)} · ${statusLabel(item.status)}</span></div></button>`).join("")}</aside><section class="chat-window"><header class="chat-header"><div class="avatar">${esc(app.company.slice(0, 1))}</div><div><h3>${esc(app.title)}</h3><p>${esc(app.company)} · 候选人 Alex Chen · ${statusLabel(app.status)}</p></div></header><div id="messages" class="messages">${state.messages.map((message) => `<div class="message ${message.side}">${esc(message.text)}<small>${esc(message.time)}</small></div>`).join("")}</div><form id="composer" class="composer"><input id="messageInput" placeholder="输入消息，发送给求职者 Agent…" autocomplete="off" /><button class="btn btn-primary" type="submit">发送</button></form></section></div></div>`;
-        document.querySelectorAll("[data-chat-index]").forEach((button) => button.addEventListener("click", () => { state.selectedChat = Number(button.dataset.chatIndex); renderView(); }));
-        $("#composer")?.addEventListener("submit", (event) => { event.preventDefault(); const input = $("#messageInput"); const text = input.value.trim(); if (!text) return; state.messages.push({ side: "hr", text, time: "刚刚" }); renderView(); showToast("消息已发送，Agent 正在回复"); setTimeout(() => { state.messages.push({ side: "agent", text: "收到，我会结合 Alex 的求职目标和项目经历进一步确认并回复。", time: "刚刚" }); renderView(); }, 900); });
+      function attachmentCard(message, attachment) {
+        const downloading = state.downloadingAttachmentId === attachment.id;
+        const downloaded = state.downloadedAttachmentIds.has(attachment.id);
+        const isUnavailable = attachment.status === "expired" || attachment.status === "preparing";
+        const actionLabel = downloading ? "下载中" : downloaded ? "已下载" : "下载附件";
+        const statusText = attachment.status === "expired" ? "已过期" : attachment.status === "preparing" ? "准备中" : downloaded ? "已下载" : "可下载";
+        return `<article class="message-attachment-card is-${esc(attachment.status)}" aria-label="附件 ${esc(attachment.fileName)}">
+          <div class="message-attachment-main">
+            <span class="message-attachment-icon" aria-hidden="true">${esc(getFileType(attachment.fileName))}</span>
+            <div class="message-attachment-copy">
+              <strong class="message-attachment-name" title="${esc(attachment.fileName)}">${esc(attachment.fileName)}</strong>
+              <span class="message-attachment-meta">${esc(attachment.fileType.toUpperCase())} · ${fmtSize(attachment.fileSizeBytes)}</span>
+            </div>
+            <span class="message-attachment-status">${esc(statusText)}</span>
+          </div>
+          <div class="message-attachment-details"><span>接收于 ${fmtShortDateTime(attachment.createdAt)}</span><span>有效期至 ${fmtShortDateTime(attachment.expiresAt)}</span></div>
+          <div class="message-attachment-actions">
+            <button type="button" class="button button-secondary message-attachment-download" aria-label="${actionLabel} ${esc(attachment.fileName)}" ${downloading || isUnavailable ? "disabled" : ""} data-action="download" data-mid="${esc(message.id)}" data-aid="${esc(attachment.id)}">${actionLabel}</button>
+          </div>
+        </article>`;
+      }
+      function renderConversations() {
+        if (!state.conversations.length) {
+          return `<div class="page-view">
+            ${pageHeader("HR / CONVERSATIONS", "候选人沟通", "查看指定候选人在对应岗位下的会话记录，并在工作台中完成沟通。")}
+            ${emptyState("尚未发起沟通", "求职流程开始后，这里会出现可沟通的会话。")}
+          </div>`;
+        }
+        const selected = state.conversations.find((item) => item.id === (state.selectedConversationId ?? state.conversations[0].id)) ?? state.conversations[0];
+        scheduleProactiveQuery(selected);
+        const list = state.conversations.map((conversation) =>
+          `<button type="button" class="conversation-item ${conversation.id === selected.id ? "is-active" : ""}" data-action="select-conversation" data-id="${esc(conversation.id)}"><strong>${esc(conversation.candidateName)}</strong><span>${esc(conversation.jobTitle)}</span></button>`,
+        ).join("");
+        const messages = selected.messages.map((message) => {
+          const attachments = message.attachments ?? [];
+          const attachmentOnly = message.sender === "agent" && attachments.length > 0;
+          if (attachmentOnly) {
+            return `<div class="message-row is-agent is-attachment-only"><div class="message-attachment-stack">${attachments.map((attachment) => attachmentCard(message, attachment)).join("")}</div></div>`;
+          }
+          return `<div class="message-row ${message.sender === "hr" ? "is-hr" : "is-agent"}"><div class="message-bubble"><strong>${message.sender === "hr" ? "HR" : esc(selected.candidateName)}</strong>${message.text ? `<span>${esc(message.text)}</span>` : ""}<time>${fmtTime(message.createdAt)}</time></div></div>`;
+        }).join("");
+        return `<div class="page-view">
+          ${pageHeader("HR / CONVERSATIONS", "候选人沟通", "查看指定候选人在对应岗位下的会话记录，并在工作台中完成沟通。")}
+          ${state.error ? errorState(state.error) : ""}
+          <section class="chat-layout">
+            <aside class="conversation-list">
+              <div class="panel-heading"><h2>会话</h2>${badge("info", state.conversations.length)}</div>
+              ${list}
+            </aside>
+            <div class="conversation-main">
+              <div class="conversation-header">
+                <div><h2>${esc(selected.candidateName)}</h2><p>${esc(selected.jobTitle)}</p></div>
+                ${badge("success", "可沟通")}
+              </div>
+              <div id="messageList" class="message-list">${messages}</div>
+              <form id="composerForm" class="message-composer">
+                <label class="visually-hidden" for="message-input">消息内容</label>
+                <textarea id="message-input" rows="3" placeholder="输入要发送给求职 Agent 的消息" ${state.sendingMessage ? "disabled" : ""}>${esc(state.composerText)}</textarea>
+                <button class="button button-primary" type="submit" ${state.sendingMessage || !state.composerText.trim() ? "disabled" : ""}>${state.sendingMessage ? "发送中…" : "发送消息"}</button>
+              </form>
+            </div>
+          </section>
+        </div>`;
       }
 
-      function renderHrUpdate(root) {
-        setHeader("投递进度更新", "每次修改只作用于当前岗位下当前候选人的一条投递记录。");
-        if (!state.agentStarted) { root.innerHTML = `<div class="view"><div class="empty-card"><div><h3>暂无可更新的投递记录</h3><p>求职者 Agent 启动并完成首轮投递后，HR 可以更新对应岗位的求职进度。</p></div></div></div>`; return; }
-        root.innerHTML = `<div class="view"><section class="panel"><div class="panel-head"><h3>岗位投递进度</h3><span>${state.applications.length} 条记录</span></div><div class="update-table">${state.applications.slice(0, 10).map((app, index) => `<div class="update-row"><div class="update-job"><strong>${esc(app.title)}</strong><span>${esc(app.company)} · 候选人 Alex Chen</span></div><span class="tag ${app.status === "offer" ? "offer" : app.status === "terminated" ? "terminated" : ""}">${statusLabel(app.status)}</span><select class="update-select" data-application-index="${index}" aria-label="更新 ${esc(app.title)} 的求职进度">${stages.map(([key, label]) => `<option value="${key}" ${app.status === key ? "selected" : ""}>${label}</option>`).join("")}</select></div>`).join("")}</div></section></div>`;
-        document.querySelectorAll("[data-application-index]").forEach((select) => select.addEventListener("change", () => { const app = state.applications[Number(select.dataset.applicationIndex)]; app.status = select.value; app.recent = "刚刚"; evaluateAgentCompletion(); renderView(); showToast(state.agentFinished ? `已更新 ${app.title}，目标 Offer 已达成，系统判定 Agent 运行结束` : `已更新 ${app.title} 的求职进度：${statusLabel(app.status)}`); }));
+      function renderApplications() {
+        const applications = state.hrApplications();
+        if (!applications.length) {
+          return `<div class="page-view">
+            ${pageHeader("HR / APPLICATIONS", "管理投递进度", "按岗位查看投递记录，只推进当前候选人的单条投递状态。")}
+            ${emptyState("暂无投递记录", "求职者启动 Agent 后，投递记录会在这里显示。")}
+          </div>`;
+        }
+        const cards = applications.map((app) => {
+          const meta = deliveryProgressMeta[app.status];
+          const terminal = meta.terminal;
+          const options = [`<option value="${app.status}" disabled selected>${esc(meta.label)}</option>`]
+            .concat(getAllowedDeliveryTransitions(app.status).map((status) => `<option value="${status}">${esc(deliveryProgressMeta[status].label)}</option>`))
+            .join("");
+          return `<article class="application-card">
+            <div class="application-top">
+              <div><h2>${esc(app.jobTitle)}</h2><p>${esc(app.companyName ?? "未提供公司名称")} · ${esc(app.candidateName)} · 第 ${app.round} 轮</p></div>
+              ${badge(meta.tone, meta.label)}
+            </div>
+            ${progressTimeline(app.status)}
+            <div class="status-editor">
+              <label for="status-${esc(app.id)}">更新当前阶段<select id="status-${esc(app.id)}" data-app-id="${esc(app.id)}" ${state.loading || terminal ? "disabled" : ""}>${options}</select></label>
+              <button type="button" class="button button-ghost" data-action="app-terminate" data-id="${esc(app.id)}" ${state.loading || terminal ? "disabled" : ""}>标记流程终止</button>
+            </div>
+          </article>`;
+        }).join("");
+        return `<div class="page-view">
+          ${pageHeader("HR / APPLICATIONS", "管理投递进度", "按岗位查看投递记录，只推进当前候选人的单条投递状态。")}
+          ${state.error ? errorState(state.error) : ""}
+          <section class="application-list">${cards}</section>
+        </div>`;
       }
 
-      document.querySelectorAll(".role-tab").forEach((tab) => tab.addEventListener("click", () => setLoginRole(tab.dataset.role)));
-      $("#loginForm").addEventListener("submit", (event) => { event.preventDefault(); const account = $("#loginAccount").value.trim(); const password = $("#loginPassword").value.trim(); if (!account || !password) { $("#loginError").textContent = "请输入账号和密码"; return; } $("#loginError").textContent = ""; login(); });
-      $("#logoutButton").addEventListener("click", logout);
-      document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => { state.view = item.dataset.view; renderShell(); }));
-      document.addEventListener("click", (event) => { const button = event.target.closest("[data-view]"); if (button && !button.classList.contains("nav-item")) { state.view = button.dataset.view; renderShell(); } });
+      // ---------- 布局外壳 ----------
+      const candidateNav = [
+        { route: "candidate/home", icon: "⌂", label: "使用指南" },
+        { route: "candidate/documents", icon: "↥", label: "求职资料上传" },
+        { route: "candidate/job-goal/create", icon: "◎", label: "求职任务" },
+        { route: "candidate/progress", icon: "▥", label: "求职进度查看" },
+      ];
+      const hrNav = [
+        { route: "hr/home", icon: "⌂", label: "使用指南" },
+        { route: "hr/jobs", icon: "↥", label: "岗位 JD 上传" },
+        { route: "hr/conversations", icon: "□", label: "求职沟通" },
+        { route: "hr/applications", icon: "↗", label: "投递进度更新" },
+      ];
+      function activeNavRoute(route) {
+        if (route.startsWith("candidate/job-goal")) return "candidate/job-goal/create";
+        return route;
+      }
+      function renderShell(content) {
+        const isCandidate = state.user.role === "candidate";
+        const roleLabel = isCandidate ? "求职者工作台" : "HR 工作台";
+        const nav = isCandidate ? candidateNav : hrNav;
+        const active = activeNavRoute(state.route);
+        return `<div class="app-shell">
+          <aside class="sidebar" aria-label="主导航">
+            <div class="brand-lockup"><div class="brand-mark">C</div><div><div class="sidebar-title">Careerpass</div></div></div>
+            <div class="role-badge" aria-label="当前身份：${esc(roleLabel)}"><span class="dot" aria-hidden="true"></span><span>${esc(roleLabel)}</span></div>
+            <nav class="sidebar-nav" aria-label="${esc(roleLabel)}导航">
+              ${nav.map((item) => `<a href="#${item.route}" data-route="${item.route}" class="${active === item.route ? "active" : ""}"><span class="nav-icon">${item.icon}</span>${esc(item.label)}</a>`).join("")}
+            </nav>
+            <div class="sidebar-footer">
+              <div class="profile-mini"><div class="avatar" aria-hidden="true">${esc(state.user.displayName.charAt(0))}</div><div><strong>${esc(state.user.displayName)}</strong><span>${esc(state.user.title)}</span></div></div>
+              <button class="logout" type="button" data-action="logout">退出登录</button>
+            </div>
+          </aside>
+          <main class="content-area"><div class="page-container">${state.initialized ? content : loadingState()}</div></main>
+        </div>`;
+      }
+
+      function toastHtml() {
+        if (!state.toast) return "";
+        return `<div class="toast toast-${state.toast.tone}" role="${state.toast.tone === "error" ? "alert" : "status"}"><span>${esc(state.toast.message)}</span><button type="button" aria-label="关闭提示" data-action="close-toast">×</button></div>`;
+      }
+
+      function render() {
+        const root = $("#root");
+        const route = state.route;
+        if (route === "login") { root.innerHTML = renderLogin() + toastHtml(); return; }
+        if (route === "register") { root.innerHTML = renderRegister() + toastHtml(); return; }
+        let content = "";
+        if (!state.initialized) content = loadingState();
+        else if (route === "candidate/home") content = renderCandidateHome();
+        else if (route === "candidate/documents") content = renderDocuments();
+        else if (route === "candidate/job-goal/create") content = renderJobGoalCreate();
+        else if (route === "candidate/job-goal/view") content = renderJobGoalView();
+        else if (route === "candidate/progress") content = renderProgress();
+        else if (route === "hr/home") content = renderHrHome();
+        else if (route === "hr/jobs") content = renderJobs();
+        else if (route === "hr/conversations") content = renderConversations();
+        else if (route === "hr/applications") content = renderApplications();
+        else { state.route = "login"; state.loginRole = "candidate"; root.innerHTML = renderLogin() + toastHtml(); return; }
+        root.innerHTML = renderShell(content) + toastHtml();
+        const list = $("#messageList");
+        if (list) list.scrollTop = list.scrollHeight;
+      }
+
+      // ---------- 业务动作（对齐 mockRepository / 真实 API 语义） ----------
+      state.hrApplications = () => state.applications.map((app) => ({
+        id: app.id, jobId: app.jobId, jobTitle: app.jobTitle, companyName: app.company, candidateName: userFixtures.candidate.displayName, status: app.status, round: app.round,
+      }));
+      state.downloadingAttachmentId = null;
+      state.downloadedAttachmentIds = new Set();
+
+      async function doLogin(username, password) {
+        if (!username.trim() || !password.trim()) {
+          state.loginError = "请输入账号和密码";
+          render();
+          return;
+        }
+        state.loginSubmitting = true;
+        state.loginError = null;
+        render();
+        await sleep(500);
+        state.loginSubmitting = false;
+        state.user = userFixtures[state.loginRole];
+        state.route = state.loginRole === "candidate" ? "candidate/home" : "hr/home";
+        state.initialized = false;
+        render();
+        await sleep(420);
+        state.initialized = true;
+        render();
+      }
+
+      async function uploadResume(file) {
+        state.resumeLoading = true;
+        state.error = null;
+        render();
+        await sleep(420);
+        state.resume = {
+          id: uid("resume"),
+          fileName: file.name || "resume.pdf",
+          uploadedAt: nowIso(),
+          parseStatus: "processing",
+          version: (state.resume?.version ?? 0) + 1,
+        };
+        state.agentStatus = "not_started";
+        state.resumeLoading = false;
+        render();
+        showToast("简历已上传，正在进行解析。");
+        await sleep(2400);
+        if (state.resume) state.resume.parseStatus = "succeeded";
+        render();
+      }
+
+      async function deleteResume() {
+        const current = state.resume;
+        if (!current) return;
+        if (!window.confirm(`确认删除当前简历“${current.fileName}”吗？`)) return;
+        state.resumeLoading = true;
+        render();
+        await sleep(180);
+        state.resume = null;
+        state.resumeLoading = false;
+        render();
+        showToast("当前简历已删除。");
+      }
+
+      async function uploadDocuments(files) {
+        state.supportingDocumentUploads = files.map((file) => ({ fileName: file.name || "supporting-document.pdf", status: "ready" }));
+        state.supportingDocumentsLoading = true;
+        state.error = null;
+        render();
+        await sleep(700);
+        const results = files.map((file, index) => {
+          const fileName = file.name || `supporting-document-${index + 1}.pdf`;
+          const extension = fileName.split(".").at(-1)?.toLowerCase();
+          const allowed = ["pdf", "md", "jpg", "png"].includes(extension);
+          if (!allowed || file.size === 0) return { fileName, status: "failed" };
+          if (file.size > 10_000_000) return { fileName, status: "failed" };
+          const fingerprint = `${file.name}:${file.size}:${file.lastModified}`;
+          const existingId = state.documentFingerprints.get(fingerprint);
+          if (existingId && state.supportingDocuments.some((item) => item.id === existingId)) return { fileName, status: "success" };
+          const document = {
+            id: uid("document"),
+            fileName,
+            fileType: ["pdf", "md", "jpg", "png"].includes(extension) ? extension : "pdf",
+            sizeBytes: file.size,
+            uploadedAt: nowIso(),
+            status: "success",
+          };
+          state.documentFingerprints.set(fingerprint, document.id);
+          state.supportingDocuments = [...state.supportingDocuments, document];
+          return { fileName, status: "success" };
+        });
+        state.supportingDocumentUploads = [];
+        state.supportingDocumentsLoading = false;
+        render();
+        const failedUploads = results.filter((item) => item.status === "failed");
+        if (failedUploads.length === 0) {
+          showToast("其它资料已就绪。");
+          return;
+        }
+        const failedFileNames = failedUploads.map((item) => item.fileName).join("、");
+        showToast(
+          failedUploads.length === 1
+            ? `${failedFileNames} 上传失败：请检查文件格式或大小。`
+            : `${failedUploads.length} 个文件上传失败：${failedFileNames}。请检查文件格式或大小。`,
+          "error",
+        );
+      }
+
+      async function deleteDocument(id, fileName) {
+        if (!window.confirm(`确认删除资料“${fileName}”吗？`)) return;
+        state.supportingDocuments = state.supportingDocuments.filter((item) => item.id !== id);
+        render();
+        await sleep(180);
+        showToast("资料已删除。");
+      }
+
+      async function uploadJobs(files) {
+        if (!files.length) return;
+        // 演示数据一致性：任意一次上传都载入全部 20 份构造岗位 JD；已存在时不重复创建。
+        if (state.hrJobs.length) { render(); return; }
+        state.uploadingJobs = true;
+        state.error = null;
+        render();
+        await sleep(500);
+        const createdAt = nowIso();
+        state.hrJobs = jobFixtures.map((fixture) => ({
+          id: uid("job"),
+          fileName: fixture.fileName,
+          jobTitle: fixture.title,
+          companyName: fixture.company,
+          location: fixture.location,
+          salary: fixture.salary,
+          matchScore: fixture.score,
+          recommendationReason: buildRecommendationReason(fixture),
+          createdAt,
+          parseStatus: "running",
+          matchStarted: false,
+        }));
+        state.uploadingJobs = false;
+        render();
+        // 模拟异步解析完成（真实链路：S-02/S-03 解析任务 + 轮询刷新）。
+        state.hrJobs.forEach((job, index) => {
+          setTimeout(() => {
+            if (job.parseStatus === "running") job.parseStatus = "succeeded";
+            if (state.route === "hr/jobs") render();
+          }, 1200 + index * 200);
+        });
+      }
+
+      async function deleteJob(id) {
+        state.hrJobs = state.hrJobs.filter((job) => job.id !== id);
+        render();
+      }
+
+      async function saveGoal() {
+        if (state.savingGoal) return;
+        const form = state.goalForm;
+        const offerTarget = Number(form.offerTarget);
+        if (!Number.isInteger(offerTarget) || offerTarget < 1 || offerTarget > 10 || !form.title.trim()) {
+          state.error = "请填写有效的目标 Offer 数量和岗位名称。";
+          render();
+          return;
+        }
+        state.savingGoal = true;
+        state.error = null;
+        render();
+        await sleep(260);
+        state.jobGoal = {
+          id: state.jobGoal?.id ?? uid("goal"),
+          offerTarget,
+          title: form.title.trim(),
+          filters: form.filters.trim(),
+          status: state.jobGoal?.status ?? "active",
+          createdAt: state.jobGoal?.createdAt ?? nowIso(),
+          updatedAt: nowIso(),
+        };
+        if (state.resume?.parseStatus === "succeeded" && state.agentStatus === "not_started") {
+          state.agentStatus = "ready";
+        }
+        state.agentRunCanStart = state.agentStatus === "ready";
+        state.savingGoal = false;
+        render();
+        showToast("求职目标已保存。");
+      }
+
+      // 为一批岗位创建投递记录与对应会话容器，挂在指定轮次上。
+      function createApplicationsForRound(jobs, round) {
+        const created = jobs.map((job) => ({
+          id: uid("application"),
+          jobId: job.id,
+          jobTitle: job.jobTitle,
+          company: job.companyName,
+          location: job.location,
+          salary: job.salary,
+          status: "submitted",
+          appliedAt: nowIso(),
+          lastContactAt: null,
+          matchScore: job.matchScore,
+          recommendationReason: job.recommendationReason,
+          round,
+        }));
+        state.applications.push(...created);
+        created.forEach((app) => {
+          state.conversations.push({
+            id: uid("conversation"),
+            applicationId: app.id,
+            jobTitle: app.jobTitle,
+            candidateName: userFixtures.candidate.displayName,
+            messages: [],
+            queryAsked: false,
+            queryPending: false,
+          });
+        });
+      }
+
+      // 轮次推进：Offer 未达标且当前轮没有进行中的岗位时开启下一轮。
+      // 条件触发后立即弹窗提示（异步任务受理信号），延迟 4.5 秒后才刷新页面出现新一轮岗位
+      // （模拟向量检索 + 关键词检索 + 重排 + LLM 解析评分的异步匹配耗时）。
+      function evaluateRoundAdvance() {
+        if (state.agentStatus !== "running" || state.roundAdvancing) return false;
+        const currentRoundApps = state.applications.filter((item) => item.round === state.round);
+        const noActiveInRound = currentRoundApps.length > 0 && currentRoundApps.every((item) => deliveryProgressMeta[item.status].terminal);
+        const offerCount = getOfferCount(state.applications.map((item) => item.status));
+        const belowTarget = !state.jobGoal || offerCount < state.jobGoal.offerTarget;
+        if (!noActiveInRound || !belowTarget || !state.reserveJobs.length) return false;
+        const nextRoundNo = state.round + 1;
+        const nextBatch = state.reserveJobs.splice(0, roundCapFor(nextRoundNo));
+        state.roundAdvancing = true;
+        if (state.route !== "login" && state.route !== "register") {
+          showToast(`检测到本轮投递已全部结束且 Offer 未达标，Agent 已自动开启第 ${nextRoundNo} 轮投递`, "info");
+        }
+        setTimeout(() => {
+          state.round = nextRoundNo;
+          createApplicationsForRound(nextBatch, nextRoundNo);
+          state.roundAdvancing = false;
+          if (state.route !== "login" && state.route !== "register") render();
+        }, 4500);
+        return true;
+      }
+
+      async function startAgent() {
+        if (state.startingAgent || state.savingGoal) return;
+        state.startingAgent = true;
+        state.error = null;
+        render();
+        await sleep(520);
+        if (!state.resume || state.resume.parseStatus !== "succeeded") {
+          state.startingAgent = false;
+          state.error = "简历解析成功后才能启动 Agent。";
+          render();
+          return;
+        }
+        if (!state.jobGoal) {
+          state.startingAgent = false;
+          state.error = "请先创建求职目标。";
+          render();
+          return;
+        }
+        if (state.agentStatus === "finished") {
+          state.startingAgent = false;
+          state.error = "Agent 已结束，不能重复启动。";
+          render();
+          return;
+        }
+        const parsedJobs = state.hrJobs.filter((job) => job.parseStatus === "succeeded");
+        if (!parsedJobs.length) {
+          state.startingAgent = false;
+          state.error = "当前没有可用的岗位 JD，请先由 HR 上传并完成解析。";
+          render();
+          return;
+        }
+        // 模拟 S-08 同步匹配 + 多轮投递：全量筛选，按综合匹配得分投递 Top-K，其余进入储备。
+        const ranked = parsedJobs.slice().sort((a, b) => b.matchScore - a.matchScore);
+        const firstRound = ranked.slice(0, roundCapFor(1));
+        state.reserveJobs = ranked.slice(roundCapFor(1));
+        state.applications = [];
+        state.conversations = [];
+        createApplicationsForRound(firstRound, 1);
+        state.hrJobs.forEach((job) => { job.matchStarted = true; });
+        state.matchingSummary = { evaluatedJobCount: parsedJobs.length };
+        state.agentStatus = "running";
+        state.agentRun = { status: "running", finishReason: null };
+        state.agentRunCanStart = false;
+        state.round = 1;
+        state.startingAgent = false;
+        render();
+      }
+
+      async function updateApplicationStatus(id, status) {
+        const application = state.applications.find((item) => item.id === id);
+        if (!application) {
+          state.error = "没有找到对应的投递记录。";
+          render();
+          return;
+        }
+        if (!isValidDeliveryTransition(application.status, status)) {
+          state.error = "该投递状态不能直接跳转到目标阶段。";
+          render();
+          return;
+        }
+        state.loading = true;
+        render();
+        await sleep(280);
+        application.status = status;
+        application.lastContactAt = nowIso();
+        const offerCount = getOfferCount(state.applications.map((item) => item.status));
+        let roundAdvanced = false;
+        if (state.jobGoal && offerCount >= state.jobGoal.offerTarget) {
+          state.agentStatus = "finished";
+          state.jobGoal.status = "achieved";
+          state.agentRun = { status: "finished", finishReason: "offer_target_reached" };
+        } else {
+          roundAdvanced = evaluateRoundAdvance();
+        }
+        state.loading = false;
+        render();
+        if (!roundAdvanced) showToast("投递进度已更新。");
+      }
+
+      // ---------- 会话动作（S10-01/02/03 语义） ----------
+      // 资料意图识别与检索（对齐后端 document_delivery_service.py 的受控语义）。
+      const DOCUMENT_ALIASES = {
+        certificate: ["证书", "资格证", "认证", "certificate", "certification"],
+        photo: ["照片", "证件照", "photo", "picture"],
+        academic_status: ["学籍证明", "学籍材料", "学籍验证报告", "学籍证明材料", "学籍验证报告材料"],
+        proof: ["证明", "证明材料", "proof", "document"],
+      };
+      const REQUEST_MARKERS = [
+        "请提供", "请发送", "能否提供", "可以提供", "请上传", "发一下", "发给我", "发来",
+        "传一下", "传给我", "提供", "发送", "provide", "send", "share", "give me",
+      ];
+      const REQUESTED_NAME_PATTERNS = [
+        /(?:把|将)\s*([^，。！？?!]+?)\s*(?:发一下|发给我|发来|发送|提供|传一下|传给我|发)/,
+        /(?:请|麻烦|能否|可以)?\s*(?:提供|发送|发一下|发给我|发来|传一下|传给我)\s*([^，。！？?!]+)/,
+      ];
+      function normalizeDocumentText(value) {
+        return String(value).toLowerCase()
+          .replace(/\.[a-z0-9]{1,8}$/, "")
+          .replace(/[_\-./\\]+/g, " ")
+          .replace(/[^\w\u3400-\u9fff]+/g, " ")
+          .trim()
+          .replace(/\s+/g, " ");
+      }
+      function detectDocumentIntent(content) {
+        const normalized = normalizeDocumentText(content);
+        if (!REQUEST_MARKERS.some((marker) => normalized.includes(normalizeDocumentText(marker)))) return null;
+        for (const [intent, aliases] of Object.entries(DOCUMENT_ALIASES)) {
+          if (aliases.some((alias) => normalized.includes(normalizeDocumentText(alias)))) return intent;
+        }
+        for (const pattern of REQUESTED_NAME_PATTERNS) {
+          const match = normalized.match(pattern);
+          if (!match) continue;
+          const target = match[1].replace(/^(你的|我的|候选人的|求职者的|相关的|这份|该份|一份)\s*/, "").trim();
+          if (target) return target;
+        }
+        return null;
+      }
+      function resolveSupportingDocument(intentOrName) {
+        const aliases = (DOCUMENT_ALIASES[intentOrName] ?? [intentOrName]).map(normalizeDocumentText);
+        const matches = state.supportingDocuments.filter((doc) =>
+          aliases.some((alias) => alias && normalizeDocumentText(doc.fileName).includes(alias)),
+        );
+        // 与正式版一致：仅唯一命中才交付，零命中或歧义都失败关闭。
+        return matches.length === 1 ? matches[0] : null;
+      }
+      function scheduleProactiveQuery(conversation) {
+        if (!conversation || conversation.queryAsked) return;
+        conversation.queryAsked = true;
+        // S10-03：HR 进入会话默认自动触发一次主动查询。
+        setTimeout(() => {
+          conversation.messages.push({
+            id: uid("message"),
+            sender: "agent",
+            text: "想和您确认一个信息：这个岗位是否属于兼职性质？",
+            createdAt: nowIso(),
+          });
+          conversation.queryPending = true;
+          if (state.route === "hr/conversations") render();
+        }, 1400);
+      }
+
+      function binaryAnswer(text) {
+        if (/(不是|不属于|不对|非兼职|不兼职)/.test(text)) return "negative";
+        if (/(是的|属于|对的|^是$|^对$|是的属于)/.test(text)) return "positive";
+        return null;
+      }
+
+      async function sendMessage(content) {
+        const selected = state.conversations.find((item) => item.id === (state.selectedConversationId ?? state.conversations[0]?.id));
+        if (!selected || !content.trim()) return;
+        state.sendingMessage = true;
+        render();
+        await sleep(500);
+        selected.messages.push({ id: uid("message"), sender: "hr", text: content.trim(), createdAt: nowIso() });
+        state.composerText = "";
+        render();
+        // 资料请求：提问后约 1.5 秒完成模糊识别与检索（对齐正式版异步节奏）。
+        const documentIntent = detectDocumentIntent(content);
+        if (documentIntent !== null) await sleep(1000);
+        let agentMessage;
+        if (selected.queryPending) {
+          const answer = binaryAnswer(content.trim());
+          // 查询问题是“岗位是否属于兼职性质”（求职过滤条件为不考虑兼职岗位）：
+          // 肯定回答＝属于兼职，不满足过滤条件，不继续推进；否定回答＝不是兼职，条件满足，继续推进。
+          if (answer === "positive") {
+            agentMessage = { id: uid("message"), sender: "agent", text: "感谢沟通，当前不考虑这个岗位了。", createdAt: nowIso() };
+            selected.queryPending = false;
+          } else if (answer === "negative") {
+            agentMessage = { id: uid("message"), sender: "agent", text: "好的，了解。", createdAt: nowIso() };
+            selected.queryPending = false;
+          }
+        }
+        if (!agentMessage && documentIntent !== null) {
+          const document = resolveSupportingDocument(documentIntent);
+          if (document) {
+            // S10-02：唯一命中即以附件卡片交付，无额外成功提示语。
+            agentMessage = {
+              id: uid("message"),
+              sender: "agent",
+              text: "",
+              createdAt: nowIso(),
+              attachments: [{
+                id: uid("attachment"),
+                fileName: document.fileName,
+                fileType: document.fileType,
+                fileSizeBytes: document.sizeBytes ?? 0,
+                createdAt: nowIso(),
+                expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+                status: "downloadable",
+              }],
+            };
+          } else {
+            agentMessage = { id: uid("message"), sender: "agent", text: "暂时没有找到符合条件的求职资料。", createdAt: nowIso() };
+          }
+        }
+        if (!agentMessage) {
+          agentMessage = { id: uid("message"), sender: "agent", text: "感谢您的沟通，我会补充说明候选人的相关项目经验。", createdAt: nowIso() };
+        }
+        selected.messages.push(agentMessage);
+        state.sendingMessage = false;
+        render();
+      }
+
+      async function downloadAttachment(messageId, attachmentId) {
+        if (state.downloadingAttachmentId) return;
+        state.downloadingAttachmentId = attachmentId;
+        render();
+        await sleep(700);
+        state.downloadingAttachmentId = null;
+        state.downloadedAttachmentIds.add(attachmentId);
+        render();
+      }
+
+      // ---------- 事件绑定 ----------
+      function navigate(route) {
+        state.route = route;
+        state.error = null;
+        state.roundSelectOpen = false;
+        if (route === "hr/conversations") state.selectedConversationId = state.selectedConversationId ?? null;
+        render();
+        window.scrollTo(0, 0);
+      }
+
+      document.addEventListener("click", (event) => {
+        // 点击下拉控件外部时收起轮次选择菜单
+        let closeRoundSelect = false;
+        if (state.roundSelectOpen && !event.target.closest(".round-select")) {
+          state.roundSelectOpen = false;
+          closeRoundSelect = true;
+        }
+        const routeTarget = event.target.closest("[data-route]");
+        const actionTarget = event.target.closest("[data-action]");
+        if (actionTarget) {
+          const action = actionTarget.dataset.action;
+          if (action === "pick") {
+            const input = document.getElementById(actionTarget.dataset.target);
+            if (input && !input.disabled) input.click();
+            return;
+          }
+          if (action === "login-role") {
+            state.loginRole = actionTarget.dataset.role;
+            state.loginError = null;
+            render();
+            return;
+          }
+          if (action === "logout") {
+            state.route = "login";
+            state.loginRole = "candidate";
+            state.loginError = null;
+            render();
+            return;
+          }
+          if (action === "close-toast") { state.toast = null; render(); return; }
+          if (action === "clear-error") { state.error = null; render(); return; }
+          if (action === "select-conversation") { state.selectedConversationId = actionTarget.dataset.id; render(); return; }
+          if (action === "toggle-round-select") { state.roundSelectOpen = !state.roundSelectOpen; render(); return; }
+          if (action === "select-round") { state.selectedRound = Number(actionTarget.dataset.round); state.roundSelectOpen = false; render(); return; }
+          if (action === "del-resume") { void deleteResume(); return; }
+          if (action === "del-doc") {
+            const doc = state.supportingDocuments.find((item) => item.id === actionTarget.dataset.id);
+            if (doc) void deleteDocument(doc.id, doc.fileName);
+            return;
+          }
+          if (action === "del-job") { void deleteJob(actionTarget.dataset.id); return; }
+          if (action === "save-goal") { void saveGoal(); return; }
+          if (action === "start-agent") { void startAgent(); return; }
+          if (action === "app-terminate") { void updateApplicationStatus(actionTarget.dataset.id, "terminated"); return; }
+          if (action === "download") { void downloadAttachment(actionTarget.dataset.mid, actionTarget.dataset.aid); return; }
+        }
+        if (routeTarget) {
+          event.preventDefault();
+          navigate(routeTarget.dataset.route);
+        } else if (closeRoundSelect) {
+          render();
+        }
+      });
+
+      document.addEventListener("change", (event) => {
+        const target = event.target;
+        if (target.matches('input[type="file"][data-file]')) {
+          const files = Array.from(target.files || []);
+          target.value = "";
+          if (!files.length) return;
+          if (target.dataset.file === "resumeInput") void uploadResume(files[0]);
+          if (target.dataset.file === "docsInput") void uploadDocuments(files);
+          if (target.dataset.file === "jobsInput") void uploadJobs(files);
+          return;
+        }
+        if (target.matches("select[data-app-id]")) {
+          void updateApplicationStatus(target.dataset.appId, target.value);
+        }
+      });
+
+      document.addEventListener("input", (event) => {
+        const target = event.target;
+        if (target.matches("[data-goal-field]")) {
+          state.goalForm[target.dataset.goalField] = target.value;
+          const saveButton = $("#save-job-goal");
+          if (saveButton) {
+            const locked = state.agentStatus === "running" || state.agentStatus === "finished";
+            saveButton.disabled = state.savingGoal || locked || !state.goalForm.title.trim();
+          }
+          return;
+        }
+        if (target.matches("#message-input")) {
+          state.composerText = target.value;
+          const submit = $("#composerForm button[type='submit']");
+          if (submit) submit.disabled = state.sendingMessage || !state.composerText.trim();
+        }
+      });
+
+      document.addEventListener("submit", (event) => {
+        const form = event.target;
+        if (form.id === "loginForm") {
+          event.preventDefault();
+          const username = form.querySelector('[name="username"]').value;
+          const password = form.querySelector('[name="password"]').value;
+          void doLogin(username, password);
+          return;
+        }
+        if (form.id === "composerForm") {
+          event.preventDefault();
+          if (state.sendingMessage || !state.composerText.trim()) return;
+          void sendMessage(state.composerText);
+        }
+      });
+
+      render();
     </script>
   </body>
 </html>
