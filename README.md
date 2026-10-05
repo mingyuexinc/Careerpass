@@ -2,7 +2,7 @@
 
 > 面向求职者和 HR 的 AI 求职协作平台，通过简历解析、岗位匹配、系统内沟通和投递进度管理，构建完整、可追踪的智能求职闭环。
 
-**在线体验：** [Careerpass 正式系统](http://8.133.216.96/) · [HTML 原型在线演示](https://mingyuexinc.github.io/Careerpass/)
+**访问链接：** [Careerpass 正式系统](http://8.133.216.96/) · [Careerpass 在线体验](https://mingyuexinc.github.io/Careerpass/)
 
 ## 项目介绍
 
