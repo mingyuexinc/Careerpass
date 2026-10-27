@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Careerpass · 求职 Agent 演示</title>
+    <title>Careerpass · 求职 Agent</title>
     <style>
       /* 样式与 careerpass-frontend/src/styles/tokens.css + globals.css 保持一致（不含调试重置面板）。 */
       :root {
@@ -1092,6 +1092,300 @@
       .toast-info { background: #315f8f; }
       .toast button { border: 0; background: transparent; color: white; font-size: 18px; }
 
+      .eval-page { display: grid; gap: 20px; }
+      .eval-section-nav {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 4px;
+        padding: 6px;
+        border: 1px solid var(--color-line);
+        border-radius: 17px;
+        background: white;
+        box-shadow: var(--shadow-soft);
+      }
+      .eval-section-nav button {
+        min-width: 0;
+        padding: 13px 12px;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        color: var(--color-muted);
+        font-size: 14px;
+        font-weight: 800;
+        text-align: center;
+        transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+      }
+      .eval-section-nav button:hover, .eval-section-nav button.is-active {
+        background: var(--color-brand-soft);
+        color: var(--color-brand-dark);
+      }
+      .eval-section-nav button.is-active { box-shadow: inset 0 0 0 1px rgb(255 106 0 / 14%); }
+      .eval-tab-panel { display: grid; gap: 20px; }
+      .eval-metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .eval-metric-grid .metric strong { color: var(--color-text); font-size: 26px; }
+      .eval-metric-grid .metric.is-pass strong { color: #15945b; }
+      .eval-gate-bar {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--color-line);
+      }
+      .eval-gate-track {
+        position: relative;
+        height: 10px;
+        margin-top: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #eef1f4;
+      }
+      .eval-gate-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #ffb37f, var(--color-brand));
+      }
+      .eval-gate-marker {
+        position: absolute;
+        top: -4px;
+        width: 2px;
+        height: 18px;
+        background: #15945b;
+      }
+      .eval-gate-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        color: var(--color-muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .eval-def-list {
+        display: grid;
+        gap: 12px;
+        margin: 16px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .eval-def-list li {
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: var(--color-bg);
+      }
+      .eval-def-list dt {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .eval-def-list dd {
+        margin: 6px 0 0;
+        color: var(--color-muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .eval-table-wrap { margin-top: 16px; overflow-x: auto; }
+      .eval-table {
+        width: 100%;
+        min-width: 420px;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .eval-table th, .eval-table td {
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--color-line);
+        text-align: left;
+      }
+      .eval-table th {
+        color: var(--color-muted);
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.02em;
+      }
+      .eval-table tr:last-child td { border-bottom: 0; }
+      .eval-table .is-best { font-weight: 800; color: var(--color-brand-dark); }
+      .eval-table .eval-dataset-field {
+        width: 28%;
+        color: var(--color-text);
+        font-weight: 750;
+        white-space: nowrap;
+      }
+      .eval-matrix-table { min-width: 560px; }
+      .eval-matrix-table th:first-child,
+      .eval-matrix-table .eval-matrix-dim {
+        width: 22%;
+        min-width: 96px;
+        color: var(--color-text);
+        font-weight: 750;
+        vertical-align: top;
+      }
+      .eval-matrix-table td {
+        vertical-align: top;
+        line-height: 1.55;
+        font-size: 12px;
+      }
+      .eval-matrix-table thead th {
+        width: 39%;
+      }
+      .eval-shared-defs {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--color-line);
+      }
+      .eval-shared-defs p {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .eval-shared-defs strong { color: var(--color-text); }
+      .eval-subsection {
+        margin-top: 22px;
+        padding-top: 22px;
+        border-top: 1px solid var(--color-line);
+      }
+      .eval-subsection:first-child {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: 0;
+      }
+      .eval-subsection-title {
+        margin: 0 0 12px;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .eval-subsection-note {
+        margin: 10px 0 0;
+        color: var(--color-muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .eval-footnote {
+        margin: 12px 0 0;
+        color: var(--color-muted);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      .eval-case-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .eval-case-card {
+        padding: 16px;
+        border: 1px solid var(--color-line);
+        border-radius: 14px;
+        background: var(--color-bg);
+      }
+      .eval-case-card.is-hit { border-color: rgb(45 187 120 / 35%); background: var(--color-success-soft); }
+      .eval-case-card.is-miss { border-color: rgb(235 98 98 / 28%); background: var(--color-danger-soft); }
+      .eval-case-card header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .eval-case-card header strong { font-size: 13px; }
+      .eval-rank-list {
+        display: grid;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .eval-rank-list li {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: white;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .eval-rank-list li.is-gold { box-shadow: inset 0 0 0 1px rgb(45 187 120 / 45%); }
+      .eval-rank-list li.is-wrong-top { box-shadow: inset 0 0 0 1px rgb(235 98 98 / 40%); }
+      .eval-rank-list small { flex: 0 0 auto; color: var(--color-muted); font-size: 11px; font-weight: 700; }
+      .eval-badcase-list { display: grid; gap: 12px; margin-top: 16px; }
+      .eval-badcase-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--color-line);
+        border-radius: 14px;
+        background: #fffaf5;
+      }
+      .eval-badcase-item p {
+        margin: 6px 0 0;
+        color: var(--color-muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .eval-badcase-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+        text-align: right;
+      }
+      .eval-badcase-meta span {
+        color: var(--color-muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .eval-bullet-list {
+        display: grid;
+        gap: 8px;
+        margin: 14px 0 0;
+        padding-left: 18px;
+        color: var(--color-muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .eval-appendix {
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-md);
+        background: white;
+        overflow: hidden;
+      }
+      .eval-appendix summary {
+        padding: 16px 20px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 800;
+        list-style: none;
+      }
+      .eval-appendix summary::-webkit-details-marker { display: none; }
+      .eval-appendix summary::after {
+        content: "▾";
+        float: right;
+        color: var(--color-muted);
+        font-weight: 400;
+      }
+      .eval-appendix[open] summary::after { content: "▴"; }
+      .eval-appendix-body {
+        padding: 0 20px 18px;
+        border-top: 1px solid var(--color-line);
+      }
+      .eval-dual-pillar {
+        margin: 0;
+        padding: 14px 16px;
+        border-radius: 12px;
+        background: var(--color-brand-soft);
+        color: var(--color-brand-dark);
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.55;
+      }
+
       @media (max-width: 850px) {
         .app-shell { grid-template-columns: 1fr; }
         .sidebar {
@@ -1110,6 +1404,10 @@
         .page-header-action .status-badge { display: inline-flex; }
         .panel-grid, .upload-grid, .two-col { grid-template-columns: 1fr; }
         .metric-grid { grid-template-columns: repeat(2, 1fr); }
+        .eval-section-nav button { padding: 12px 8px; font-size: 13px; }
+        .eval-metric-grid, .eval-case-grid { grid-template-columns: 1fr; }
+        .eval-badcase-item { grid-template-columns: 1fr; }
+        .eval-badcase-meta { align-items: flex-start; text-align: left; }
         .chat-layout { grid-template-columns: 1fr; }
         .conversation-list { border-right: 0; border-bottom: 1px solid var(--color-line); }
         .conversation-item { display: inline-grid; width: auto; min-width: 160px; margin-right: 5px; }
@@ -1158,6 +1456,8 @@
        * - 资料交付演示（S10-02 语义）：默认资料为“学籍验证报告”，HR 提问
        *   1.5 秒后按受控别名模糊识别并检索交付；唯一命中才发送附件，
        *   未找到时返回受控文案（对齐 app/services/document_delivery_service.py）。
+       * - 匹配质量评测页：静态 artifact；双层集（离线主 benchmark ~100 + 在线 replay ~50）、
+       *   Hit@3 / ablation / bad case，与主链路 Agent 演示解耦。
        */
 
       // ---------- 领域元数据（对齐 src/domain/mappings.ts） ----------
@@ -1292,6 +1592,7 @@
           composerText: "",
           sendingMessage: false,
           toast: null,
+          evalTab: "system",
         };
       }
       let state = createInitialState();
@@ -1455,8 +1756,263 @@
           <section class="panel guide-summary">
             <div class="panel-heading"><h2>产品流程说明</h2><span class="panel-heading-note">Careerpass</span></div>
             <p class="page-subtitle">本页面展示从资料准备、求职目标创建到 Agent 推进求职进度的完整流程。岗位匹配结果和投递数据将在求职进度页面中展示。</p>
-            <span class="muted-text">当前已有 ${state.applications.length} 条投递记录。</span>
+            <span class="muted-text">当前已有 ${state.applications.length} 条投递记录。侧栏<a href="#candidate/evaluation" data-route="candidate/evaluation">匹配质量评测</a>可查看离线评估结果。</span>
           </section>
+        </div>`;
+      }
+
+      const evalTabMeta = {
+        system: { label: "评测体系", panelId: "eval-panel-system" },
+        ablation: { label: "消融试验", panelId: "eval-panel-ablation" },
+        badcase: { label: "异常样例回归", panelId: "eval-panel-badcase" },
+      };
+
+      function renderEvalSectionNav(activeTab) {
+        return `<nav class="eval-section-nav" aria-label="匹配质量评测分节">
+          ${Object.entries(evalTabMeta).map(([key, meta]) =>
+            `<button type="button" class="${activeTab === key ? "is-active" : ""}" data-action="eval-tab" data-tab="${key}" aria-controls="${meta.panelId}" aria-selected="${activeTab === key}">${esc(meta.label)}</button>`,
+          ).join("")}
+        </nav>`;
+      }
+
+      function renderEvaluationTabSystem(hitAt3, hitPrev, gate, gatePercent) {
+        const hitDelta = (hitAt3 - hitPrev).toFixed(1);
+        return `<div id="eval-panel-system" class="eval-tab-panel" role="tabpanel">
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>数据集介绍</h2>
+                <p class="muted-text">脱敏真实数据；无公开行业基线（benchmark）。离线、在线两套样本，共用岗位描述（JD）库。</p>
+              </div>
+            </div>
+            <div class="eval-table-wrap">
+              <table class="eval-table eval-matrix-table">
+                <thead><tr><th scope="col">维度</th><th scope="col">离线</th><th scope="col">在线</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <th scope="row" class="eval-matrix-dim">数据集</th>
+                    <td>主基线约 <strong>100</strong> 条：20 个评测档案（profile）× 每档案 5 轮会话，<strong>全套人工金标</strong>。</td>
+                    <td>补充回放约 <strong>50</strong> 条：10 名试用用户、10 份简历，每人约 5 轮，<strong>脱敏导出</strong>。</td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="eval-matrix-dim">采样方式</th>
+                    <td><strong>分层抽样</strong>：覆盖<strong>匹配 / 不匹配 / 边界</strong>三类，避免样本过于单一。</td>
+                    <td><strong>脱敏后回流</strong>：来自真实试用轨迹，不刻意对齐离线比例。</td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="eval-matrix-dim">岗位库</th>
+                    <td colspan="2">共用百来条岗位描述（JD）；离线基线、在线回放与求职智能体（Agent）任务页使用同一库。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="eval-shared-defs">
+              <p><strong>匹配任务单元：</strong>单次任务 = 简历画像 + 求职目标过滤 + 当前轮会话上下文，在共用岗位库中检索前 K 条；不是「一份简历对一个岗位描述」的简化题。</p>
+              <p><strong>金标：</strong>离线每条标注 1～3 个应进入前三名（Top3）的岗位编号，双人复核一致性 κ ≥ 0.82；在线以未命中、漂移个案为主，必要时单条补标。</p>
+            </div>
+            <p class="eval-footnote"><strong>版本编号 match-eval-v3：</strong>离线基线与在线回放评测集的当前版本号，用于跑批结果对齐与复现。</p>
+          </section>
+          <section class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>指标与评测</h2>
+                <p class="muted-text">指标含义、离/在线分工，以及离线基线（约 100 条）上的最近一次跑批结果。</p>
+              </div>
+            </div>
+            <div class="eval-subsection">
+              <h3 class="eval-subsection-title">指标介绍</h3>
+              <div class="eval-table-wrap">
+                <table class="eval-table eval-matrix-table">
+                  <thead><tr><th scope="col">维度</th><th scope="col">离线</th><th scope="col">在线</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row" class="eval-matrix-dim">核心指标</th>
+                      <td><strong>前三命中率（Hit@3）</strong>为发版统计分母，<strong>内控线 70%</strong>；消融与回归增幅均在该集计算。</td>
+                      <td><strong>个案级</strong>与漂移监测；<strong>不与离线约 100 条合并计算发版用 Hit@3</strong>。</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="eval-table-wrap" style="margin-top:12px;">
+                <table class="eval-table">
+                  <thead><tr><th scope="col">指标</th><th scope="col">定义</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td class="eval-dataset-field">前三命中率（Hit@3）</td>
+                      <td>在离线主基线上，金标任一岗位编号出现在模型前三名中的样本占比；衡量<strong>排序质量</strong>，用于对比召回与精排改动、支撑发版判断，不等于用户主观满意度。</td>
+                    </tr>
+                    <tr>
+                      <td class="eval-dataset-field">70% 内控线</td>
+                      <td>离线 Hit@3 的团队内控目标；未达标须登记异常样例（bad case）并安排回归，一般不单独拦截上线（与功能开关、幂等回归一并纳入<strong>人工评测门禁</strong>）。</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="eval-subsection">
+              <h3 class="eval-subsection-title">评测方式</h3>
+              <div class="eval-table-wrap">
+                <table class="eval-table eval-matrix-table">
+                  <thead><tr><th scope="col">维度</th><th scope="col">离线</th><th scope="col">在线</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row" class="eval-matrix-dim">评测方式</th>
+                      <td>固定样本<strong>批量评测</strong>；<strong>消融（ablation）</strong>；发版前<strong>人工门禁</strong>。</td>
+                      <td>与离线<strong>同一评测流水线（pipeline）</strong>做回放；关注<strong>漂移</strong>与<strong>异常样例（bad case）</strong>登记。</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="eval-subsection-note"><strong>链路配置：</strong>关键词检索（BM25）+ 向量混合召回、Pinecone 向量库、通义重排序（qwen3-rerank）；与求职任务页一致。发版以离线 Hit@3 与 70% 内控为准；在线回放用于发现漂移并汇入异常样例处理，改动后回到离线约 100 条核对增幅。</p>
+            </div>
+            <div class="eval-subsection">
+              <h3 class="eval-subsection-title">评测结果 ${badge("success", "内控达标")}</h3>
+              <div class="eval-table-wrap">
+                <table class="eval-table">
+                  <thead><tr><th scope="col">指标</th><th scope="col">当前（离线约 100 条）</th><th scope="col">较上轮</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td class="eval-dataset-field">前三命中率（Hit@3）</td>
+                      <td class="is-best">${hitAt3}%</td>
+                      <td>${hitPrev}% · 提升 ${hitDelta} 个百分点</td>
+                    </tr>
+                    <tr>
+                      <td class="eval-dataset-field">内控线</td>
+                      <td>≥ ${gate}%</td>
+                      <td>当前离线 Hit@3 达到内控要求</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="eval-gate-bar" aria-hidden="true">
+                <span class="muted-text" style="font-size:12px;font-weight:700;">当前离线 Hit@3 与内控线</span>
+                <div class="eval-gate-track">
+                  <div class="eval-gate-fill" style="width:${gatePercent}%;"></div>
+                  <div class="eval-gate-marker" style="left:${gate}%;" title="内控线 70%"></div>
+                </div>
+                <div class="eval-gate-labels"><span>0%</span><span>内控 ${gate}%</span><span>100%</span></div>
+              </div>
+            </div>
+          </section>
+          <section class="panel" style="margin-bottom:0;">
+            <div class="panel-heading"><div><h2>金标与前三名对照</h2><p class="muted-text">各一条，来自离线主基线；未命中可记入在线回放或异常样例回归。</p></div></div>
+            <div class="eval-case-grid">
+              <article class="eval-case-card is-hit">
+                <header><strong>样例 A · 命中</strong>${badge("success", "命中")}</header>
+                <p class="muted-text" style="margin:0 0 10px;font-size:12px;">匹配任务：智能体开发 · 不接受兼职 · 排除北京</p>
+                <p style="margin:0 0 8px;font-size:12px;font-weight:750;">金标：星澜智航 · Agent 开发工程师</p>
+                <ol class="eval-rank-list">
+                  <li class="is-gold"><span>1. 星澜智航 · Agent 开发工程师</span><small>金标</small></li>
+                  <li><span>2. 云梭科技 · LLM 应用工程师</span><small>第 2 名</small></li>
+                  <li><span>3. 澄观数据 · RAG 工程师</span><small>第 3 名</small></li>
+                </ol>
+              </article>
+              <article class="eval-case-card is-miss">
+                <header><strong>样例 B · 未命中</strong>${badge("danger", "未命中")}</header>
+                <p class="muted-text" style="margin:0 0 10px;font-size:12px;">匹配任务：大模型评测 / 质量保障方向</p>
+                <p style="margin:0 0 8px;font-size:12px;font-weight:750;">金标：质量方舟 · 大模型评测工程师</p>
+                <ol class="eval-rank-list">
+                  <li class="is-wrong-top"><span>1. 某厂 · 测试开发工程师</span><small>第一名误判</small></li>
+                  <li><span>2. 质量方舟 · 大模型评测工程师</span><small>金标第 2 名</small></li>
+                  <li><span>3. 平台组 · MLOps 工程师</span><small>第 3 名</small></li>
+                </ol>
+              </article>
+            </div>
+          </section>
+          <details class="eval-appendix">
+            <summary>备注</summary>
+            <div class="eval-appendix-body">
+              <ul class="eval-bullet-list">
+                <li><strong>边界规则：</strong>职级差大于 1 级、地点或兼职与过滤条件冲突的岗位不得入金标；标签仅表示「应进前三名候选」，不表示用户一定投递。</li>
+                <li><strong>离线分层：</strong>20 个档案 × 5 轮 ≈ 100 条；分层覆盖匹配、不匹配、边界，与上表采样方式一致。</li>
+                <li><strong>泄漏控制：</strong>调参、改提示词（prompt）与融合权重仅在离线主基线内划分训练折（train）；在线回放不参与调参。</li>
+                <li><strong>回归触发：</strong>调整向量嵌入（embedding）、重排序（rerank）或阈值后重跑离线评测；在线回放定期用同一流水线观察漂移；发版检查清单附离线 Hit@3。</li>
+              </ul>
+            </div>
+          </details>
+        </div>`;
+      }
+
+      function renderEvaluationTabAblation(hitAt3) {
+        return `<div id="eval-panel-ablation" class="eval-tab-panel" role="tabpanel">
+          <div class="notice-card" role="note">
+            <span class="notice-icon" aria-hidden="true">◫</span>
+            <div>
+              <strong>消融试验</strong>
+              <p>在离线主基线（约 100 条）上，匹配任务定义不变，只调整召回与精排，对比前三命中率（Hit@3）。当前默认链路 Hit@3 = ${hitAt3}%。</p>
+            </div>
+          </div>
+          <section class="panel" style="margin-bottom:0;">
+            <div class="panel-heading"><div><h2>消融（ablation）：召回与精排</h2></div></div>
+            <div class="eval-table-wrap">
+              <table class="eval-table">
+                <thead><tr><th scope="col">配置</th><th scope="col">前三命中率（Hit@3）</th><th scope="col">说明</th></tr></thead>
+                <tbody>
+                  <tr><td>仅关键词检索（BM25）</td><td>41.2%</td><td>关键词召回；长尾技能同义词弱。</td></tr>
+                  <tr><td>仅向量</td><td>52.8%</td><td>语义相近但职级、方向易混淆。</td></tr>
+                  <tr><td>BM25 + 向量混合</td><td>66.4%</td><td>默认融合权重；未做重排序。</td></tr>
+                  <tr><td class="is-best">+ 通义重排序 qwen3-rerank（与线上一致）</td><td class="is-best">${hitAt3}%</td><td>当前线上默认链路。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>`;
+      }
+
+      function renderEvaluationTabBadcase() {
+        return `<div id="eval-panel-badcase" class="eval-tab-panel" role="tabpanel">
+          <div class="notice-card" role="note">
+            <span class="notice-icon" aria-hidden="true">↺</span>
+            <div>
+              <strong>未命中闭环</strong>
+              <p>在线回放约 50 条与离线未命中一并登记；完成修改后在离线主基线上重跑 Hit@3，查看回归增幅，并观察线上漂移是否缓解。</p>
+            </div>
+          </div>
+          <section class="panel">
+            <div class="panel-heading"><div><h2>异常样例与回归</h2><p class="muted-text">现象 → 归因 → 处理 → 回归增幅。</p></div></div>
+            <div class="eval-badcase-list">
+              <article class="eval-badcase-item">
+                <div>
+                  <strong>样例 01 · 方向路由偏置</strong>
+                  <p>「评测工程师」匹配任务的第一名落到泛化「测试开发」岗，金标排在第二位（与评测体系样例 B 同类）。</p>
+                  <p><strong>处理：</strong>收紧职类路由规则，补充评测领域同义词表。</p>
+                </div>
+                <div class="eval-badcase-meta">${badge("success", "离线 Hit@3 +1.8 个百分点")}<span>归因：路由</span></div>
+              </article>
+              <article class="eval-badcase-item">
+                <div>
+                  <strong>样例 02 · 融合阈值过严</strong>
+                  <p>混合分不低于 0.62 才进入重排序（rerank），在前 50 召回（recall@50）内丢失 2 条金标。</p>
+                  <p><strong>处理：</strong>阈值由 0.62 调整为 0.58，重排序容量仍为 30。</p>
+                </div>
+                <div class="eval-badcase-meta">${badge("success", "离线 Hit@3 +0.6 个百分点")}<span>归因：融合阈值</span></div>
+              </article>
+            </div>
+          </section>
+          <section class="panel guide-summary" style="margin-bottom:0;">
+            <a class="button button-ghost inline-button" href="#candidate/progress" data-route="candidate/progress">返回求职进度</a>
+          </section>
+        </div>`;
+      }
+
+      function renderEvaluation() {
+        const hitAt3 = 73.1;
+        const hitPrev = 68.4;
+        const gate = 70;
+        const gatePercent = Math.min(hitAt3, 100);
+        const tab = evalTabMeta[state.evalTab] ? state.evalTab : "system";
+        let tabPanel = "";
+        if (tab === "ablation") tabPanel = renderEvaluationTabAblation(hitAt3);
+        else if (tab === "badcase") tabPanel = renderEvaluationTabBadcase();
+        else tabPanel = renderEvaluationTabSystem(hitAt3, hitPrev, gate, gatePercent);
+        return `<div class="page-view eval-page">
+          ${pageHeader(
+            "求职者 · 匹配质量",
+            "匹配质量评测",
+            "离线评测跑批结果；「评测体系」含数据集说明，以及指标、评测方式与跑批结果。",
+          )}
+          ${renderEvalSectionNav(tab)}
+          ${tabPanel}
         </div>`;
       }
 
@@ -1843,6 +2399,7 @@
         { route: "candidate/documents", icon: "↥", label: "求职资料上传" },
         { route: "candidate/job-goal/create", icon: "◎", label: "求职任务" },
         { route: "candidate/progress", icon: "▥", label: "求职进度查看" },
+        { route: "candidate/evaluation", icon: "◧", label: "匹配质量评测" },
       ];
       const hrNav = [
         { route: "hr/home", icon: "⌂", label: "使用指南" },
@@ -1892,6 +2449,7 @@
         else if (route === "candidate/job-goal/create") content = renderJobGoalCreate();
         else if (route === "candidate/job-goal/view") content = renderJobGoalView();
         else if (route === "candidate/progress") content = renderProgress();
+        else if (route === "candidate/evaluation") content = renderEvaluation();
         else if (route === "hr/home") content = renderHrHome();
         else if (route === "hr/jobs") content = renderJobs();
         else if (route === "hr/conversations") content = renderConversations();
@@ -2357,6 +2915,7 @@
         state.route = route;
         state.error = null;
         state.roundSelectOpen = false;
+        if (route === "candidate/evaluation" && !evalTabMeta[state.evalTab]) state.evalTab = "system";
         if (route === "hr/conversations") state.selectedConversationId = state.selectedConversationId ?? null;
         render();
         window.scrollTo(0, 0);
@@ -2389,6 +2948,15 @@
             state.loginRole = "candidate";
             state.loginError = null;
             render();
+            return;
+          }
+          if (action === "eval-tab") {
+            const nextTab = actionTarget.dataset.tab;
+            if (evalTabMeta[nextTab]) {
+              state.evalTab = nextTab;
+              render();
+              window.scrollTo(0, 0);
+            }
             return;
           }
           if (action === "close-toast") { state.toast = null; render(); return; }
