@@ -45,6 +45,25 @@ docker compose --env-file .env.production -f ../docker-compose.production.yml ps
 
 `/health/ready` 通过只表示 Backend 能访问 PostgreSQL、Redis 并完成本地配置检查；Worker 还必须通过容器状态和实际任务终态单独验证。
 
+## 内存与并机（与 PanWatch 同机）
+
+| 项 | 生产约定 |
+| --- | --- |
+| `worker` cgroup 上限 | `512m`（原 `896m`，压低 Worker 突发占用） |
+| Celery 进程模型 | `--pool=solo`、`--max-tasks-per-child=1`（避免 prefork 主/子双进程常驻 RSS） |
+| 全栈 RSS 告警 | `careerpass-stack-memory.sh` 汇总各服务容器用量，默认 `CAREERPASS_STACK_RSS_ALERT_MIB=450` |
+| 主机可用内存 | 脚本同时输出 `mem_available_mib`；与 PanWatch（例如进程 RSS `>350` MiB）一并观察 |
+
+发布后核对 Worker：
+
+```sh
+docker compose --env-file .env.production -f ../docker-compose.production.yml up -d worker
+chmod +x scripts/careerpass-stack-memory.sh
+./scripts/careerpass-stack-memory.sh
+```
+
+空闲栈 RSS 通常低于告警阈值；简历/JD 解析任务执行中 Worker 可能接近 `512m` 上限。若 Worker 因 OOM 退出，先确认是否并机内存不足，再考虑临时调上限或错峰解析。
+
 ## 回滚边界
 
 - 镜像问题：恢复上一版本镜像并重新启动业务服务。
