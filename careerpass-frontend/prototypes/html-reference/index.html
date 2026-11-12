@@ -1504,37 +1504,42 @@
         return statuses.filter((status) => status === "offer").length;
       }
 
-      // ---------- 演示数据（面试演示构造：20 份大模型应用方向岗位 JD） ----------
+      // ---------- 演示数据（面试演示构造：10 份 Agent 应用方向 + 10 份 Agent 算法方向 JD） ----------
+      // track：app = Agent 应用开发（对应简历 v1），algo = Agent 算法开发（对应简历 v2）。
       const userFixtures = {
         candidate: { id: "candidate-001", role: "candidate", displayName: "Alex Chen", title: "求职者工作台" },
         hr: { id: "hr-001", role: "hr", displayName: "Mia Wang", title: "HR 工作台" },
       };
       const jobFixtures = [
-        { fileName: "01-星河智能-Agent应用开发工程师.md", title: "Agent 应用开发工程师", company: "星河智能", location: "深圳", salary: "25-40K", score: 92, direction: "Agent 应用开发", level: "同级", covered: 7, total: 8 },
-        { fileName: "02-云启信息-大模型应用开发工程师.md", title: "大模型应用开发工程师", company: "云启信息", location: "杭州", salary: "22-35K", score: 88, direction: "大模型应用开发", level: "同级", covered: 6, total: 8 },
-        { fileName: "03-知行智能-RAG应用开发工程师.md", title: "RAG 应用开发工程师", company: "知行智能", location: "上海", salary: "20-33K", score: 84, direction: "检索增强生成", level: "相差一级", covered: 6, total: 9 },
-        { fileName: "04-远见数据-AI应用开发工程师（LLM方向）.md", title: "AI 应用开发工程师（LLM 方向）", company: "远见数据", location: "广州", salary: "19-30K", score: 86, direction: "AI 应用开发", level: "同级", covered: 6, total: 7 },
-        { fileName: "05-蓝图计算-Agent平台研发工程师.md", title: "Agent 平台研发工程师", company: "蓝图计算", location: "上海", salary: "28-45K", score: 83, direction: "智能体平台", level: "相差一级", covered: 7, total: 9 },
-        { fileName: "06-木棉互联-LLM后端开发工程师.md", title: "LLM 后端开发工程师", company: "木棉互联", location: "深圳", salary: "21-34K", score: 81, direction: "大模型应用开发", level: "同级", covered: 5, total: 8 },
-        { fileName: "07-启明软件-智能体工作流开发工程师.md", title: "智能体工作流开发工程师", company: "启明软件", location: "苏州", salary: "20-32K", score: 79, direction: "Agent 应用开发", level: "相差一级", covered: 5, total: 7 },
-        { fileName: "08-极光云图-大模型推理优化工程师.md", title: "大模型推理优化工程师", company: "极光云图", location: "杭州", salary: "30-48K", score: 76, direction: "LLM 推理优化", level: "相差一级", covered: 6, total: 9 },
-        { fileName: "09-融智科技-多模态应用开发工程师.md", title: "多模态应用开发工程师", company: "融智科技", location: "成都", salary: "18-30K", score: 75, direction: "多模态应用", level: "同级", covered: 5, total: 8 },
-        { fileName: "10-稳态云-AI中间件开发工程师.md", title: "AI 中间件开发工程师", company: "稳态云", location: "武汉", salary: "20-32K", score: 73, direction: "AI 中间件", level: "相差一级", covered: 4, total: 6 },
-        { fileName: "11-数澜科技-大模型数据工程工程师.md", title: "大模型数据工程工程师", company: "数澜科技", location: "杭州", salary: "18-29K", score: 71, direction: "大模型数据", level: "同级", covered: 5, total: 7 },
-        { fileName: "12-文脉科技-Prompt工程与应用开发工程师.md", title: "Prompt 工程与应用开发工程师", company: "文脉科技", location: "南京", salary: "16-26K", score: 70, direction: "Prompt 工程", level: "同级", covered: 6, total: 8 },
-        { fileName: "13-新岸智能-Agent记忆与检索系统工程师.md", title: "Agent 记忆与检索系统工程师", company: "新岸智能", location: "上海", salary: "22-36K", score: 68, direction: "检索增强生成", level: "相差一级", covered: 5, total: 9 },
-        { fileName: "14-智汇互娱-LLM编排引擎开发工程师.md", title: "LLM 编排引擎开发工程师", company: "智汇互娱", location: "广州", salary: "24-38K", score: 66, direction: "智能体平台", level: "相差一级", covered: 5, total: 8 },
-        { fileName: "15-质量方舟-大模型评测工程师.md", title: "大模型评测工程师", company: "质量方舟", location: "苏州", salary: "15-24K", score: 65, direction: "大模型应用开发", level: "同级", covered: 4, total: 6 },
-        { fileName: "16-清源网络-大模型微调与应用工程师.md", title: "大模型微调与应用工程师", company: "清源网络", location: "西安", salary: "20-32K", score: 63, direction: "大模型应用开发", level: "相差一级", covered: 5, total: 8 },
-        { fileName: "17-云际智能-AI解决方案开发工程师（大模型）.md", title: "AI 解决方案开发工程师（大模型）", company: "云际智能", location: "厦门", salary: "18-29K", score: 60, direction: "AI 应用开发", level: "相差一级", covered: 4, total: 7 },
-        { fileName: "18-瀚海消费科技-智能客服大模型应用工程师.md", title: "智能客服大模型应用工程师", company: "瀚海消费科技", location: "上海", salary: "17-28K", score: 58, direction: "AI 应用开发", level: "同级", covered: 4, total: 6 },
-        { fileName: "19-星穹研究院-AI Agent算法工程师.md", title: "AI Agent 算法工程师", company: "星穹研究院", location: "合肥", salary: "26-42K", score: 55, direction: "Agent 应用开发", level: "相差一级", covered: 5, total: 9 },
-        { fileName: "20-合流数字-企业级AI应用开发工程师.md", title: "企业级 AI 应用开发工程师", company: "合流数字", location: "深圳", salary: "22-35K", score: 53, direction: "AI 应用开发", level: "相差一级", covered: 4, total: 7 },
+        // Agent 应用开发方向（10 份）——第一轮（简历 v1）匹配对象
+        { fileName: "01-星河智能-Agent应用开发工程师.md", title: "Agent 应用开发工程师", company: "星河智能", location: "深圳", salary: "25-40K", score: 92, track: "app", direction: "Agent 应用开发", level: "同级", covered: 7, total: 8 },
+        { fileName: "02-云启信息-Agent应用工程师.md", title: "Agent 应用工程师", company: "云启信息", location: "杭州", salary: "22-35K", score: 90, track: "app", direction: "Agent 应用开发", level: "同级", covered: 7, total: 8 },
+        { fileName: "03-知行智能-智能体应用开发工程师.md", title: "智能体应用开发工程师", company: "知行智能", location: "上海", salary: "24-38K", score: 88, track: "app", direction: "Agent 应用开发", level: "同级", covered: 6, total: 8 },
+        { fileName: "04-远见数据-Agent工作流应用工程师.md", title: "Agent 工作流应用工程师", company: "远见数据", location: "广州", salary: "20-33K", score: 86, track: "app", direction: "Agent 应用开发", level: "同级", covered: 6, total: 7 },
+        { fileName: "05-蓝图计算-企业级Agent应用工程师.md", title: "企业级 Agent 应用工程师", company: "蓝图计算", location: "上海", salary: "26-42K", score: 85, track: "app", direction: "Agent 应用开发", level: "相差一级", covered: 6, total: 8 },
+        { fileName: "06-木棉互联-Agent产品应用工程师.md", title: "Agent 产品应用工程师", company: "木棉互联", location: "深圳", salary: "21-34K", score: 83, track: "app", direction: "Agent 应用开发", level: "同级", covered: 5, total: 8 },
+        { fileName: "07-启明软件-LLM应用开发工程师.md", title: "LLM 应用开发工程师", company: "启明软件", location: "苏州", salary: "20-32K", score: 81, track: "app", direction: "Agent 应用开发", level: "相差一级", covered: 5, total: 7 },
+        { fileName: "08-融智科技-RAG应用开发工程师.md", title: "RAG 应用开发工程师", company: "融智科技", location: "成都", salary: "19-30K", score: 79, track: "app", direction: "Agent 应用开发", level: "同级", covered: 5, total: 8 },
+        { fileName: "09-稳态云-AI应用开发工程师（Agent方向）.md", title: "AI 应用开发工程师（Agent 方向）", company: "稳态云", location: "武汉", salary: "20-32K", score: 77, track: "app", direction: "Agent 应用开发", level: "相差一级", covered: 4, total: 6 },
+        { fileName: "10-文脉科技-Agent集成应用工程师.md", title: "Agent 集成应用工程师", company: "文脉科技", location: "南京", salary: "18-29K", score: 75, track: "app", direction: "Agent 应用开发", level: "同级", covered: 5, total: 7 },
+        // Agent 算法开发方向（10 份）——第二轮（简历 v2）匹配对象
+        { fileName: "11-数澜科技-大模型算法工程师.md", title: "大模型算法工程师", company: "数澜科技", location: "杭州", salary: "30-50K", score: 93, track: "algo", direction: "Agent 算法开发", level: "同级", covered: 7, total: 8 },
+        { fileName: "12-星穹研究院-Agent算法工程师.md", title: "Agent 算法工程师", company: "星穹研究院", location: "合肥", salary: "28-45K", score: 91, track: "algo", direction: "Agent 算法开发", level: "同级", covered: 7, total: 9 },
+        { fileName: "13-新岸智能-智能体算法工程师.md", title: "智能体算法工程师", company: "新岸智能", location: "上海", salary: "28-46K", score: 89, track: "algo", direction: "Agent 算法开发", level: "同级", covered: 6, total: 8 },
+        { fileName: "14-智汇互娱-大模型推理算法工程师.md", title: "大模型推理算法工程师", company: "智汇互娱", location: "广州", salary: "30-48K", score: 87, track: "algo", direction: "Agent 算法开发", level: "相差一级", covered: 6, total: 9 },
+        { fileName: "15-质量方舟-LLM算法工程师.md", title: "LLM 算法工程师", company: "质量方舟", location: "苏州", salary: "26-42K", score: 85, track: "algo", direction: "Agent 算法开发", level: "同级", covered: 6, total: 8 },
+        { fileName: "16-清源网络-大模型训练算法工程师.md", title: "大模型训练算法工程师", company: "清源网络", location: "西安", salary: "28-45K", score: 83, track: "algo", direction: "Agent 算法开发", level: "相差一级", covered: 5, total: 8 },
+        { fileName: "17-云际智能-AI算法工程师（大模型方向）.md", title: "AI 算法工程师（大模型方向）", company: "云际智能", location: "厦门", salary: "25-40K", score: 81, track: "algo", direction: "Agent 算法开发", level: "相差一级", covered: 5, total: 7 },
+        { fileName: "18-瀚海消费科技-Agent决策算法工程师.md", title: "Agent 决策算法工程师", company: "瀚海消费科技", location: "上海", salary: "26-42K", score: 79, track: "algo", direction: "Agent 算法开发", level: "同级", covered: 5, total: 7 },
+        { fileName: "19-极光云图-强化学习算法工程师（Agent）.md", title: "强化学习算法工程师（Agent）", company: "极光云图", location: "杭州", salary: "30-48K", score: 77, track: "algo", direction: "Agent 算法开发", level: "相差一级", covered: 5, total: 9 },
+        { fileName: "20-合流数字-大模型微调算法工程师.md", title: "大模型微调算法工程师", company: "合流数字", location: "深圳", salary: "26-42K", score: 75, track: "algo", direction: "Agent 算法开发", level: "相差一级", covered: 4, total: 7 },
       ];
       // 多轮投递演示参数：每轮投递数量阈值（Top-K）；超出部分进入储备，本轮全部被拒后延迟自动开启下一轮。
       function roundCapFor(round) {
-        return round === 1 ? 4 : 3;
+        return 5;
       }
+      // 简历版本变更演示：按岗流式匹配节奏（仅 demo 配置，对齐 Demo开发任务_简历版本变更_P1.md §6）。
+      const DEMO_MATCH_DELAY_MS = 7000;
       function buildRecommendationReason(fixture) {
         return `岗位同属于${fixture.direction}方向；能力层级${fixture.level}；技能匹配覆盖 ${fixture.covered}/${fixture.total} 项技能`;
       }
@@ -1587,6 +1592,10 @@
           roundSelectOpen: false,
           applications: [],
           conversations: [],
+          // 简历版本变更演示：按岗流式匹配任务、调度令牌与匹配运行记录（幂等）。
+          matchTasks: {},
+          matchToken: 0,
+          matchRuns: [],
           matchingSummary: { evaluatedJobCount: 0 },
           selectedConversationId: null,
           composerText: "",
@@ -2018,7 +2027,8 @@
 
       function renderDocuments() {
         const resume = state.resume;
-        const resumeLocked = state.agentStatus === "running" || state.agentStatus === "finished";
+        // Agent 运行中允许替换简历（触发换简历编排）；仅在 Agent 结束后锁定。
+        const resumeLocked = state.agentStatus === "finished";
         const resumeDeleteAllowed = Boolean(
           resume && ["not_started", "ready"].includes(state.agentStatus) && ["succeeded", "failed"].includes(resume.parseStatus),
         );
@@ -2040,7 +2050,7 @@
               </div>
               ${uploadBox({
                 id: "resumeInput",
-                label: resume ? "上传新简历并设为当前" : "上传一份简历",
+                label: resume ? "当前已绑定简历" : "上传一份简历",
                 description: resumeLocked ? "当前投递轮次已绑定简历。" : "简历仅支持PDF格式。",
                 accept: ".pdf",
                 disabled: resumeLocked || state.resumeLoading,
@@ -2076,7 +2086,7 @@
 
       function renderJobGoalShell(content, isViewPage) {
         return `<div class="page-view job-goal-page">
-          ${pageHeader("CANDIDATE / JOB GOAL", isViewPage ? "查看求职目标" : "配置你的求职任务", isViewPage ? "查看当前用户已创建的求职目标记录。" : "设置目标 Offer 数量和岗位条件，满足启动条件后即可开始求职 Agent。")}
+          ${pageHeader("CANDIDATE / JOB GOAL", isViewPage ? "查看求职目标" : "配置你的求职目标", isViewPage ? "查看当前用户已创建的求职目标记录。" : "设置目标 Offer 数量和岗位条件，满足启动条件后即可开始求职 Agent。")}
           <nav class="job-goal-section-nav" aria-label="求职目标页面菜单">
             <a href="#create" data-route="candidate/job-goal/create" class="${isViewPage ? "" : "is-active"}">求职目标创建</a>
             <a href="#view" data-route="candidate/job-goal/view" class="${isViewPage ? "is-active" : ""}">求职目标查看</a>
@@ -2397,7 +2407,7 @@
       const candidateNav = [
         { route: "candidate/home", icon: "⌂", label: "使用指南" },
         { route: "candidate/documents", icon: "↥", label: "求职资料上传" },
-        { route: "candidate/job-goal/create", icon: "◎", label: "求职任务" },
+        { route: "candidate/job-goal/create", icon: "◎", label: "求职目标创建" },
         { route: "candidate/progress", icon: "▥", label: "求职进度查看" },
         { route: "candidate/evaluation", icon: "◧", label: "匹配质量评测" },
       ];
@@ -2488,19 +2498,28 @@
       }
 
       async function uploadResume(file) {
+        // Agent 运行中替换简历 → 走 v2 编排路径（P1）；否则为常规首次/未启动前上传。
+        const isRunning = state.agentStatus === "running";
         state.resumeLoading = true;
         state.error = null;
         render();
         await sleep(420);
+        const newVersion = (state.resume?.version ?? 0) + 1;
         state.resume = {
           id: uid("resume"),
-          fileName: file.name || "resume.pdf",
+          fileName: file.name || `resume-v${newVersion}.pdf`,
           uploadedAt: nowIso(),
-          parseStatus: "processing",
-          version: (state.resume?.version ?? 0) + 1,
+          parseStatus: isRunning ? "succeeded" : "processing",
+          version: newVersion,
         };
-        state.agentStatus = "not_started";
         state.resumeLoading = false;
+        if (isRunning) {
+          // 全局 active 简历切换为新版本，立即触发编排：冻结已完成岗、取消未完成岗、基于新版本重匹配剩余岗。
+          render();
+          orchestrateOnResumeChange(newVersion);
+          return;
+        }
+        state.agentStatus = "not_started";
         render();
         showToast("简历已上传，正在进行解析。");
         await sleep(2400);
@@ -2575,7 +2594,7 @@
 
       async function uploadJobs(files) {
         if (!files.length) return;
-        // 演示数据一致性：任意一次上传都载入全部 20 份构造岗位 JD；已存在时不重复创建。
+        // 演示数据一致性：任意一次上传都载入全部 20 份构造岗位 JD（10 份 Agent 应用 + 10 份 Agent 算法）；已存在时不重复创建。
         if (state.hrJobs.length) { render(); return; }
         state.uploadingJobs = true;
         state.error = null;
@@ -2590,6 +2609,7 @@
           location: fixture.location,
           salary: fixture.salary,
           matchScore: fixture.score,
+          track: fixture.track,
           recommendationReason: buildRecommendationReason(fixture),
           createdAt,
           parseStatus: "running",
@@ -2642,9 +2662,9 @@
         showToast("求职目标已保存。");
       }
 
-      // 为一批岗位创建投递记录与对应会话容器，挂在指定轮次上。
-      function createApplicationsForRound(jobs, round) {
-        const created = jobs.map((job) => ({
+      // 单岗匹配完成 → 创建投递记录与沟通会话；会话绑定开启时的简历版本（P1）。
+      function createApplicationForJob(job, round, resumeVersion) {
+        const app = {
           id: uid("application"),
           jobId: job.id,
           jobTitle: job.jobTitle,
@@ -2657,19 +2677,87 @@
           matchScore: job.matchScore,
           recommendationReason: job.recommendationReason,
           round,
-        }));
-        state.applications.push(...created);
-        created.forEach((app) => {
-          state.conversations.push({
-            id: uid("conversation"),
-            applicationId: app.id,
-            jobTitle: app.jobTitle,
-            candidateName: userFixtures.candidate.displayName,
-            messages: [],
-            queryAsked: false,
-            queryPending: false,
-          });
+          resumeVersion,
+        };
+        state.applications.push(app);
+        state.conversations.push({
+          id: uid("conversation"),
+          applicationId: app.id,
+          jobTitle: app.jobTitle,
+          candidateName: userFixtures.candidate.displayName,
+          messages: [],
+          queryAsked: false,
+          queryPending: false,
+          // P1：会话创建时锁定当时 active 简历版本，后续换简历不漂移。
+          resumeVersionAtOpen: resumeVersion,
         });
+      }
+
+      // MatchIntent 幂等键：同一 (用户, 目标, 简历版本, 岗位集合) 视为同一匹配意图。
+      function matchIntentHash(jobIds, resumeVersion) {
+        return `${userFixtures.candidate.id}|${state.jobGoal?.id ?? "goal"}|v${resumeVersion}|${[...jobIds].sort().join(",")}`;
+      }
+
+      // 按岗流式匹配：逐个岗位 running → done，每完成一岗推送右下角 toast 并创建投递会话。
+      // 支持通过 matchToken 中断（换简历触发编排时取消未完成岗）。
+      async function runRoundMatching(jobs, round, resumeVersion) {
+        const scopeIds = jobs.map((job) => job.id);
+        const intentHash = matchIntentHash(scopeIds, resumeVersion);
+        // 幂等：相同 MatchIntent 已有运行中的 Run，不重复入队。
+        if (state.matchRuns.some((r) => r.intentHash === intentHash && r.status === "running")) {
+          showToast("匹配正在进行中，已避免重复触发。", "info");
+          return;
+        }
+        const run = { id: uid("run"), resumeVersion, scope: scopeIds, intentHash, status: "running", round };
+        state.matchRuns.push(run);
+        const myToken = ++state.matchToken;
+        jobs.forEach((job) => { state.matchTasks[job.id] = { jobId: job.id, round, status: "pending", resumeVersion }; });
+        render();
+        const total = jobs.length;
+        let doneCount = 0;
+        for (const job of jobs) {
+          if (myToken !== state.matchToken) { run.status = "cancelled"; return; }
+          const task = state.matchTasks[job.id];
+          if (!task || task.status === "cancelled") continue;
+          task.status = "running";
+          render();
+          await sleep(DEMO_MATCH_DELAY_MS);
+          if (myToken !== state.matchToken) { run.status = "cancelled"; return; }
+          if (task.status === "cancelled") continue;
+          task.status = "done";
+          createApplicationForJob(job, round, resumeVersion);
+          doneCount += 1;
+          const shortTitle = `${job.companyName ?? ""}·${(job.jobTitle ?? "").slice(0, 6)}`;
+          showToast(`本轮已匹配 ${doneCount}/${total} · ${shortTitle}`, "info");
+          render();
+        }
+        if (myToken === state.matchToken) { run.status = "completed"; render(); }
+      }
+
+      // 换简历编排（策略 P1）：已完成岗冻结、未完成岗取消，并基于新版本仅重匹配被取消的岗位。
+      function orchestrateOnResumeChange(newVersion) {
+        showToast(`检测到新版本简历，正在调整匹配任务…`, "info");
+        // 中断当前轮匹配调度，当前轮未完成岗取消（已完成岗结果与会话保留）。
+        state.matchToken += 1;
+        Object.values(state.matchTasks).forEach((task) => {
+          if (task.status === "running" || task.status === "pending") task.status = "cancelled";
+        });
+        state.matchRuns.forEach((r) => {
+          if (r.status === "running" && r.resumeVersion < newVersion) r.status = "partial_cancelled";
+        });
+        render();
+        // 切换为 Agent 算法方向简历（v2）→ 自动开启新一轮，仅匹配 Agent 算法方向岗位（Top-K=5）。
+        const nextRoundNo = state.round + 1;
+        const appliedIds = new Set(state.applications.map((app) => app.jobId));
+        const algoJobs = state.hrJobs
+          .filter((job) => job.parseStatus === "succeeded" && job.track === "algo" && !appliedIds.has(job.id))
+          .sort((a, b) => b.matchScore - a.matchScore);
+        const nextBatch = algoJobs.slice(0, roundCapFor(nextRoundNo));
+        if (!nextBatch.length) { render(); return; }
+        setTimeout(() => {
+          state.round = nextRoundNo;
+          void runRoundMatching(nextBatch, nextRoundNo, newVersion);
+        }, 450);
       }
 
       // 轮次推进：Offer 未达标且当前轮没有进行中的岗位时开启下一轮。
@@ -2690,9 +2778,8 @@
         }
         setTimeout(() => {
           state.round = nextRoundNo;
-          createApplicationsForRound(nextBatch, nextRoundNo);
           state.roundAdvancing = false;
-          if (state.route !== "login" && state.route !== "register") render();
+          void runRoundMatching(nextBatch, nextRoundNo, state.resume?.version ?? 1);
         }, 4500);
         return true;
       }
@@ -2728,13 +2815,15 @@
           render();
           return;
         }
-        // 模拟 S-08 同步匹配 + 多轮投递：全量筛选，按综合匹配得分投递 Top-K，其余进入储备。
-        const ranked = parsedJobs.slice().sort((a, b) => b.matchScore - a.matchScore);
-        const firstRound = ranked.slice(0, roundCapFor(1));
-        state.reserveJobs = ranked.slice(roundCapFor(1));
+        // 第一轮对应简历 v1（Agent 应用方向）：仅从 Agent 应用方向岗位中按得分取 Top-K。
+        const appJobs = parsedJobs.filter((job) => job.track === "app").sort((a, b) => b.matchScore - a.matchScore);
+        const firstRound = appJobs.slice(0, roundCapFor(1));
+        // 储备保留剩余应用方向岗位（用于被拒后的继续推进）；算法方向岗位在换 v2 简历后单独匹配。
+        state.reserveJobs = appJobs.slice(roundCapFor(1));
         state.applications = [];
         state.conversations = [];
-        createApplicationsForRound(firstRound, 1);
+        state.matchTasks = {};
+        state.matchRuns = [];
         state.hrJobs.forEach((job) => { job.matchStarted = true; });
         state.matchingSummary = { evaluatedJobCount: parsedJobs.length };
         state.agentStatus = "running";
@@ -2743,6 +2832,9 @@
         state.round = 1;
         state.startingAgent = false;
         render();
+        showToast("求职 Agent 已启动，正在按岗匹配…", "info");
+        // 按岗流式匹配本轮岗位（每完成一岗推送 toast 并创建产品内投递会话）。
+        void runRoundMatching(firstRound, 1, state.resume?.version ?? 1);
       }
 
       async function updateApplicationStatus(id, status) {
@@ -2933,8 +3025,25 @@
         if (actionTarget) {
           const action = actionTarget.dataset.action;
           if (action === "pick") {
-            const input = document.getElementById(actionTarget.dataset.target);
-            if (input && !input.disabled) input.click();
+            const targetId = actionTarget.dataset.target;
+            const ref = document.getElementById(targetId);
+            if (!ref || ref.disabled) return;
+            // 修复：文件选择器挂在 #root 之外，避免 Agent 运行中周期性 render() 销毁 input 导致首次选择丢失。
+            const picker = document.createElement("input");
+            picker.type = "file";
+            if (ref.accept) picker.accept = ref.accept;
+            picker.multiple = ref.multiple;
+            picker.style.display = "none";
+            picker.addEventListener("change", () => {
+              const files = Array.from(picker.files || []);
+              picker.remove();
+              if (!files.length) return;
+              if (targetId === "resumeInput") void uploadResume(files[0]);
+              else if (targetId === "docsInput") void uploadDocuments(files);
+              else if (targetId === "jobsInput") void uploadJobs(files);
+            });
+            document.body.appendChild(picker);
+            picker.click();
             return;
           }
           if (action === "login-role") {

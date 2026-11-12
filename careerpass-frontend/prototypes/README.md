@@ -26,6 +26,16 @@ python -m http.server 8000
 
 然后访问：<http://localhost:8000/html-reference/index.html>
 
+### 简历版本变更演示（P1）
+
+在 `html-reference/index.html` 中**集成**的面试演示能力（不新增独立页面）：启动 Agent 后按岗流式 toast、求职资料页运行中可替换简历、v1→v2 编排中断、分轮匹配（Agent 应用 / Agent 算法）、匹配幂等。
+
+```text
+html-reference/index.html
+```
+
+排练步骤见 [`html-reference/demo-rehearsal-resume-version-p1.md`](html-reference/demo-rehearsal-resume-version-p1.md)。
+
 ## 注意事项
 
 - 本目录仅用于原型参考和正式前端开发参考，不属于正式前端源码。
